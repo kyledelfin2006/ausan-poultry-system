@@ -27,6 +27,11 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.access.AccessDeniedException;
 
+/**
+ * Integration tests of the finance ledger and weighted average costing against a real PostgreSQL (Testcontainers):
+ * purchases and average cost, sale/cost/payment linkage, cancellation reversals, refunds, amount validation and
+ * the database's own consistency checks. Each test uses fresh product and branch rows because the database is shared.
+ */
 @SpringBootTest
 @Import(TestcontainersConfiguration.class)
 class FinanceAndCostTests {
@@ -39,28 +44,53 @@ class FinanceAndCostTests {
     Actor owner, assistant;
     LocalDate today = LocalDate.now();
 
+    /** Looks up the bootstrap owner and creates a fresh product and branch, so tests never share stock rows. */
     @BeforeEach
     void freshData() {
-        ownerId = jdbc.queryForObject("select id from app_user where username = ?", Long.class, TestcontainersConfiguration.OWNER_USERNAME);
+        // The owner exists in every test database; assistant is the same user acting with a lower role.
+        ownerId = jdbc.queryForObject("select id from app_user where username = ?", Long.class,
+                TestcontainersConfiguration.OWNER_USERNAME);
         owner = new Actor(ownerId, Role.OWNER);
         assistant = new Actor(ownerId, Role.ASSISTANT);
+        // A random tag keeps names unique across tests that share the database.
         String tag = UUID.randomUUID().toString();
-        productId = jdbc.queryForObject("insert into product (name, unit) values (?, 'pc') returning id", Long.class, "nipple-" + tag);
+        productId = jdbc.queryForObject("insert into product (name, unit) values (?, 'pc') returning id",
+                Long.class, "nipple-" + tag);
         branchId = jdbc.queryForObject("insert into branch (name) values (?) returning id", Long.class, "b-" + tag);
     }
 
+    /**
+     * Buys stock for the test product through the stock module (which also records the cash out).
+     *
+     * @param qty      units bought
+     * @param unitCost price per unit, as text
+     * @return the stock movement created
+     */
     MovementView purchase(long qty, String unitCost) {
         return stock.record(new StockCommand(productId, branchId, MovementType.PURCHASE, qty, new BigDecimal(unitCost),
                 null, today, PaymentMethod.CASH), owner);
     }
 
+    /**
+     * Sums the ledger amounts of one entry type for one source, straight from the database.
+     *
+     * @param type   entry type name, e.g. SALE
+     * @param source the source record
+     * @return the total, zero if none
+     */
     BigDecimal cash(String type, SourceRef source) {
-        return jdbc.queryForObject("select coalesce(sum(amount),0) from financial_entry where type=? and source_type=? and source_id=?",
+        return jdbc.queryForObject("""
+                select coalesce(sum(amount),0) from financial_entry
+                 where type=? and source_type=? and source_id=?""",
                 BigDecimal.class, type, source.type(), source.id());
     }
 
-    SourceRef newDelivery() { return new SourceRef("DELIVERY", ThreadLocalRandom.current().nextLong(1_000_000, Long.MAX_VALUE)); }
+    /** Returns a delivery reference with a random id, so each test's ledger rows are isolated from the others. */
+    SourceRef newDelivery() {
+        return new SourceRef("DELIVERY", ThreadLocalRandom.current().nextLong(1_000_000, Long.MAX_VALUE));
+    }
 
+    /** Each purchase writes a STOCK_PURCHASE cash-out and moves the weighted average cost. */
     @Test
     void buyingStockRecordsTheCashOutAndBuildsTheAverageCost() {
         var first = purchase(100, "20.00");
@@ -68,14 +98,18 @@ class FinanceAndCostTests {
         assertThat(stock.averageCost(productId, branchId)).isEqualByComparingTo("20");
 
         var second = purchase(100, "22.00");
-        assertThat(cash("STOCK_PURCHASE", new SourceRef("STOCK_MOVEMENT", second.id()))).isEqualByComparingTo("2200.00");
+        assertThat(cash("STOCK_PURCHASE", new SourceRef("STOCK_MOVEMENT", second.id())))
+                .isEqualByComparingTo("2200.00");
         assertThat(stock.averageCost(productId, branchId)).isEqualByComparingTo("21");
         assertThat(stock.balance(productId, branchId)).isEqualTo(200);
     }
 
+    /** Opening stock costs nothing, writes no cash entry and lowers the average of later purchases. */
     @Test
     void openingStockAndDonationsCostNothingAndPullTheAverageDown() {
-        var opening = stock.record(new StockCommand(productId, branchId, MovementType.OPENING, 50, null, null, today, null), owner);
+        // Opening stock has no unit cost and no payment method: nothing was paid for it.
+        var opening = stock.record(
+                new StockCommand(productId, branchId, MovementType.OPENING, 50, null, null, today, null), owner);
         assertThat(opening.unitCost()).isEqualByComparingTo("0");
         assertThat(cash("STOCK_PURCHASE", new SourceRef("STOCK_MOVEMENT", opening.id()))).isEqualByComparingTo("0");
 
@@ -83,6 +117,7 @@ class FinanceAndCostTests {
         assertThat(stock.averageCost(productId, branchId)).isEqualByComparingTo("10");   // (50*0 + 50*20) / 100
     }
 
+    /** Delivery stock-out is frozen at the average cost of that moment; reversal restores stock at that cost. */
     @Test
     void deliveryStockOutIsStampedWithAverageCostAndReversalDoesNotMoveTheAverage() {
         purchase(100, "20.00");
@@ -102,6 +137,7 @@ class FinanceAndCostTests {
         assertThat(stock.balance(productId, branchId)).isEqualTo(230);
     }
 
+    /** A purchase without a payment method or unit cost is refused and leaves no stock behind. */
     @Test
     void purchaseNeedsPaymentMethodAndCost_andWritesNothingOtherwise() {
         assertThatThrownBy(() -> stock.record(new StockCommand(productId, branchId, MovementType.PURCHASE, 10,
@@ -111,6 +147,7 @@ class FinanceAndCostTests {
         assertThat(stock.balance(productId, branchId)).isZero();
     }
 
+    /** Cancelling reverses sale and cost exactly once (idempotent), keeps originals and keeps the payment held. */
     @Test
     void saleCostAndPaymentAreLinkedAndCancellationReversesSaleAndCostOnceButKeepsThePayment() {
         var d = newDelivery();
@@ -127,6 +164,7 @@ class FinanceAndCostTests {
         assertThat(finance.retainedPayment(d)).isEqualByComparingTo("1000.00");  // money still held until refunded
     }
 
+    /** A zero cost of goods (donated stock) writes no ledger row. */
     @Test
     void zeroCostOfGoodsRecordsNothing() {
         var d = newDelivery();
@@ -134,36 +172,47 @@ class FinanceAndCostTests {
         assertThat(cash("COST_OF_GOODS", d)).isEqualByComparingTo("0");
     }
 
+    /** Only the owner can refund, and never more than the payment still held. */
     @Test
     void refundIsOwnerOnlyAndCappedByTheRetainedPayment() {
         var d = newDelivery();
         finance.recordPayment(new BigDecimal("1000.00"), PaymentMethod.CASH, today, d, owner);
 
-        assertThatThrownBy(() -> finance.recordRefund(new BigDecimal("100"), PaymentMethod.CASH, today, "x", d, assistant))
+        // An assistant is refused regardless of the amount.
+        assertThatThrownBy(() -> finance.recordRefund(new BigDecimal("100"), PaymentMethod.CASH, today, "x", d,
+                assistant))
                 .isInstanceOf(AccessDeniedException.class);
 
         finance.recordRefund(new BigDecimal("400.00"), PaymentMethod.CASH, today, "partial", d, owner);
         assertThat(finance.retainedPayment(d)).isEqualByComparingTo("600.00");
 
-        assertThatThrownBy(() -> finance.recordRefund(new BigDecimal("700.00"), PaymentMethod.CASH, today, "too much", d, owner))
+        // Only 600.00 is still held, so 700.00 must be refused.
+        assertThatThrownBy(() -> finance.recordRefund(new BigDecimal("700.00"), PaymentMethod.CASH, today,
+                "too much", d, owner))
                 .isInstanceOf(RuleViolation.class);
 
         finance.recordRefund(new BigDecimal("600.00"), PaymentMethod.CASH, today, "rest", d, owner);
         assertThat(finance.retainedPayment(d)).isEqualByComparingTo("0");
     }
 
+    /** Amounts must be positive with at most 2 decimals, and an expense needs a description. */
     @Test
     void amountsMustBePositivePesoValuesAndExpensesNeedADescription() {
         var d = newDelivery();
-        assertThatThrownBy(() -> finance.recordSale(BigDecimal.ZERO, today, d, owner)).isInstanceOf(RuleViolation.class);
-        assertThatThrownBy(() -> finance.recordSale(new BigDecimal("-5"), today, d, owner)).isInstanceOf(RuleViolation.class);
-        assertThatThrownBy(() -> finance.recordSale(new BigDecimal("10.005"), today, d, owner)).isInstanceOf(RuleViolation.class);
+        // Zero, negative and sub-centavo amounts are all rejected.
+        assertThatThrownBy(() -> finance.recordSale(BigDecimal.ZERO, today, d, owner))
+                .isInstanceOf(RuleViolation.class);
+        assertThatThrownBy(() -> finance.recordSale(new BigDecimal("-5"), today, d, owner))
+                .isInstanceOf(RuleViolation.class);
+        assertThatThrownBy(() -> finance.recordSale(new BigDecimal("10.005"), today, d, owner))
+                .isInstanceOf(RuleViolation.class);
         assertThatThrownBy(() -> finance.recordExpense(new BigDecimal("50"), PaymentMethod.CASH, today, " ", assistant))
                 .isInstanceOf(RuleViolation.class);
         assertThat(finance.recordExpense(new BigDecimal("50"), PaymentMethod.CASH, today, "Fuel", assistant).amount())
                 .isEqualByComparingTo("50.00");
     }
 
+    /** The table constraints reject a wrong cash direction and a cash entry without a method. */
     @Test
     void theDatabaseRejectsEntriesWhoseDirectionContradictsTheirType() {
         assertThatThrownBy(() -> jdbc.update("""
