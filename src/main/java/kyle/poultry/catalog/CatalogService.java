@@ -1,7 +1,11 @@
 package kyle.poultry.catalog;
 
 import java.math.BigDecimal;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import kyle.poultry.shared.NotFoundException;
 import kyle.poultry.shared.RuleViolation;
 import org.springframework.data.domain.Sort;
@@ -13,9 +17,10 @@ import org.springframework.transaction.annotation.Transactional;
 class CatalogService implements CatalogApi {
     private final ProductRepository products;
     private final BranchRepository branches;
+    private final SalesPackageRepository packages;
 
-    CatalogService(ProductRepository products, BranchRepository branches) {
-        this.products = products; this.branches = branches;
+    CatalogService(ProductRepository products, BranchRepository branches, SalesPackageRepository packages) {
+        this.products = products; this.branches = branches; this.packages = packages;
     }
 
     @Override
@@ -33,8 +38,21 @@ class CatalogService implements CatalogApi {
     }
 
     @Override
+    public PackageView requireActivePackage(long id) {
+        var p = packages.findById(id).orElseThrow(() -> new NotFoundException("Package", id));
+        if (!p.active()) throw new RuleViolation("Package " + p.name() + " is inactive");
+        return view(p, productNames());
+    }
+
+    @Override
     public List<ProductView> products() {
         return products.findAll(Sort.by("id")).stream().map(Product::view).toList();
+    }
+
+    @Override
+    public List<PackageView> packages() {
+        var names = productNames();
+        return packages.findAll(Sort.by("id")).stream().map(p -> view(p, names)).toList();
     }
 
     List<BranchView> branches() {
@@ -63,5 +81,36 @@ class CatalogService implements CatalogApi {
         var b = branches.findById(id).orElseThrow(() -> new NotFoundException("Branch", id));
         b.update(name, active);
         return b.view();
+    }
+
+    @Transactional
+    PackageView createPackage(String sku, String name, BigDecimal price, List<PackageItem> items) {
+        if (items == null || items.isEmpty()) throw new RuleViolation("A package needs at least one item");
+        var seen = new HashSet<Long>();
+        for (var item : items) {
+            if (item.quantity() <= 0) throw new RuleViolation("Item quantities must be positive");
+            if (!seen.add(item.productId())) throw new RuleViolation("Product " + item.productId() + " is listed twice");
+            requireActiveProduct(item.productId());
+        }
+        var saved = packages.save(new SalesPackage(sku, name, price, items));
+        return view(saved, productNames());
+    }
+
+    @Transactional
+    PackageView updatePackage(long id, String name, BigDecimal price, Boolean active) {
+        var p = packages.findById(id).orElseThrow(() -> new NotFoundException("Package", id));
+        p.update(name, price, active);
+        return view(p, productNames());
+    }
+
+    private Map<Long, String> productNames() {
+        return products.findAll().stream().collect(Collectors.toMap(p -> p.view().id(), p -> p.view().name()));
+    }
+
+    private static PackageView view(SalesPackage p, Map<Long, String> names) {
+        var items = p.items().stream()
+                .map(i -> new PackageItemView(i.productId(), names.get(i.productId()), i.quantity()))
+                .toList();
+        return new PackageView(p.id(), p.sku(), p.name(), p.price(), p.active(), items);
     }
 }
