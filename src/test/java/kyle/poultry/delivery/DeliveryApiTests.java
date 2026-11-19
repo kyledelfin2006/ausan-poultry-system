@@ -16,6 +16,10 @@ import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 
+/**
+ * End-to-end HTTP tests of the catalog seed data and the delivery lifecycle against a real Postgres. Runs the whole
+ * application on a random port; uses fresh branches so it does not depend on other test classes.
+ */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Import(TestcontainersConfiguration.class)
 class DeliveryApiTests {
@@ -24,6 +28,15 @@ class DeliveryApiTests {
     @Autowired JdbcTemplate jdbc;
     final HttpClient http = HttpClient.newHttpClient();
 
+    /**
+     * Sends one JSON request to the running server and returns the raw response.
+     *
+     * @param method HTTP verb
+     * @param path path starting with /api
+     * @param token bearer token or null
+     * @param json request body or null
+     * @return the response
+     */
     HttpResponse<String> call(String method, String path, String token, String json) throws Exception {
         var b = HttpRequest.newBuilder(URI.create("http://localhost:" + port + path))
                 .header("Content-Type", "application/json")
@@ -32,6 +45,13 @@ class DeliveryApiTests {
         return http.send(b.build(), HttpResponse.BodyHandlers.ofString());
     }
 
+    /**
+     * Logs in over HTTP and returns the token.
+     *
+     * @param user login name
+     * @param pass plain password
+     * @return the JWT; fails the test unless login answers 200
+     */
     String login(String user, String pass) throws Exception {
         var r = call("POST", "/api/auth/login", null, "{\"username\":\"%s\",\"password\":\"%s\"}".formatted(user, pass));
         assertThat(r.statusCode()).isEqualTo(200);
@@ -40,8 +60,10 @@ class DeliveryApiTests {
         return m.group(1);
     }
 
+    /** Looks up a seeded product's id by name. */
     long productId(String name) { return jdbc.queryForObject("select id from product where name = ?", Long.class, name); }
 
+    /** The three official packages and the Feeders and Feed products exist with the agreed prices and units. */
     @Test
     void theOfficialPackagesAndNewProductsAreSeeded() throws Exception {
         String owner = login(TestcontainersConfiguration.OWNER_USERNAME, TestcontainersConfiguration.OWNER_PASSWORD);
@@ -55,6 +77,10 @@ class DeliveryApiTests {
         assertThat(products.body()).contains("Feeders", "\"Feed\"", "\"unit\":\"bag\"");
     }
 
+    /**
+     * Creates, cancels and refunds a delivery over HTTP, checking stock deduction, owner-only cancel and refund, and
+     * the retained payment.
+     */
     @Test
     void fullDeliveryLifecycleOverHttp() throws Exception {
         String owner = login(TestcontainersConfiguration.OWNER_USERNAME, TestcontainersConfiguration.OWNER_PASSWORD);

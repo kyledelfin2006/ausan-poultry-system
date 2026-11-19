@@ -13,6 +13,10 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Import;
 
+/**
+ * End-to-end HTTP tests of authentication and role rules, plus stock and finance endpoints seen through the security
+ * layer. Runs the whole application on a random port against a real Postgres.
+ */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Import(TestcontainersConfiguration.class)
 class ApiSecurityTests {
@@ -20,6 +24,15 @@ class ApiSecurityTests {
     @LocalServerPort int port;
     final HttpClient http = HttpClient.newHttpClient();
 
+    /**
+     * Sends one JSON request to the running server and returns the raw response.
+     *
+     * @param method HTTP verb
+     * @param path path starting with /api
+     * @param token bearer token or null
+     * @param json request body or null
+     * @return the response
+     */
     HttpResponse<String> call(String method, String path, String token, String json) throws Exception {
         var b = HttpRequest.newBuilder(URI.create("http://localhost:" + port + path))
                 .header("Content-Type", "application/json")
@@ -28,6 +41,13 @@ class ApiSecurityTests {
         return http.send(b.build(), HttpResponse.BodyHandlers.ofString());
     }
 
+    /**
+     * Logs in over HTTP and returns the token.
+     *
+     * @param user login name
+     * @param pass plain password
+     * @return the JWT; fails the test unless login answers 200
+     */
     String login(String user, String pass) throws Exception {
         var r = call("POST", "/api/auth/login", null, "{\"username\":\"%s\",\"password\":\"%s\"}".formatted(user, pass));
         assertThat(r.statusCode()).isEqualTo(200);
@@ -36,18 +56,24 @@ class ApiSecurityTests {
         return m.group(1);
     }
 
+    /** Requests with no token or a garbage token answer 401. */
     @Test
     void requestsWithoutTokenAreRejected() throws Exception {
         assertThat(call("GET", "/api/products", null, null).statusCode()).isEqualTo(401);
         assertThat(call("GET", "/api/stock/balances", "garbage", null).statusCode()).isEqualTo(401);
     }
 
+    /** Logging in as an unknown user answers 401. */
     @Test
     void badCredentialsGive401() throws Exception {
         var r = call("POST", "/api/auth/login", null, "{\"username\":\"nobody\",\"password\":\"whatever-long\"}");
         assertThat(r.statusCode()).isEqualTo(401);
     }
 
+    /**
+     * The owner reads the catalog and creates an assistant; the assistant can read but not change the catalog or
+     * create users (403).
+     */
     @Test
     void ownerSeesSeededCatalogAndAssistantCannotChangeIt() throws Exception {
         String owner = login(TestcontainersConfiguration.OWNER_USERNAME, TestcontainersConfiguration.OWNER_PASSWORD);
@@ -67,6 +93,10 @@ class ApiSecurityTests {
                 "{\"username\":\"x\",\"password\":\"long-enough-pass\",\"displayName\":\"X\",\"role\":\"OWNER\"}").statusCode()).isEqualTo(403);
     }
 
+    /**
+     * Stock movement endpoints answer 201, 422 or 409 as the business rules require, and purchases show up in the
+     * ledger.
+     */
     @Test
     void stockEndpointEnforcesRulesOverHttp() throws Exception {
         String owner = login(TestcontainersConfiguration.OWNER_USERNAME, TestcontainersConfiguration.OWNER_PASSWORD);
@@ -98,6 +128,7 @@ class ApiSecurityTests {
         assertThat(balances.body()).contains("Chicken");
     }
 
+    /** An assistant can record an expense (and gets 400 for a zero amount) and read the ledger. */
     @Test
     void assistantCanRecordExpensesAndReadTheLedger() throws Exception {
         String owner = login(TestcontainersConfiguration.OWNER_USERNAME, TestcontainersConfiguration.OWNER_PASSWORD);
