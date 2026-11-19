@@ -99,7 +99,7 @@ class LoginThrottle {
      */
     synchronized void recordSuccess(String key) { entries.remove(key); }
 
-    /** Returns how many keys are currently tracked (for tests). */
+    /** {@return how many keys are currently tracked (for tests)} */
     synchronized int size() { return entries.size(); }
 
     /**

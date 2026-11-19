@@ -99,16 +99,16 @@ class FinancialEntry {
         return e;
     }
 
-    /** Returns the database id, null until saved. */
+    /** {@return the database id, null until saved} */
     Long id() { return id; }
 
-    /** Returns what this entry means. */
+    /** {@return what this entry means} */
     EntryType type() { return type; }
 
-    /** Returns the positive PHP amount. */
+    /** {@return the positive PHP amount} */
     BigDecimal amount() { return amount; }
 
-    /** Returns an immutable copy of this entry for use outside the module. */
+    /** {@return an immutable copy of this entry for use outside the module} */
     EntryView view() {
         return new EntryView(id, type, cashDirection, amount, method, occurredOn, description,
                 sourceType, sourceId, reversesId, createdBy, createdAt);

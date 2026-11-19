@@ -42,17 +42,17 @@ class AppUser {
         this.displayName = displayName; this.role = role; this.createdAt = now;
     }
 
-    /** Returns the database id. */
+    /** {@return the database id} */
     Long id() { return id; }
-    /** Returns the login name. */
+    /** {@return the login name} */
     String username() { return username; }
-    /** Returns the BCrypt password hash. */
+    /** {@return the BCrypt password hash} */
     String passwordHash() { return passwordHash; }
-    /** Returns the display name. */
+    /** {@return the display name} */
     String displayName() { return displayName; }
-    /** Returns the role. */
+    /** {@return the role} */
     Role role() { return role; }
-    /** Returns whether the account is active. */
+    /** {@return whether the account is active} */
     boolean active() { return active; }
 
     /** Replaces the display name. */

@@ -33,6 +33,6 @@ public enum EntryType {
      */
     EntryType(CashDirection cash) { this.cash = cash; }
 
-    /** Returns whether rows of this type move cash in, out or not at all. */
+    /** {@return whether rows of this type move cash in, out or not at all} */
     public CashDirection cashDirection() { return cash; }
 }

@@ -26,6 +26,6 @@ public record Actor(long userId, Role role) {
         return new Actor(Long.parseLong(jwt.getSubject()), Role.valueOf(jwt.getClaimAsString("role")));
     }
 
-    /** Returns true when this actor has the OWNER role. */
+    /** {@return true when this actor has the OWNER role} */
     public boolean isOwner() { return role == Role.OWNER; }
 }

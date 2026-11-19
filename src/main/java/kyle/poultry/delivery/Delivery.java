@@ -133,34 +133,34 @@ class Delivery {
             throw new ConflictException("Delivery " + code + " is " + status + " and can no longer be " + action);
     }
 
-    /** Returns the database id. */
+    /** {@return the database id} */
     Long id() { return id; }
-    /** Returns the delivery code. */
+    /** {@return the delivery code} */
     String code() { return code; }
-    /** Returns the lifecycle state. */
+    /** {@return the lifecycle state} */
     DeliveryStatus status() { return status; }
-    /** Returns the customer name. */
+    /** {@return the customer name} */
     String customerName() { return customerName; }
-    /** Returns the driver name. */
+    /** {@return the driver name} */
     String driverName() { return driverName; }
-    /** Returns the id of the branch the stock came from. */
+    /** {@return the id of the branch the stock came from} */
     long fromBranchId() { return fromBranchId; }
-    /** Returns the destination. */
+    /** {@return the destination} */
     String destination() { return destination; }
-    /** Returns the start time. */
+    /** {@return the start time} */
     Instant startedAt() { return startedAt; }
-    /** Returns the arrival time, or null. */
+    /** {@return the arrival time, or null} */
     Instant completedAt() { return completedAt; }
-    /** Returns the total price. */
+    /** {@return the total price} */
     BigDecimal total() { return total; }
-    /** Returns the payment method. */
+    /** {@return the payment method} */
     PaymentMethod paymentMethod() { return paymentMethod; }
-    /** Returns the cancellation reason, or null. */
+    /** {@return the cancellation reason, or null} */
     String cancelReason() { return cancelReason; }
-    /** Returns the package lines. */
+    /** {@return the package lines} */
     List<DeliveryLine> lines() { return lines; }
-    /** Returns the id of the creating user. */
+    /** {@return the id of the creating user} */
     long createdBy() { return createdBy; }
-    /** Returns the creation time. */
+    /** {@return the creation time} */
     Instant createdAt() { return createdAt; }
 }

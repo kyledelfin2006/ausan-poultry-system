@@ -130,25 +130,25 @@ class StockMovement {
         if (unitCost == null) unitCost = averageCost;
     }
 
-    /** Returns the database id (null until the movement is saved). */
+    /** {@return the database id (null until the movement is saved)} */
     Long id() { return id; }
 
-    /** Returns the product affected. */
+    /** {@return the product affected} */
     long productId() { return productId; }
 
-    /** Returns the branch affected. */
+    /** {@return the branch affected} */
     long branchId() { return branchId; }
 
-    /** Returns the signed quantity (positive adds stock, negative removes it). */
+    /** {@return the signed quantity (positive adds stock, negative removes it)} */
     long quantityDelta() { return quantityDelta; }
 
-    /** Returns the movement type. */
+    /** {@return the movement type} */
     MovementType type() { return type; }
 
-    /** Returns the cost per unit (4 decimals), or {@code null} if not yet stamped. */
+    /** {@return the cost per unit (4 decimals), or {@code null} if not yet stamped} */
     BigDecimal unitCost() { return unitCost; }
 
-    /** Returns the immutable public representation of this movement. */
+    /** {@return the immutable public representation of this movement} */
     MovementView view() {
         return new MovementView(id, productId, branchId, type, quantityDelta, unitCost, reason, occurredOn,
                 sourceType, sourceId, reversesId, createdBy, createdAt);

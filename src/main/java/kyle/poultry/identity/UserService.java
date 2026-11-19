@@ -127,7 +127,7 @@ class UserService {
         u.setPasswordHash(encoder.encode(newPassword));
     }
 
-    /** Returns how many users exist (used to decide whether to bootstrap the first owner). */
+    /** {@return how many users exist (used to decide whether to bootstrap the first owner)} */
     long count() { return users.count(); }
 
     /**

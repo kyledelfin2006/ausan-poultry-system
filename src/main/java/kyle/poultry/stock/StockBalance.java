@@ -23,12 +23,12 @@ class StockBalance {
     /** Required by JPA to instantiate the entity when loading it; not for application use. */
     protected StockBalance() {}
 
-    /** Returns the composite key (product and branch). */
+    /** {@return the composite key (product and branch)} */
     StockBalanceId id() { return id; }
 
-    /** Returns the units currently on hand. */
+    /** {@return the units currently on hand} */
     long quantity() { return quantity; }
 
-    /** Returns the weighted average cost per unit (4 decimals). */
+    /** {@return the weighted average cost per unit (4 decimals)} */
     BigDecimal avgUnitCost() { return avgUnitCost; }
 }

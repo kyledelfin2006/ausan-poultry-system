@@ -38,9 +38,9 @@ class Branch {
         if (active != null) this.active = active;
     }
 
-    /** Returns whether the branch may still be used for new stock movements and deliveries. */
+    /** {@return whether the branch may still be used for new stock movements and deliveries} */
     boolean active() { return active; }
 
-    /** Returns the immutable public representation of this branch. */
+    /** {@return the immutable public representation of this branch} */
     BranchView view() { return new BranchView(id, name, active); }
 }

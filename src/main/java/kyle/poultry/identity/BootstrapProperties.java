@@ -12,7 +12,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties("app.bootstrap")
 record BootstrapProperties(String ownerUsername, String ownerPassword) {
 
-    /** Returns true when both the username and the password are set and non-blank. */
+    /** {@return true when both the username and the password are set and non-blank} */
     boolean configured() {
         return ownerUsername != null && !ownerUsername.isBlank() && ownerPassword != null && !ownerPassword.isBlank();
     }

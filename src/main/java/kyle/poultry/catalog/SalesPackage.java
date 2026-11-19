@@ -57,21 +57,21 @@ class SalesPackage {
         if (active != null) this.active = active;
     }
 
-    /** Returns the database id (null until the package is saved). */
+    /** {@return the database id (null until the package is saved)} */
     Long id() { return id; }
 
-    /** Returns the unique stock-keeping code. */
+    /** {@return the unique stock-keeping code} */
     String sku() { return sku; }
 
-    /** Returns the display name. */
+    /** {@return the display name} */
     String name() { return name; }
 
-    /** Returns the selling price at 2 decimals. */
+    /** {@return the selling price at 2 decimals} */
     BigDecimal price() { return price; }
 
-    /** Returns whether the package may still be sold. */
+    /** {@return whether the package may still be sold} */
     boolean active() { return active; }
 
-    /** Returns the package contents (the live list held by the entity). */
+    /** {@return the package contents (the live list held by the entity)} */
     List<PackageItem> items() { return items; }
 }

@@ -50,10 +50,10 @@ class Product {
         if (active != null) this.active = active;
     }
 
-    /** Returns whether the product may still be used for new stock movements and packages. */
+    /** {@return whether the product may still be used for new stock movements and packages} */
     boolean active() { return active; }
 
-    /** Returns the immutable public representation of this product. */
+    /** {@return the immutable public representation of this product} */
     ProductView view() { return new ProductView(id, name, unit, defaultPrice, active); }
 
     /**
