@@ -1,0 +1,43 @@
+# Production stack: app + PostgreSQL. All settings come from a .env file (see .env.example)
+# or the shell environment. No secrets live in this file.
+#
+#   docker compose -f compose.prod.yaml --env-file .env up -d --build
+name: ausan
+services:
+  postgres:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB in .env}
+      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    # No published port: only the app (same compose network) can reach the database.
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL:?set SPRING_DATASOURCE_URL in .env}
+      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME:?set SPRING_DATASOURCE_USERNAME in .env}
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD:?set SPRING_DATASOURCE_PASSWORD in .env}
+      APP_SECURITY_JWT_SECRET: ${APP_SECURITY_JWT_SECRET:?set APP_SECURITY_JWT_SECRET in .env}
+      # Optional: only needed on the very first start.
+      APP_BOOTSTRAP_OWNER_USERNAME: ${APP_BOOTSTRAP_OWNER_USERNAME:-}
+      APP_BOOTSTRAP_OWNER_PASSWORD: ${APP_BOOTSTRAP_OWNER_PASSWORD:-}
+      JAVA_OPTS: ${JAVA_OPTS:--XX:MaxRAMPercentage=75}
+    ports:
+      - "${APP_PORT:-8080}:8080"
+    stop_grace_period: 40s
+
+volumes:
+  pgdata:

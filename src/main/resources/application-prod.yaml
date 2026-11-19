@@ -1,0 +1,30 @@
+# Activated with SPRING_PROFILES_ACTIVE=prod (the Docker image does this). Overrides application.yaml only.
+spring:
+  docker.compose.enabled: false
+  jpa:
+    open-in-view: false
+    hibernate.ddl-auto: validate
+  lifecycle.timeout-per-shutdown-phase: 30s
+  datasource:
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 10000
+      max-lifetime: 1500000
+
+server:
+  shutdown: graceful
+  error:
+    include-message: never
+    include-stacktrace: never
+    include-binding-errors: never
+
+management:
+  endpoints.web.exposure.include: health,info
+  endpoint.health.show-details: never
+
+logging:
+  level:
+    root: INFO
+    kyle.poultry: INFO
+    org.hibernate.SQL: WARN
