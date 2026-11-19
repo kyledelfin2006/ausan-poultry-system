@@ -5,7 +5,14 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
 
-/** Read model of the current quantity and average cost. Written only through {@link StockBalanceRepository#applyDelta}. */
+/**
+ * Read model of the current quantity and average cost. Written only through
+ * {@link StockBalanceRepository#applyDelta}.
+ * <p>
+ * One row per product and branch in {@code stock_balance}. The database forbids a negative quantity. The row
+ * has no setters on purpose: changing it through JPA would bypass the atomic update statement that keeps the
+ * quantity and weighted average correct under concurrency. Only the stock module reads it.
+ */
 @Entity
 @Table(name = "stock_balance")
 class StockBalance {
@@ -13,9 +20,15 @@ class StockBalance {
     private long quantity;
     private BigDecimal avgUnitCost;
 
+    /** Required by JPA to instantiate the entity when loading it; not for application use. */
     protected StockBalance() {}
 
+    /** Returns the composite key (product and branch). */
     StockBalanceId id() { return id; }
+
+    /** Returns the units currently on hand. */
     long quantity() { return quantity; }
+
+    /** Returns the weighted average cost per unit (4 decimals). */
     BigDecimal avgUnitCost() { return avgUnitCost; }
 }

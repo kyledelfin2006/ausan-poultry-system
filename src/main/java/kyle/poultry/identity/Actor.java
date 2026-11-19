@@ -2,12 +2,30 @@ package kyle.poultry.identity;
 
 import org.springframework.security.oauth2.jwt.Jwt;
 
-/** Who is performing an action. Passed explicitly into services so domain code is testable without a security context. */
+/**
+ * Who is performing an action. Passed explicitly into services so domain code is testable without a security context.
+ * It is the one identity type other modules may use; build it with {@link #from(Jwt)} in controllers only.
+ *
+ * @param userId the authenticated user's database id
+ * @param role   the user's current role (taken from the database on every request, see
+ *               {@link RevocationAuthenticationConverter})
+ */
 public record Actor(long userId, Role role) {
 
+    /**
+     * Builds the actor from the authenticated principal.
+     *
+     * <p>The {@code role} claim of the principal was already replaced with the database value by
+     * {@link RevocationAuthenticationConverter}, so this never trusts the role stored in the token itself.
+     *
+     * @param jwt the authenticated principal produced by the resource-server filter
+     * @return the actor for that user
+     */
     public static Actor from(Jwt jwt) {
+        // The subject is the user id (set at login); the role claim is the database role, not the signed one.
         return new Actor(Long.parseLong(jwt.getSubject()), Role.valueOf(jwt.getClaimAsString("role")));
     }
 
+    /** Returns true when this actor has the OWNER role. */
     public boolean isOwner() { return role == Role.OWNER; }
 }

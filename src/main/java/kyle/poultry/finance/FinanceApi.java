@@ -3,6 +3,7 @@ package kyle.poultry.finance;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.Map;
 import kyle.poultry.finance.EntryType.CashDirection;
 import kyle.poultry.identity.Actor;
 import kyle.poultry.shared.SourceRef;
@@ -10,42 +11,176 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 /**
- * Public face of the finance module: an append-only ledger. Every method joins the caller's transaction,
- * so a delivery and its sale/payment/cost commit or fail together.
- * Amounts must be positive with at most 2 decimals (PHP).
+ * Public face of the finance module: an append-only ledger of everything that is sold, paid, spent or refunded.
+ * Other modules (stock, delivery, report) use only this interface, never the entity or repository.
+ *
+ * <p>Every method joins the caller's transaction, so a delivery and its sale/payment/cost commit or fail together.
+ * Amounts must be positive with at most 2 decimals (PHP); the entry type, not the sign, gives the direction.
  */
 public interface FinanceApi {
 
+    /**
+     * Records the cash paid to a supplier for stock.
+     *
+     * @param amount      cash paid, positive, at most 2 decimals
+     * @param method      how it was paid
+     * @param on          business date of the payment
+     * @param description optional note
+     * @param source      the record that caused it (e.g. the stock movement)
+     * @param actor       who is recording it
+     * @return the stored entry
+     * @throws kyle.poultry.shared.RuleViolation if the amount is not a positive peso value or the method is missing
+     */
     EntryView recordStockPurchase(BigDecimal amount, PaymentMethod method, LocalDate on, String description,
                                   SourceRef source, Actor actor);
 
+    /**
+     * Records an operating expense (fuel, wages, repairs...).
+     *
+     * @param amount      cash paid, positive, at most 2 decimals
+     * @param method      how it was paid
+     * @param on          business date, not in the future
+     * @param description what the money was for; required
+     * @param actor       who is recording it
+     * @return the stored entry
+     * @throws kyle.poultry.shared.RuleViolation if the description is blank, the date is in the future or the
+     *                                           amount is invalid
+     */
     EntryView recordExpense(BigDecimal amount, PaymentMethod method, LocalDate on, String description, Actor actor);
 
+    /**
+     * Records revenue for a source (no cash moves; the payment is recorded separately).
+     *
+     * @param amount sale value, positive, at most 2 decimals
+     * @param on     business date of the sale
+     * @param source the record that was sold (e.g. the delivery); required
+     * @param actor  who is recording it
+     * @return the stored entry
+     * @throws kyle.poultry.shared.RuleViolation if the source is missing or the amount is invalid
+     */
     EntryView recordSale(BigDecimal amount, LocalDate on, SourceRef source, Actor actor);
 
-    /** Cost of the stock delivered. Zero (e.g. donated stock) records nothing. */
+    /**
+     * Records the cost of the stock delivered for a source. Zero (e.g. donated stock) records nothing.
+     *
+     * @param amount cost of goods, at most 2 decimals; zero is ignored
+     * @param on     business date of the delivery
+     * @param source the record that consumed the stock; required
+     * @param actor  who is recording it
+     * @throws kyle.poultry.shared.RuleViolation if the source is missing or the amount is negative or invalid
+     */
     void recordCostOfGoods(BigDecimal amount, LocalDate on, SourceRef source, Actor actor);
 
+    /**
+     * Records money received from a customer for a source.
+     *
+     * @param amount money received, positive, at most 2 decimals
+     * @param method how it was received
+     * @param on     business date of the payment
+     * @param source the record it pays for (e.g. the delivery); required
+     * @param actor  who is recording it
+     * @return the stored entry
+     * @throws kyle.poultry.shared.RuleViolation if the source or method is missing or the amount is invalid
+     */
     EntryView recordPayment(BigDecimal amount, PaymentMethod method, LocalDate on, SourceRef source, Actor actor);
 
     /**
      * Cancels the sale and its cost for the source by appending reversal rows; the originals stay.
      * Payments are untouched (money is only returned by a refund). Safe to call twice.
+     *
+     * @param source the cancelled record
+     * @param on     business date of the cancellation
+     * @param actor  who is cancelling
      */
     void reverseSaleAndCost(SourceRef source, LocalDate on, Actor actor);
 
     /**
      * Money actually handed back. Owner only. Cannot exceed what was received and not yet refunded for the source.
-     * @throws kyle.poultry.shared.RuleViolation when it would exceed the retained payment
+     *
+     * @param amount      money returned, positive, at most 2 decimals
+     * @param method      how it was returned
+     * @param on          business date, not in the future
+     * @param description optional note
+     * @param source      the record being refunded; required
+     * @param actor       who is refunding; must be the owner
+     * @return the stored entry
+     * @throws kyle.poultry.shared.RuleViolation if the amount exceeds the payment still held, the source is missing
+     *                                           or the date is in the future
+     * @throws org.springframework.security.access.AccessDeniedException if the actor is not the owner
      */
     EntryView recordRefund(BigDecimal amount, PaymentMethod method, LocalDate on, String description,
                            SourceRef source, Actor actor);
 
-    /** Payments received minus refunds for the source: money still held for, e.g., a cancelled delivery. */
+    /**
+     * Payments received minus refunds for the source: money still held for, e.g., a cancelled delivery.
+     *
+     * @param source the record to look up
+     * @return the amount still held, zero if nothing
+     */
     BigDecimal retainedPayment(SourceRef source);
 
+    /**
+     * Sum of amounts per entry type for the inclusive business-date period. Every {@link EntryType} is present;
+     * types with no entries are 0.00. Aggregated in the database.
+     *
+     * @param from first business date included
+     * @param to   last business date included
+     * @return totals keyed by type, scale 2
+     * @throws kyle.poultry.shared.RuleViolation if a date is missing or {@code to} is before {@code from}
+     */
+    Map<EntryType, BigDecimal> totalsByType(LocalDate from, LocalDate to);
+
+    /**
+     * Net cash per payment method for the inclusive period (cash in minus cash out). Every {@link PaymentMethod}
+     * is present; unused methods are 0.00. Aggregated in the database.
+     *
+     * @param from first business date included
+     * @param to   last business date included
+     * @return net cash keyed by method, scale 2
+     * @throws kyle.poultry.shared.RuleViolation if a date is missing or {@code to} is before {@code from}
+     */
+    Map<PaymentMethod, BigDecimal> cashByMethod(LocalDate from, LocalDate to);
+
+    /**
+     * Money still held for cancelled sources as of {@code asOf}: for every source that has a SALE_REVERSAL dated on or
+     * before {@code asOf}, payments received minus refunds paid, both counted up to and including {@code asOf}
+     * (cumulative, not limited to a reporting period). Sources with nothing held contribute nothing.
+     *
+     * @param asOf the date to measure at
+     * @return the total retained amount, scale 2
+     * @throws kyle.poultry.shared.RuleViolation if {@code asOf} is missing
+     */
+    BigDecimal retainedOnCancelledSources(LocalDate asOf);
+
+    /**
+     * Lists ledger entries for an inclusive period, newest first, optionally of one type. This is the drill-down
+     * behind every report figure.
+     *
+     * @param from first business date included
+     * @param to   last business date included
+     * @param type only this type, or null for all
+     * @param page paging and size
+     * @return a page of entries
+     * @throws kyle.poultry.shared.RuleViolation if a date is missing or {@code to} is before {@code from}
+     */
     Page<EntryView> entries(LocalDate from, LocalDate to, EntryType type, Pageable page);
 
+    /**
+     * Read-only copy of one ledger entry, safe to hand to other modules and to serialise.
+     *
+     * @param id            entry id
+     * @param type          what the entry means
+     * @param cashDirection whether cash came in, went out or did not move
+     * @param amount        positive PHP amount
+     * @param method        payment method; null for entries that move no cash
+     * @param occurredOn    business date (Asia/Manila)
+     * @param description   optional note
+     * @param sourceType    kind of record that caused it (e.g. DELIVERY); null for expenses
+     * @param sourceId      id of that record
+     * @param reversesId    for reversal entries, the entry being cancelled
+     * @param createdBy     id of the user who recorded it
+     * @param createdAt     when it was recorded
+     */
     record EntryView(long id, EntryType type, CashDirection cashDirection, BigDecimal amount, PaymentMethod method,
                      LocalDate occurredOn, String description, String sourceType, Long sourceId, Long reversesId,
                      long createdBy, Instant createdAt) {}
