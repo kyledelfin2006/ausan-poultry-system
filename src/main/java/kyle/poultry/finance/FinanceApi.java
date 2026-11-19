@@ -3,6 +3,7 @@ package kyle.poultry.finance;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.Map;
 import kyle.poultry.finance.EntryType.CashDirection;
 import kyle.poultry.identity.Actor;
 import kyle.poultry.shared.SourceRef;
@@ -43,6 +44,25 @@ public interface FinanceApi {
 
     /** Payments received minus refunds for the source: money still held for, e.g., a cancelled delivery. */
     BigDecimal retainedPayment(SourceRef source);
+
+    /**
+     * Sum of amounts per entry type for the inclusive business-date period. Every {@link EntryType} is present;
+     * types with no entries are 0.00. Aggregated in the database.
+     */
+    Map<EntryType, BigDecimal> totalsByType(LocalDate from, LocalDate to);
+
+    /**
+     * Net cash per payment method for the inclusive period (cash in minus cash out). Every {@link PaymentMethod}
+     * is present; unused methods are 0.00. Aggregated in the database.
+     */
+    Map<PaymentMethod, BigDecimal> cashByMethod(LocalDate from, LocalDate to);
+
+    /**
+     * Money still held for cancelled sources as of {@code asOf}: for every source that has a SALE_REVERSAL dated on or
+     * before {@code asOf}, payments received minus refunds paid, both counted up to and including {@code asOf}
+     * (cumulative, not limited to a reporting period). Sources with nothing held contribute nothing.
+     */
+    BigDecimal retainedOnCancelledSources(LocalDate asOf);
 
     Page<EntryView> entries(LocalDate from, LocalDate to, EntryType type, Pageable page);
 

@@ -4,7 +4,9 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Clock;
 import java.time.LocalDate;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 import kyle.poultry.identity.Actor;
 import kyle.poultry.shared.RuleViolation;
 import kyle.poultry.shared.SourceRef;
@@ -79,10 +81,51 @@ class FinanceLedger implements FinanceApi {
                 .subtract(entries.sum(source.type(), source.id(), EntryType.REFUND));
     }
 
+    /** {@inheritDoc} Read-only: reports must never write to the ledger. */
+    @Override
+    @Transactional(readOnly = true)
+    public Map<EntryType, BigDecimal> totalsByType(LocalDate from, LocalDate to) {
+        // Same period rule as entries(): both dates present and in order.
+        requirePeriod(from, to);
+        // Pre-fill every type with 0.00 so callers never meet a missing key or a null.
+        Map<EntryType, BigDecimal> totals = new EnumMap<>(EntryType.class);
+        for (EntryType t : EntryType.values()) totals.put(t, BigDecimal.ZERO.setScale(2));
+        // One grouped query; the database does the summing, only one row per type comes back.
+        for (Object[] row : entries.totalsByType(from, to))
+            // Amounts are numeric(14,2), so the scale is already 2 and UNNECESSARY would flag any surprise.
+            totals.put((EntryType) row[0], ((BigDecimal) row[1]).setScale(2, RoundingMode.UNNECESSARY));
+        return totals;
+    }
+
+    /** {@inheritDoc} Read-only: reports must never write to the ledger. */
+    @Override
+    @Transactional(readOnly = true)
+    public Map<PaymentMethod, BigDecimal> cashByMethod(LocalDate from, LocalDate to) {
+        // Same period rule as entries(): both dates present and in order.
+        requirePeriod(from, to);
+        // Pre-fill every method with 0.00 so unused methods still appear in the breakdown.
+        Map<PaymentMethod, BigDecimal> cash = new EnumMap<>(PaymentMethod.class);
+        for (PaymentMethod m : PaymentMethod.values()) cash.put(m, BigDecimal.ZERO.setScale(2));
+        // The query signs each row by direction: cash in counts positive, cash out negative.
+        for (Object[] row : entries.cashByMethod(from, to, EntryType.CashDirection.IN))
+            cash.put((PaymentMethod) row[0], ((BigDecimal) row[1]).setScale(2, RoundingMode.UNNECESSARY));
+        return cash;
+    }
+
+    /** {@inheritDoc} Read-only: reports must never write to the ledger. */
+    @Override
+    @Transactional(readOnly = true)
+    public BigDecimal retainedOnCancelledSources(LocalDate asOf) {
+        if (asOf == null) throw new RuleViolation("An as-of date is required");
+        // The repository finds cancelled sources (those with a SALE_REVERSAL) and nets payments against refunds.
+        return entries.retainedOnCancelled(asOf, EntryType.PAYMENT_IN, EntryType.REFUND, EntryType.SALE_REVERSAL)
+                .setScale(2, RoundingMode.UNNECESSARY);
+    }
+
     @Override
     @Transactional(readOnly = true)
     public Page<EntryView> entries(LocalDate from, LocalDate to, EntryType type, Pageable page) {
-        if (from == null || to == null || to.isBefore(from)) throw new RuleViolation("A valid from/to period is required");
+        requirePeriod(from, to);
         var result = type == null ? entries.period(from, to, page) : entries.periodByType(from, to, type, page);
         return result.map(FinancialEntry::view);
     }
@@ -91,6 +134,15 @@ class FinanceLedger implements FinanceApi {
                              String description, SourceRef source, Actor actor) {
         var e = FinancialEntry.of(type, normalise(amount), method, on, description, source, actor, clock.instant());
         return entries.save(e).view();
+    }
+
+    /**
+     * Rejects a missing or backwards period; shared by every period query so they agree on the rule.
+     *
+     * @throws RuleViolation if either date is missing or {@code to} is before {@code from}
+     */
+    private static void requirePeriod(LocalDate from, LocalDate to) {
+        if (from == null || to == null || to.isBefore(from)) throw new RuleViolation("A valid from/to period is required");
     }
 
     private static BigDecimal normalise(BigDecimal amount) {
