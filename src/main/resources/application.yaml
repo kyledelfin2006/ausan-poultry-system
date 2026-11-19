@@ -1,0 +1,18 @@
+spring:
+  application.name: poultry-management-system
+  jpa:
+    open-in-view: false
+    hibernate.ddl-auto: validate
+  jackson.time-zone: Asia/Manila
+  docker.compose.lifecycle-management: start_only
+
+app:
+  zone: Asia/Manila
+  security:
+    # HS256 key, at least 32 bytes. Supply via APP_SECURITY_JWT_SECRET; there is deliberately no default.
+    jwt-secret: ${APP_SECURITY_JWT_SECRET:}
+    token-ttl: 8h
+  bootstrap:
+    # Creates the first OWNER only when the user table is empty and both values are supplied.
+    owner-username: ${APP_BOOTSTRAP_OWNER_USERNAME:}
+    owner-password: ${APP_BOOTSTRAP_OWNER_PASSWORD:}
