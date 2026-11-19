@@ -3,28 +3,64 @@ package kyle.poultry.identity;
 import jakarta.persistence.*;
 import java.time.Instant;
 
+/**
+ * A person who can log in. JPA entity for table {@code app_user}; package-private so other modules never touch it
+ * and only {@link UserService} and {@link AuthService} change it. The password is stored only as a BCrypt hash.
+ */
 @Entity
 @Table(name = "app_user")
 class AppUser {
+    /** Database-generated primary key. */
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY) private Long id;
+    /** Unique login name. */
     @Column(nullable = false, unique = true) private String username;
+    /** BCrypt hash of the password; never returned by the API or logged. */
     @Column(nullable = false) private String passwordHash;
+    /** Name shown in the UI. */
     @Column(nullable = false) private String displayName;
+    /** Authorization level. */
     @Enumerated(EnumType.STRING) @Column(nullable = false) private Role role;
+    /** False once deactivated; an inactive user can neither log in nor use an existing token. */
     private boolean active = true;
+    /** When the account was created. */
     @Column(nullable = false) private Instant createdAt;
 
+    /** Required by JPA; not for application code. */
     protected AppUser() {}
 
+    /**
+     * Creates a new, active user.
+     *
+     * @param username     unique login name
+     * @param passwordHash BCrypt hash (never the plain password)
+     * @param displayName  name shown in the UI
+     * @param role         authorization level
+     * @param now          creation time
+     */
     AppUser(String username, String passwordHash, String displayName, Role role, Instant now) {
         this.username = username; this.passwordHash = passwordHash;
         this.displayName = displayName; this.role = role; this.createdAt = now;
     }
 
+    /** Returns the database id. */
     Long id() { return id; }
+    /** Returns the login name. */
     String username() { return username; }
+    /** Returns the BCrypt password hash. */
     String passwordHash() { return passwordHash; }
+    /** Returns the display name. */
     String displayName() { return displayName; }
+    /** Returns the role. */
     Role role() { return role; }
+    /** Returns whether the account is active. */
     boolean active() { return active; }
+
+    /** Replaces the display name. */
+    void rename(String displayName) { this.displayName = displayName; }
+    /** Replaces the role. */
+    void changeRole(Role role) { this.role = role; }
+    /** Activates or deactivates the account. */
+    void setActive(boolean active) { this.active = active; }
+    /** Replaces the password hash; the caller must pass a BCrypt hash. */
+    void setPasswordHash(String hash) { this.passwordHash = hash; }
 }
