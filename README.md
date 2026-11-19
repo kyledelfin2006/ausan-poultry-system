@@ -11,4 +11,4 @@
 
 The backend is planned first with Spring Boot, Maven, PostgreSQL, and Docker. A React, Vite, and TypeScript frontend follows. The current `pom.xml` configures Spring Boot and Java 25; it does not yet configure PostgreSQL or provide a Docker setup.
 
-The intended first release is a lean ERP starting point for inventory, deliveries, and finance. Live GPS, route planning, payroll, and broader farm management are outside its scope.
+The intended first release is a lean ERP starting point for inventory, deliveries, and finance. Live GPS, route planning, payroll, and broader business management are outside its scope.
