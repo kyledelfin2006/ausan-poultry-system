@@ -3,6 +3,7 @@ package kyle.poultry.stock;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
@@ -12,10 +13,11 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.stream.Stream;
 import kyle.poultry.TestcontainersConfiguration;
+import kyle.poultry.finance.PaymentMethod;
 import kyle.poultry.identity.Actor;
 import kyle.poultry.identity.Role;
 import kyle.poultry.shared.RuleViolation;
-import kyle.poultry.stock.StockApi.SourceRef;
+import kyle.poultry.shared.SourceRef;
 import kyle.poultry.stock.StockApi.StockCommand;
 import kyle.poultry.stock.StockApi.StockLine;
 import org.junit.jupiter.api.BeforeEach;
@@ -53,7 +55,9 @@ class StockLedgerTests {
     }
 
     StockCommand cmd(long product, MovementType type, long delta) {
-        return new StockCommand(product, branchId, type, delta, null, type.needsReason() ? "test" : null, today);
+        boolean purchase = type == MovementType.PURCHASE;
+        return new StockCommand(product, branchId, type, delta, purchase ? BigDecimal.valueOf(20) : null,
+                type.needsReason() ? "test" : null, today, purchase ? PaymentMethod.CASH : null);
     }
 
     @Test
@@ -135,7 +139,7 @@ class StockLedgerTests {
         assertThatThrownBy(() -> stock.record(cmd(productId, MovementType.PURCHASE, -5), owner)).isInstanceOf(RuleViolation.class);
         assertThatThrownBy(() -> stock.record(cmd(productId, MovementType.USAGE, 5), owner)).isInstanceOf(RuleViolation.class);
         assertThatThrownBy(() -> stock.record(cmd(productId, MovementType.DELIVERY_OUT, -5), owner)).isInstanceOf(RuleViolation.class);
-        assertThatThrownBy(() -> stock.record(new StockCommand(productId, branchId, MovementType.USAGE, -1, null, null, today), owner))
+        assertThatThrownBy(() -> stock.record(new StockCommand(productId, branchId, MovementType.USAGE, -1, null, null, today, null), owner))
                 .isInstanceOf(RuleViolation.class);   // usage needs a reason
 
         // Bypass Java entirely: the database refuses a negative purchase too.
@@ -155,7 +159,7 @@ class StockLedgerTests {
 
     @Test
     void futureDatesAreRejected() {
-        var future = new StockCommand(productId, branchId, MovementType.PURCHASE, 5, null, null, today.plusDays(1));
+        var future = new StockCommand(productId, branchId, MovementType.PURCHASE, 5, BigDecimal.valueOf(20), null, today.plusDays(1), PaymentMethod.CASH);
         assertThatThrownBy(() -> stock.record(future, owner)).isInstanceOf(RuleViolation.class);
     }
 

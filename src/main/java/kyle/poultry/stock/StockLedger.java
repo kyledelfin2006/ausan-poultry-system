@@ -2,6 +2,8 @@ package kyle.poultry.stock;
 
 import static java.util.Comparator.comparingLong;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.util.List;
@@ -10,8 +12,10 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import kyle.poultry.catalog.CatalogApi;
 import kyle.poultry.catalog.CatalogApi.ProductView;
+import kyle.poultry.finance.FinanceApi;
 import kyle.poultry.identity.Actor;
 import kyle.poultry.shared.RuleViolation;
+import kyle.poultry.shared.SourceRef;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
@@ -24,10 +28,13 @@ class StockLedger implements StockApi {
     private final StockMovementRepository movements;
     private final StockBalanceRepository balances;
     private final CatalogApi catalog;
+    private final FinanceApi finance;
     private final Clock clock;
 
-    StockLedger(StockMovementRepository movements, StockBalanceRepository balances, CatalogApi catalog, Clock clock) {
-        this.movements = movements; this.balances = balances; this.catalog = catalog; this.clock = clock;
+    StockLedger(StockMovementRepository movements, StockBalanceRepository balances, CatalogApi catalog,
+                FinanceApi finance, Clock clock) {
+        this.movements = movements; this.balances = balances; this.catalog = catalog;
+        this.finance = finance; this.clock = clock;
     }
 
     @Override
@@ -38,7 +45,19 @@ class StockLedger implements StockApi {
             throw new AccessDeniedException(cmd.type() + " movements are restricted to the owner");
         if (cmd.occurredOn() != null && cmd.occurredOn().isAfter(LocalDate.now(clock)))
             throw new RuleViolation("Date cannot be in the future");
-        return apply(cmd, null, actor);
+        if (cmd.type() == MovementType.PURCHASE && cmd.paymentMethod() == null)
+            throw new RuleViolation("A purchase requires the payment method");
+
+        MovementView saved = apply(cmd, null, actor);
+
+        if (cmd.type() == MovementType.PURCHASE) {
+            // Same transaction: the stock and the cash it cost are recorded together or not at all.
+            ProductView product = catalog.requireActiveProduct(cmd.productId());
+            finance.recordStockPurchase(saved.totalCost(), cmd.paymentMethod(), cmd.occurredOn(),
+                    "Purchase of " + saved.quantityDelta() + " " + product.name(),
+                    new SourceRef("STOCK_MOVEMENT", saved.id()), actor);
+        }
+        return saved;
     }
 
     @Override
@@ -49,7 +68,7 @@ class StockLedger implements StockApi {
                 .map(l -> {
                     if (l.quantity() <= 0) throw new RuleViolation("Quantity must be positive");
                     return apply(new StockCommand(l.productId(), branchId, MovementType.DELIVERY_OUT,
-                            -l.quantity(), null, null, on), source, actor);
+                            -l.quantity(), null, null, on, null), source, actor);
                 })
                 .toList();
     }
@@ -62,7 +81,8 @@ class StockLedger implements StockApi {
                 .map(m -> {
                     var reversal = m.reversal(reason, on, actor, clock.instant());
                     balances.ensureRow(m.productId(), m.branchId());
-                    balances.applyDelta(m.productId(), m.branchId(), reversal.quantityDelta());   // positive: cannot be refused
+                    // Positive delta cannot be refused; folding in the original cost keeps the average unchanged.
+                    balances.applyDelta(m.productId(), m.branchId(), reversal.quantityDelta(), reversal.unitCost());
                     return movements.save(reversal).view();
                 })
                 .toList();
@@ -76,6 +96,13 @@ class StockLedger implements StockApi {
 
     @Override
     @Transactional(readOnly = true)
+    public BigDecimal averageCost(long productId, long branchId) {
+        BigDecimal avg = balances.averageCost(productId, branchId);
+        return avg == null ? BigDecimal.ZERO.setScale(4, RoundingMode.HALF_UP) : avg;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<BalanceView> balances(Long branchId) {
         Map<Long, ProductView> products = catalog.products().stream().collect(Collectors.toMap(ProductView::id, Function.identity()));
         var rows = branchId == null ? balances.findAll() : balances.findByIdBranchIdOrderByIdProductId(branchId);
@@ -83,7 +110,7 @@ class StockLedger implements StockApi {
                 .sorted(comparingLong((StockBalance b) -> b.id().branchId()).thenComparingLong(b -> b.id().productId()))
                 .map(b -> {
                     var p = products.get(b.id().productId());
-                    return new BalanceView(b.id().productId(), p.name(), p.unit(), b.id().branchId(), b.quantity());
+                    return new BalanceView(b.id().productId(), p.name(), p.unit(), b.id().branchId(), b.quantity(), b.avgUnitCost());
                 })
                 .toList();
     }
@@ -94,14 +121,15 @@ class StockLedger implements StockApi {
         return movements.history(productId, branchId, page).map(StockMovement::view);
     }
 
-    /** Validates, applies the delta atomically (never below zero), then appends the ledger row. */
+    /** Validates, applies the delta atomically (never below zero), then appends the ledger row with its cost. */
     private MovementView apply(StockCommand c, SourceRef source, Actor actor) {
         catalog.requireActiveProduct(c.productId());
         catalog.requireActiveBranch(c.branchId());
-        var movement = StockMovement.create(c, source, actor, clock.instant());   // sign/reason rules fail before any write
+        var movement = StockMovement.create(c, source, actor, clock.instant());   // rules fail before any write
         balances.ensureRow(c.productId(), c.branchId());
-        if (balances.applyDelta(c.productId(), c.branchId(), c.quantityDelta()) == 0)
+        if (balances.applyDelta(c.productId(), c.branchId(), c.quantityDelta(), movement.unitCost()) == 0)
             throw new InsufficientStockException(c.productId(), c.branchId());
+        movement.stampCostIfMissing(balances.averageCost(c.productId(), c.branchId()));
         return movements.save(movement).view();
     }
 }

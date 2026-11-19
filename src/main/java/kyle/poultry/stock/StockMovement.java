@@ -7,8 +7,8 @@ import java.time.Instant;
 import java.time.LocalDate;
 import kyle.poultry.identity.Actor;
 import kyle.poultry.shared.RuleViolation;
+import kyle.poultry.shared.SourceRef;
 import kyle.poultry.stock.StockApi.MovementView;
-import kyle.poultry.stock.StockApi.SourceRef;
 import kyle.poultry.stock.StockApi.StockCommand;
 
 /** One immutable fact: "this much stock entered or left this branch, for this reason". Never updated or deleted. */
@@ -38,6 +38,10 @@ class StockMovement {
         if (c.type().needsReason() && (c.reason() == null || c.reason().isBlank()))
             throw new RuleViolation(c.type() + " requires a reason");
         if (c.unitCost() != null && c.unitCost().signum() < 0) throw new RuleViolation("Unit cost cannot be negative");
+        if (c.type() == MovementType.PURCHASE && c.unitCost() == null)
+            throw new RuleViolation("A purchase requires a unit cost");
+        if (c.type() == MovementType.PURCHASE && c.unitCost().signum() == 0)
+            throw new RuleViolation("A purchase needs a unit cost above zero; record free stock as a DONATION");
         if (c.occurredOn() == null) throw new RuleViolation("Date is required");
 
         var m = new StockMovement();
@@ -45,7 +49,10 @@ class StockMovement {
         m.branchId = c.branchId();
         m.type = c.type();
         m.quantityDelta = c.quantityDelta();
-        m.unitCost = c.unitCost() == null ? null : c.unitCost().setScale(2, RoundingMode.HALF_UP);
+        // Opening stock and donations cost nothing unless the caller says otherwise.
+        boolean freeByDefault = c.type() == MovementType.DONATION || c.type() == MovementType.OPENING;
+        BigDecimal cost = c.unitCost() == null && freeByDefault ? BigDecimal.ZERO : c.unitCost();
+        m.unitCost = cost == null ? null : cost.setScale(4, RoundingMode.HALF_UP);
         m.reason = c.reason();
         m.occurredOn = c.occurredOn();
         if (source != null) { m.sourceType = source.type(); m.sourceId = source.id(); }
@@ -54,13 +61,14 @@ class StockMovement {
         return m;
     }
 
-    /** The compensating movement for a delivery stock-out: same product and branch, opposite sign. */
+    /** The compensating movement for a delivery stock-out: same product, branch and cost, opposite sign. */
     StockMovement reversal(String reason, LocalDate on, Actor actor, Instant now) {
         var m = new StockMovement();
         m.productId = productId;
         m.branchId = branchId;
         m.type = MovementType.DELIVERY_REVERSAL;
         m.quantityDelta = -quantityDelta;
+        m.unitCost = unitCost;
         m.reason = reason;
         m.occurredOn = on;
         m.sourceType = sourceType;
@@ -71,11 +79,17 @@ class StockMovement {
         return m;
     }
 
+    /** Movements without an explicit cost (stock-outs, adjustments) record the average cost at that moment. */
+    void stampCostIfMissing(BigDecimal averageCost) {
+        if (unitCost == null) unitCost = averageCost;
+    }
+
     Long id() { return id; }
     long productId() { return productId; }
     long branchId() { return branchId; }
     long quantityDelta() { return quantityDelta; }
     MovementType type() { return type; }
+    BigDecimal unitCost() { return unitCost; }
 
     MovementView view() {
         return new MovementView(id, productId, branchId, type, quantityDelta, unitCost, reason, occurredOn,

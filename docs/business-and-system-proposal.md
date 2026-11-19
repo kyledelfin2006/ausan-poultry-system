@@ -4,7 +4,7 @@
 
 **Business:** Ausan Poultry Farm  
 **Application:** Ausan Farm System  
-**Coverage:** Two farm branches
+**Coverage:** Two branches (Ausan is a trading business: it buys stock from suppliers and resells it through deliveries)
 
 ## Business problem
 
@@ -64,7 +64,7 @@ The first release uses **Active**, **Done**, and **Cancelled**. The owner or aut
 3. When arrival is reported, staff mark it **Done** and enter the completion time.
 4. If it is **Cancelled**, the system automatically restores the deducted stock through new reversal movements. **No confirmation that the items physically returned is required for this automatic restoration.** The original delivery and stock-out movements remain in history. A refund, if made, is recorded as a separate financial movement.
 
-Cancellation should also reverse the sale in reporting while retaining the original sale and payment records for audit. If the customer has not yet been refunded, the retained payment must be visible separately from active sales. The farm's policy for handling such retained payments should be agreed before finance reports are finalized.
+Cancellation should also reverse the sale in reporting while retaining the original sale and payment records for audit. If the customer has not yet been refunded, the retained payment must be visible separately from active sales. The business's policy for handling such retained payments should be agreed before finance reports are finalized.
 
 ### Finance
 
@@ -93,7 +93,7 @@ The owner and authorized staff can create and update records. Access should refl
 | --- | --- |
 | Products; branch stock balances and history; opening stock, purchases, donations, and adjustments | Live GPS and route planning |
 | Paid deliveries, automatic stock-out and sale/collection, status changes, cancellation reversals | Separate driver application |
-| Purchases, expenses, refunds, and period-based financial views | Payroll and broader farm management |
+| Purchases, expenses, refunds, and period-based financial views | Payroll and broader business management |
 | Owner and authorized staff access | Features not needed for the inventory–delivery–finance workflow |
 
 ## Proposed delivery order

@@ -8,6 +8,7 @@ import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import kyle.poultry.finance.PaymentMethod;
 import kyle.poultry.identity.Actor;
 import kyle.poultry.stock.StockApi.BalanceView;
 import kyle.poultry.stock.StockApi.MovementView;
@@ -26,10 +27,14 @@ class StockController {
 
     StockController(StockApi stock) { this.stock = stock; }
 
-    /** quantityDelta is signed: positive adds stock, negative removes it. The type decides which sign is legal. */
+    /**
+     * quantityDelta is signed: positive adds stock, negative removes it. The type decides which sign is legal.
+     * unitCost is required for PURCHASE (OPENING and DONATION default to 0); paymentMethod is required for PURCHASE.
+     */
     record RecordMovement(@NotNull Long productId, @NotNull Long branchId, @NotNull MovementType type,
                           long quantityDelta,
                           @DecimalMin("0.00") @Digits(integer = 10, fraction = 2) BigDecimal unitCost,
+                          PaymentMethod paymentMethod,
                           @Size(max = 255) String reason,
                           @NotNull LocalDate occurredOn) {}
 
@@ -37,7 +42,7 @@ class StockController {
     @ResponseStatus(HttpStatus.CREATED)
     MovementView record(@Valid @RequestBody RecordMovement r, @AuthenticationPrincipal Jwt jwt) {
         return stock.record(new StockCommand(r.productId(), r.branchId(), r.type(), r.quantityDelta(),
-                r.unitCost(), r.reason(), r.occurredOn()), Actor.from(jwt));
+                r.unitCost(), r.reason(), r.occurredOn(), r.paymentMethod()), Actor.from(jwt));
     }
 
     @GetMapping("/balances")

@@ -82,8 +82,39 @@ class ApiSecurityTests {
                 {"productId":2,"branchId":1,"type":"USAGE","quantityDelta":-100000,"occurredOn":"2026-01-01","reason":"x"}""";
         assertThat(call("POST", "/api/stock/movements", owner, tooMuch).statusCode()).isEqualTo(409);
 
+        String purchase = """
+                {"productId":3,"branchId":1,"type":"PURCHASE","quantityDelta":100,"unitCost":20.00,"paymentMethod":"CASH","occurredOn":"2026-01-02"}""";
+        assertThat(call("POST", "/api/stock/movements", owner, purchase).statusCode()).isEqualTo(201);
+        String noMethod = """
+                {"productId":3,"branchId":1,"type":"PURCHASE","quantityDelta":100,"unitCost":20.00,"occurredOn":"2026-01-02"}""";
+        assertThat(call("POST", "/api/stock/movements", owner, noMethod).statusCode()).isEqualTo(422);
+
+        var ledger = call("GET", "/api/finance/entries?from=2026-01-02&to=2026-01-02&type=STOCK_PURCHASE", owner, null);
+        assertThat(ledger.statusCode()).isEqualTo(200);
+        assertThat(ledger.body()).contains("STOCK_PURCHASE", "2000.00");
+
         var balances = call("GET", "/api/stock/balances?branchId=1", owner, null);
         assertThat(balances.statusCode()).isEqualTo(200);
         assertThat(balances.body()).contains("Chicken");
+    }
+
+    @Test
+    void assistantCanRecordExpensesAndReadTheLedger() throws Exception {
+        String owner = login(TestcontainersConfiguration.OWNER_USERNAME, TestcontainersConfiguration.OWNER_PASSWORD);
+        call("POST", "/api/users", owner,
+                "{\"username\":\"assistant-fin\",\"password\":\"assistant-password\",\"displayName\":\"A\",\"role\":\"ASSISTANT\"}");
+        String assistant = login("assistant-fin", "assistant-password");
+
+        var created = call("POST", "/api/finance/expenses", assistant,
+                "{\"amount\":150.50,\"method\":\"CASH\",\"occurredOn\":\"2026-02-01\",\"description\":\"Fuel for the van\"}");
+        assertThat(created.statusCode()).isEqualTo(201);
+
+        var bad = call("POST", "/api/finance/expenses", assistant,
+                "{\"amount\":0,\"method\":\"CASH\",\"occurredOn\":\"2026-02-01\",\"description\":\"x\"}");
+        assertThat(bad.statusCode()).isEqualTo(400);
+
+        var list = call("GET", "/api/finance/entries?from=2026-02-01&to=2026-02-01", assistant, null);
+        assertThat(list.statusCode()).isEqualTo(200);
+        assertThat(list.body()).contains("Fuel for the van", "150.50");
     }
 }
