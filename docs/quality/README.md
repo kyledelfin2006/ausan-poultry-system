@@ -53,7 +53,9 @@ checklist shown when a pull request is opened.
 | Delivery | `DeliveryTests`, `DeliveryApiTests`, `DeliveryIdempotencyTests`, `DeliveryEdgeCaseTests` | PostgreSQL, HTTP |
 | Delivery | `DeliveryConcurrencyTests` | PostgreSQL, racing transactions |
 | Catalog | `CatalogApiTests` | PostgreSQL, HTTP |
-| Identity | `ApiSecurityTests`, `UserAdministrationTests`, `LoginThrottleTests` | HTTP, security chain |
+| Identity | `ApiSecurityTests`, `SecurityMatrixTests`, `SecurityHeadersAndCorsTests`, `UserAdministrationTests`, `LoginThrottleTests`, `PasswordPolicyTests`, `CorsPropertiesTests` | HTTP, security chain, pure unit |
+| Shared | `RequestIdFilterTests`, `CsvTests` | pure unit, HTTP |
+| Stock / Finance / Delivery / Report (read side) | `StockOverviewTests`, `EntriesExportTests`, `DeliveryQueryTests`, `ReceiptAllocationTests`, `DashboardServiceTests`, `ReportExtrasTests` | PostgreSQL, HTTP |
 | Report | `ReportTests` | PostgreSQL, HTTP |
 | Architecture | `ModuleBoundaryTests`, `CodingRulesTests` | ArchUnit over the compiled classes |
 | Support | `TestSupport`, `ConcurrentRunner` | helpers, see [testing-guide.md](testing-guide.md) |

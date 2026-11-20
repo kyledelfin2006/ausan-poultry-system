@@ -16,16 +16,19 @@ would keep working until it expires.
 - The application is a stateless resource server (no session, no cookie, CSRF disabled, because no ambient credentials are used).
 - **Every request** passes through `RevocationAuthenticationConverter`, which loads the user by id: a missing or inactive user is
   rejected with 401, and the role used for `@PreAuthorize` is the **database role**, not the one in the token.
+- **Sign-out and password change** raise `app_user.token_version`; the token carries it (claim `ver`) and a mismatch is a 401, so
+  they end every session of that user on every device. Tokens issued before the claim existed count as version 0.
 - Brute-force protection: `LoginThrottle`, 5 failures per 15 minutes per (username, address), then 429.
 - Authorization is done with method security (`@PreAuthorize`) and in the services that carry an `Actor` (owner-only rules are
   checked again there, so they hold when a service is called from somewhere other than a controller).
 
 ## Consequences
 
-- Deactivation and role changes take effect on the next request. No token blacklist is needed.
+- Deactivation, role changes, sign-out and password changes take effect on the next request. No token blacklist is needed.
 - One primary-key read per request. For this load that is negligible; a short-lived cache could be added if it ever matters
   (it would bring back a small revocation delay).
-- There is no refresh token and no logout endpoint on the server: the token simply expires after 8 hours, or the user is deactivated.
+- There is no refresh token: a token lasts up to 8 hours unless the user signs out (`POST /api/auth/logout`, all devices), changes the
+  password or is deactivated.
 - `LoginThrottle` is in memory: it resets on restart and is per instance. Acceptable for one instance; a shared store is needed before
   running several (listed in [../overview.md](../overview.md), known limits).
 - Rotating the signing secret signs everybody out, which is also the emergency revocation.

@@ -9,6 +9,7 @@ commits together or not at all. Names are the real classes and methods, so each 
 sequenceDiagram
     autonumber
     actor U as User
+    participant RID as RequestIdFilter
     participant AC as AuthController
     participant LT as LoginThrottle
     participant AS as AuthService
@@ -17,13 +18,15 @@ sequenceDiagram
     participant RC as RevocationAuthenticationConverter
     participant C as Any controller
 
-    U->>AC: POST /api/auth/login {username, password}
+    U->>RID: POST /api/auth/login {username, password}
+    RID->>RID: keep a safe X-Request-Id or generate one; put it in the log context
+    RID->>AC: request
     AC->>LT: is this (username, address) blocked?
     LT-->>AC: no (fewer than 5 failures in 15 minutes)
     AC->>AS: authenticate
     AS->>DB: load user by username
     AS->>AS: BCrypt check, user must be active
-    AS-->>AC: HS256 JWT (sub = user id, role, 8 h expiry)
+    AS-->>AC: HS256 JWT (sub = user id, role, ver = token version, 8 h expiry)
     AC-->>U: 200 {token, role, ...}
 
     Note over U,C: every later request
@@ -31,13 +34,15 @@ sequenceDiagram
     F->>F: verify signature (HS256 only) and expiry
     F->>RC: verified token
     RC->>DB: load user by id (every request)
-    RC-->>F: reject if missing or inactive (401); replace the role claim with the database role
+    RC-->>F: reject if missing, inactive or the ver claim differs from the stored token_version (401); replace the role claim with the database role
     F->>C: authenticated request
     C->>C: @PreAuthorize (role), then Actor.from(jwt)
 ```
 
-Why the database is read on every request: a deactivated user or a changed role takes effect immediately instead of when the
-token expires ([ADR-0003](decisions/0003-stateless-jwt-with-database-recheck.md)).
+Why the database is read on every request: a deactivated user, a changed role, a sign-out or a password change takes effect
+immediately instead of when the token expires ([ADR-0003](decisions/0003-stateless-jwt-with-database-recheck.md)). `POST /api/auth/logout`
+and `POST /api/auth/password` raise the user's `token_version`, so every token issued before stops working at once, on every device;
+`GET /api/auth/me` returns the caller's profile. The `X-Request-Id` is echoed on every response, including 401 and 403.
 
 ## 2. Record a stock purchase
 
@@ -68,6 +73,33 @@ sequenceDiagram
 
 If the finance call fails (for example an invalid amount), the stock change rolls back with it: stock never changes without its
 payment record.
+
+## 2b. Change master data and leave an audit entry
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant CC as CatalogController
+    participant CS as CatalogService
+    participant AU as AuditApi (AuditService)
+    participant DB as PostgreSQL
+
+    CC->>CS: updatePackage(id, command)
+    rect rgb(238, 245, 255)
+    Note over CS,DB: one transaction
+    CS->>DB: update the package
+    CS->>CS: AuditChanges: compare old and new values, build "price: 70000.00 -> 75000.00"
+    opt something actually changed
+        CS->>AU: record(UPDATED, PACKAGE, id, summary)
+        AU->>AU: actor from the security context ('system' if none); request id from the log context
+        AU->>DB: insert audit_log row (triggers refuse any later update or delete)
+    end
+    end
+    CS-->>CC: view
+```
+
+The entry commits with the change or not at all, and the caller never says who did it. Users (create, update, password reset and
+change, sign-out), products, branches and packages are audited; the owner reads the trail with `GET /api/audit`.
 
 ## 3. Create a delivery
 
