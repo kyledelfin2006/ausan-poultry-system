@@ -20,6 +20,8 @@ jobs:
           java-version: '25'
           cache: maven
       # Docker is preinstalled on ubuntu-latest; Testcontainers uses it for PostgreSQL.
+      # mvnw can be committed without the executable bit (e.g. from Windows); make sure it can run.
+      - run: chmod +x mvnw
       - run: ./mvnw -B verify
       - uses: actions/upload-artifact@v4
         if: failure()
