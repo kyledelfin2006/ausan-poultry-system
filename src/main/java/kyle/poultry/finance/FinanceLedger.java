@@ -7,6 +7,7 @@ import java.time.LocalDate;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 import kyle.poultry.identity.Actor;
 import kyle.poultry.shared.RuleViolation;
 import kyle.poultry.shared.SourceRef;
@@ -130,6 +131,25 @@ class FinanceLedger implements FinanceApi {
             // Amounts are numeric(14,2), so the scale is already 2 and UNNECESSARY would flag any surprise.
             totals.put((EntryType) row[0], ((BigDecimal) row[1]).setScale(2, RoundingMode.UNNECESSARY));
         return totals;
+    }
+
+    /** {@inheritDoc} Read-only: reports must never write to the ledger. */
+    @Override
+    @Transactional(readOnly = true)
+    public Map<LocalDate, Map<EntryType, BigDecimal>> dailyTotalsByType(LocalDate from, LocalDate to) {
+        requirePeriod(from, to);
+        // TreeMap keeps the dates in order; the database returns one row per (date, type) that has entries.
+        Map<LocalDate, Map<EntryType, BigDecimal>> days = new TreeMap<>();
+        for (Object[] row : entries.dailyTotalsByType(from, to)) {
+            // Create the day's map once, pre-filled with 0.00 for every type, then overwrite the types that occurred.
+            var day = days.computeIfAbsent((LocalDate) row[0], d -> {
+                Map<EntryType, BigDecimal> zero = new EnumMap<>(EntryType.class);
+                for (EntryType t : EntryType.values()) zero.put(t, BigDecimal.ZERO.setScale(2));
+                return zero;
+            });
+            day.put((EntryType) row[1], ((BigDecimal) row[2]).setScale(2, RoundingMode.UNNECESSARY));
+        }
+        return days;
     }
 
     /** {@inheritDoc} Read-only: reports must never write to the ledger. */

@@ -131,6 +131,18 @@ public interface FinanceApi {
     Map<EntryType, BigDecimal> totalsByType(LocalDate from, LocalDate to);
 
     /**
+     * Sum of amounts per business date and entry type for the inclusive period, aggregated in the database. Only
+     * dates that have at least one entry appear (the result is sparse); for those dates every {@link EntryType}
+     * is present, with 0.00 for the types that have no entry that day. The map is ordered by date.
+     *
+     * @param from first business date included
+     * @param to   last business date included
+     * @return per-date totals keyed by type, scale 2, ordered by date ascending
+     * @throws kyle.poultry.shared.RuleViolation if a date is missing or {@code to} is before {@code from}
+     */
+    Map<LocalDate, Map<EntryType, BigDecimal>> dailyTotalsByType(LocalDate from, LocalDate to);
+
+    /**
      * Net cash per payment method for the inclusive period (cash in minus cash out). Every {@link PaymentMethod}
      * is present; unused methods are 0.00. Aggregated in the database.
      *

@@ -38,6 +38,7 @@ class StockLedger implements StockApi {
     private final CatalogApi catalog;
     private final FinanceApi finance;
     private final Clock clock;
+    private final StockOverviewService overview;
 
     /**
      * Creates the ledger.
@@ -47,11 +48,12 @@ class StockLedger implements StockApi {
      * @param catalog   the catalog module, used to validate products and branches
      * @param finance   the finance module, used to record the cash paid for purchases
      * @param clock     the application clock, used for "today" and timestamps
+     * @param overview  the read model behind the all-branch summary and the reorder levels
      */
     StockLedger(StockMovementRepository movements, StockBalanceRepository balances, CatalogApi catalog,
-                FinanceApi finance, Clock clock) {
+                FinanceApi finance, Clock clock, StockOverviewService overview) {
         this.movements = movements; this.balances = balances; this.catalog = catalog;
-        this.finance = finance; this.clock = clock;
+        this.finance = finance; this.clock = clock; this.overview = overview;
     }
 
     /**
@@ -174,6 +176,32 @@ class StockLedger implements StockApi {
     public Page<MovementView> history(long productId, long branchId, Pageable page) {
         return movements.history(productId, branchId, page).map(StockMovement::view);
     }
+
+    /** {@inheritDoc} */
+    @Override
+    @Transactional(readOnly = true)
+    public List<MovementView> movementsFor(SourceRef source) {
+        return movements.findBySourceTypeAndSourceIdOrderByIdAsc(source.type(), source.id()).stream()
+                .map(StockMovement::view).toList();
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public List<ProductStockView> summary(boolean lowOnly) { return overview.summary(lowOnly); }
+
+    /** {@inheritDoc} */
+    @Override
+    public List<ReorderLevelView> reorderLevels() { return overview.reorderLevels(); }
+
+    /** {@inheritDoc} */
+    @Override
+    public ReorderLevelView setReorderLevel(long productId, long level, Actor actor) {
+        return overview.setReorderLevel(productId, level, actor);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void clearReorderLevel(long productId, Actor actor) { overview.clearReorderLevel(productId, actor); }
 
     /**
      * Validates, applies the delta atomically (never below zero), then appends the ledger row with its cost.
