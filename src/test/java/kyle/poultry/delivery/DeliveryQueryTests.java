@@ -166,7 +166,7 @@ class DeliveryQueryTests {
 
         var page = api.call("GET", base + "&size=2&page=1", assistant, null);
         assertThat(customers(page)).containsExactly("Done one");
-        assertThat((Integer) JsonPath.read(page.body(), "$.totalElements")).isEqualTo(3);
+        assertThat((Integer) JsonPath.read(page.body(), "$.page.totalElements")).isEqualTo(3);
         // A client sort cannot reorder the documented newest-first listing, nor break it.
         assertThat(customers(api.call("GET", base + "&sort=customerName,asc", assistant, null)))
                 .containsExactly("Cancelled one", "Active one", "Done one");
