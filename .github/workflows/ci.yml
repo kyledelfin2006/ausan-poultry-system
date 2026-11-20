@@ -84,9 +84,9 @@ jobs:
           # Download the artifact produced by this workflow's unit-test job.
           name: unit-coverage
           path: target/coverage/
-      # Run only tagged integration tests, then merge coverage and enforce the existing floors.
+      # Run only tagged integration tests, enable the CI-only merge, and enforce the existing floors.
       - name: Run integration tests and combined coverage gate
-        run: ./mvnw -B -ntp verify -Dgroups=integration -Djacoco.destFile=target/coverage/integration.exec
+        run: ./mvnw -B -ntp verify -Dgroups=integration -Djacoco.destFile=target/coverage/integration.exec -Dci.coverage.merge.skip=false
       # Print package and total line/branch coverage directly on the run page.
       - name: Coverage summary
         if: always()

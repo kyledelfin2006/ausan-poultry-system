@@ -425,7 +425,7 @@ Upgrade by pulling the new revision and re-running the `up -d --build` command. 
 ./mvnw test -Dgroups=integration                 # CI's PostgreSQL selection (Docker required)
 ```
 
-The suite has about 270 tests: pure unit tests for logic, integration tests against a real PostgreSQL 17 (Testcontainers), concurrency tests, security-matrix tests, ArchUnit architecture rules and the OpenAPI snapshot. The coverage report is written to `target/site/jacoco/index.html`. Guide: [docs/quality/testing-guide.md](docs/quality/testing-guide.md).
+The suite includes pure unit tests for logic, integration tests against a real PostgreSQL 17 (Testcontainers), concurrency tests, security-matrix tests, ArchUnit architecture rules and the OpenAPI snapshot. The coverage report is written to `target/site/jacoco/index.html`. Guide: [docs/quality/testing-guide.md](docs/quality/testing-guide.md).
 
 ## Documentation
 

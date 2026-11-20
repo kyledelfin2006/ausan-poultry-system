@@ -19,6 +19,7 @@ CI runs the suites separately: mark every Spring Boot/PostgreSQL test class with
 and ArchUnit classes untagged. `./mvnw test -DexcludedGroups=integration` runs the Docker-free selection;
 `./mvnw test -Dgroups=integration` runs the PostgreSQL selection. A normal `./mvnw verify` still runs all tests
 and applies the coverage gate locally.
+CI alone sets `-Dci.coverage.merge.skip=false` in the integration job to merge the two coverage files before that gate.
 
 ## 2. Conventions
 
