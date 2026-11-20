@@ -41,8 +41,9 @@ final class ErrorResponses {
      * answer: 409 (conflict), 422 (rule violation) and 404 when the body references an id that may not exist.
      */
     static final Map<String, Set<Integer>> BUSINESS_ERRORS = Map.ofEntries(
-            Map.entry("POST /api/users", Set.of(409)),
+            Map.entry("POST /api/users", Set.of(409, 422)),   // 422: password rules
             Map.entry("PATCH /api/users/{id}", Set.of(422)),
+            Map.entry("POST /api/users/{id}/password", Set.of(422)),   // password rules
             Map.entry("POST /api/auth/password", Set.of(422)),
             Map.entry("POST /api/products", Set.of(409)),
             Map.entry("PATCH /api/products/{id}", Set.of(409)),
@@ -57,8 +58,19 @@ final class ErrorResponses {
             Map.entry("POST /api/deliveries/{id}/done", Set.of(409)),
             Map.entry("POST /api/deliveries/{id}/cancel", Set.of(409)),
             Map.entry("POST /api/deliveries/{id}/refund", Set.of(422)),
+            Map.entry("GET /api/deliveries", Set.of(422)),   // from after to
+            Map.entry("GET /api/deliveries/summary", Set.of(422)),
+            Map.entry("GET /api/finance/entries.csv", Set.of(422)),
+            Map.entry("PUT /api/stock/reorder-levels/{productId}", Set.of(422)),   // inactive product
+            Map.entry("GET /api/audit", Set.of(422)),   // from after to
             Map.entry("GET /api/reports/summary", Set.of(422)),
-            Map.entry("GET /api/reports/profit", Set.of(422)));
+            Map.entry("GET /api/reports/summary.csv", Set.of(422)),
+            Map.entry("GET /api/reports/profit", Set.of(422)),
+            Map.entry("GET /api/reports/profit.csv", Set.of(422)),
+            Map.entry("GET /api/reports/series", Set.of(422)),   // backwards or longer than 366 days
+            Map.entry("GET /api/reports/series.csv", Set.of(422)),
+            Map.entry("GET /api/reports/profit-series", Set.of(422)),
+            Map.entry("GET /api/reports/profit-series.csv", Set.of(422)));
 
     /** Not instantiable: static helpers only. */
     private ErrorResponses() {}

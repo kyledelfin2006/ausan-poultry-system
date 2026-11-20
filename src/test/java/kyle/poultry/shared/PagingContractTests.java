@@ -20,7 +20,7 @@ class PagingContractTests {
     @LocalServerPort int port;
 
     /**
-     * All three paged endpoints answer with {@code content} and a {@code page} object, and expose no Spring internals.
+     * All paged endpoints (including the audit trail) answer with {@code content} and a {@code page} object, and expose no Spring internals.
      *
      * @throws Exception when a request fails
      */
@@ -31,7 +31,8 @@ class PagingContractTests {
         for (String path : new String[] {
                 "/api/deliveries?size=5",
                 "/api/finance/entries?from=2020-01-01&to=2026-12-31&size=5",
-                "/api/stock/movements?productId=1&branchId=1&size=5"}) {
+                "/api/stock/movements?productId=1&branchId=1&size=5",
+                "/api/audit?size=5"}) {
             var response = api.json("GET", path, owner, null);
             assertThat(response.statusCode()).as(path).isEqualTo(200);
             assertThat(response.body()).as(path)

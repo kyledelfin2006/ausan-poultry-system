@@ -27,13 +27,17 @@ final class RoleExtensions {
     /** Owner-only operations whose check lives in a service, keyed by {@code "METHOD /path"}. */
     static final Map<String, List<String>> SERVICE_ENFORCED = Map.of(
             "POST /api/deliveries/{id}/cancel", OWNER,
-            "POST /api/deliveries/{id}/refund", OWNER);
+            "POST /api/deliveries/{id}/refund", OWNER,
+            "PUT /api/stock/reorder-levels/{productId}", OWNER,
+            "DELETE /api/stock/reorder-levels/{productId}", OWNER);
 
     /** Rules that restrict only some inputs of an operation, keyed by {@code "METHOD /path"}. */
     static final Map<String, String> PARTIAL_RULES = Map.of(
             "POST /api/stock/movements",
             "Any role may record PURCHASE, DONATION and USAGE movements; OPENING and ADJUSTMENT are OWNER only (403 "
-                    + "for an assistant).");
+                    + "for an assistant).",
+            "GET /api/reports/dashboard",
+            "The `profit` member is null for an assistant; every other member is the same for both roles.");
 
     /** Not instantiable: static helpers only. */
     private RoleExtensions() {}

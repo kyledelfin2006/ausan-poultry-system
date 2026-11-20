@@ -16,16 +16,17 @@ operation has a stable `operationId` (for example `deliveriesCreate`, `refund`, 
 generated function names are predictable. Regenerate whenever the spec changes (it changes in the same pull request as
 the code).
 
-**Base URL.** `http://localhost:8080` in development. The backend does **not** configure CORS yet, so a browser app on
-another origin (the Vite dev server on `localhost:5173`) is blocked. Until CORS is added to the backend, develop against a
-dev-server proxy so the browser only ever talks to its own origin:
+**Base URL.** `http://localhost:8080` in development. The backend allows browser calls from `http://localhost:5173` (Vite)
+and `http://localhost:3000` by default; production allows only the origins listed in `APP_CORS_ALLOWED_ORIGINS`
+([CORS details](auth-session.md#cors-browser-frontends)). Alternatively, proxy `/api` through the dev server so the browser
+only ever sees one origin, which also avoids CORS entirely:
 
 ```ts
 // vite.config.ts
 export default defineConfig({ server: { proxy: { '/api': 'http://localhost:8080' } } });
 ```
 
-In production, serve the frontend and `/api` from one origin (a reverse proxy) for the same reason.
+In production, serving the frontend and `/api` from one origin (a reverse proxy) needs no CORS setting at all.
 
 **Development login.** The first OWNER comes from the `APP_BOOTSTRAP_OWNER_*` variables in the
 [README](../../README.md#development-quickstart); create an assistant with `POST /api/users` to test the other role.
@@ -37,9 +38,14 @@ In production, serve the frontend and `/api` from one origin (a reverse proxy) f
    `Authorization: Bearer <token>` on every request. There are no cookies and no CSRF surface.
 3. The token lasts 8 hours and **cannot be refreshed**. Log the user out when `expiresAt` passes, or when **any** call
    answers `401`: the token expired, or the user was deactivated (the server re-checks on every request).
-4. Store `role` and show or hide actions from it (section 6). A role change by an owner applies on the user's next
-   request, so after an administrator edits a role, ask that user to log in again.
-5. Handle `429` on login: disable the form for `Retry-After` seconds.
+4. Call `GET /api/auth/me` on app start (and after a `401`) to restore the signed-in state. It returns the **current**
+   role from the database, so use it, not the login response, to show or hide actions (section 6). A role change by an
+   owner applies on the user's next request.
+5. Log out with `POST /api/auth/logout` (`204`): it ends every session of that user on every device. Discard the token
+   afterwards. Changing your own password also ends your sessions, so send the user to login after `204`.
+6. Handle `429` on login: disable the form for `Retry-After` seconds.
+7. Details of all of this, plus the password rules (`422` with a `detail` to show under the field), are in
+   [auth-session.md](auth-session.md).
 
 ## 3. Errors
 
@@ -58,7 +64,8 @@ async function call(path: string, init: RequestInit = {}) {
 }
 ```
 
-Full list of codes and the recommended UI reaction: [errors.md](errors.md). Two things to remember:
+Full list of codes and the recommended UI reaction: [errors.md](errors.md). Every response also has an `X-Request-Id`
+header; show it in "something went wrong" dialogs so a problem can be traced in the server log. Two things to remember:
 
 - `401` and `403` from the security layer have **no body**; do not call `res.json()` on them.
 - `VALIDATION_FAILED.detail` is `field message; field message`. Split on `; ` and match each field name to the input.
@@ -79,10 +86,15 @@ Full list of codes and the recommended UI reaction: [errors.md](errors.md). Two 
 
 ## 5. Lists and paging
 
-Paged lists (`stock/movements`, `finance/entries`, `deliveries`) return `{ content, page: { size, number, totalElements,
+Paged lists (`stock/movements`, `finance/entries`, `deliveries`, `audit`) return `{ content, page: { size, number, totalElements,
 totalPages } }`; pass `?page=0&size=20`. All other lists (`products`, `branches`, `packages`, `users`, `stock/balances`) are
 plain arrays. Catalog lists include inactive records: filter `active` in the UI (and keep inactive ones visible in
 admin screens).
+
+File downloads (`*.csv` endpoints) need the bearer header too, so fetch them with the token and save the blob; see
+[exports-csv.md](exports-csv.md). Filters, status counts and the receipt for deliveries are in
+[deliveries-queries.md](deliveries-queries.md); the dashboard and time series for charts are in
+[reports-dashboard-series.md](reports-dashboard-series.md).
 
 ## 6. Role-based UI
 
@@ -94,7 +106,8 @@ Each operation in the spec carries `x-roles` (for example `["OWNER"]`). Use it, 
 | User administration, catalog create/edit | OWNER only |
 | Cancel delivery, refund | OWNER only |
 | Stock `OPENING` and `ADJUSTMENT` types | OWNER only (the other types are fine) |
-| Profit report | OWNER only |
+| Profit report, profit series, delivery receipt | OWNER only |
+| Reorder levels (set, clear), audit trail | OWNER only |
 
 Hiding is a convenience; the server enforces every rule and answers `403` regardless.
 

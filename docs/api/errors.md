@@ -29,7 +29,7 @@ machine-readable `code`:
 | `CONFLICT` | 409 | The request clashes with the current state: insufficient stock (`Insufficient stock for product 2 at branch 1`), username already taken, delivery no longer ACTIVE (done or cancelled twice, cancel after Done). | Show `detail`; refresh the data the user was looking at. |
 | `DATA_CONFLICT` | 409 | A database rule rejected the change, e.g. a duplicate product, branch or package name or SKU. `detail` is always `The change conflicts with existing data`. | Tell the user the name or SKU is probably already taken. |
 | `UNSUPPORTED_MEDIA_TYPE` | 415 | The body is not JSON. | Client bug; send `Content-Type: application/json`. |
-| `RULE_VIOLATION` | 422 | The request is well-formed but a business rule forbids it: future date, inactive product/branch/package, missing payment method, refund above what is held, duplicate item, report period longer than 366 days, wrong current password, `Idempotency-Key` reused with a different request. | Show `detail` to the user. |
+| `RULE_VIOLATION` | 422 | The request is well-formed but a business rule forbids it: future date, inactive product/branch/package, missing payment method, refund above what is held, duplicate item, report period longer than 366 days, wrong current password, a [password rule](auth-session.md#password-rules), `Idempotency-Key` reused with a different request. | Show `detail` to the user. |
 | `TOO_MANY_REQUESTS` | 429 | Five failed logins within 15 minutes for the same username and address. The `Retry-After` header holds the seconds to wait. | Disable the login button and show a countdown. |
 | `INTERNAL_ERROR` | 500 | An unexpected server error. `detail` is always `An unexpected error occurred`; nothing internal is leaked. | Show a generic "try again later" and report it. |
 
@@ -48,6 +48,12 @@ there is no `code`: the HTTP status is the contract.
 | 403 | Logged in, but this role may not do this. | Hide or disable the action; do not log out. |
 
 The exception is the login endpoint, whose 401 carries a body with `code: UNAUTHENTICATED`.
+
+A browser call from an origin that is not allowed (see [CORS](auth-session.md#cors-browser-frontends)) is also answered `403`
+with no body and no CORS headers, so the browser reports a CORS error rather than the real response.
+
+Every response, errors included, carries an `X-Request-Id` header; quote it when reporting a problem
+([request ids](auth-session.md#request-ids)).
 
 ## Statuses per endpoint
 
