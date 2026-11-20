@@ -9,6 +9,7 @@ Business words are in plain language; code names are given in `code font` where 
 | **Append-only** | A table where rows are only ever added. Mistakes are fixed with new rows, never edits. See [ADR-0002](decisions/0002-append-only-ledgers.md). |
 | **Assistant** | The second role (finance/assistant). Can record purchases, usage, donations, expenses and deliveries; cannot enter opening stock or adjustments, cancel, refund, or change the catalog. |
 | **`*Api`** | The public interface of a module (`CatalogApi`, `StockApi`, `FinanceApi`). The only way one module may use another. |
+| **Ausan Poultry System** | The official name of this software: the backend (and, later, the frontend) used by the Ausan Poultry Farm business. Repository, Maven artifact and Java package names (`poultry-management-system`, `kyle.poultry`) are technical identifiers and are not the product name. |
 | **Average cost** | The weighted average cost per unit of a product at a branch, four decimals. See [ledger-and-costing.md](ledger-and-costing.md). |
 | **Audit trail** (`audit_log`) | The append-only record of who changed a user, product, branch or package, and what changed. Owner-only to read. Different from the ledgers: the ledgers record business events, the audit trail records changes to master data. |
 | **Balance** (`stock_balance`) | The current quantity and average cost of one product at one branch; derived from the movements. |

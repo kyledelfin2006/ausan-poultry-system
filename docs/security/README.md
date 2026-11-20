@@ -1,6 +1,6 @@
 # Security: model, controls and operating notes
 
-This is the security reference for the Ausan backend: what is protected, who the adversaries are, which controls exist
+This is the security reference for the Ausan Poultry System backend: what is protected, who the adversaries are, which controls exist
 (and the test that proves each), and what is knowingly **not** covered. It describes the system as built; keep it in the
 same change as the code (see the table at the end).
 

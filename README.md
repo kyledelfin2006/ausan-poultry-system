@@ -1,6 +1,8 @@
-# Ausan Farm System
+# Ausan Poultry System
 
-Backend for **Ausan Poultry Farm**. Despite the name, Ausan is a **trading business**, not a farm: it buys cages, chickens, nipples, feeders, feed bags and water jugs, and resells them in pre-set **packages** through **deliveries**, across two branches. Currency is PHP. The system tracks stock, deliveries and the money that moves with them.
+The **Ausan Poultry System** is the backend for the Ausan Poultry Farm business. Despite the name, Ausan is a **trading business**, not a farm: it buys cages, chickens, nipples, feeders, feed bags and water jugs, and resells them in pre-set **packages** through **deliveries**, across two branches. Currency is PHP. The system tracks stock, deliveries and the money that moves with them.
+
+> **Naming.** The official name of the system is **Ausan Poultry System**. The repository (`poultry-management-system`), Maven artifact (`poultry`) and Java package (`kyle.poultry`) are technical identifiers and keep their names.
 
 ## Status
 
