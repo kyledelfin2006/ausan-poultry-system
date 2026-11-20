@@ -280,15 +280,17 @@ Errors are RFC 9457 problem objects with a stable `code`, for example `409` when
 
 ### Container topology
 
-```
-            host :${APP_PORT:-8080}
-                    |
-              +-----v------+  JDBC   +-------------+
-              |    app     +--------->  postgres   |   (no published port in production)
-              | Spring Boot|         | PostgreSQL 17|
-              +------------+         +------+------+
-                                            |
-                                     volume pgdata
+```mermaid
+flowchart LR
+    host["Host port APP_PORT (default 8080)"]
+    subgraph network["Private Compose network"]
+        app["app<br/>Spring Boot"]
+        db[("postgres<br/>PostgreSQL 17<br/>no published host port")]
+        app -->|JDBC| db
+    end
+    volume[("pgdata volume")]
+    host --> app
+    db -->|persists data| volume
 ```
 
 Production runs two containers, `app` and `postgres`, on one private Compose network. There is no reverse proxy in this repository yet.
@@ -358,14 +360,17 @@ Base images are pinned to a major tag (`postgres:17`, `eclipse-temurin:25-*`), n
 
 ### Pipeline Flow
 
-```
-pull request / push to main
-        |
-        +--> unit-test        : unit + architecture tests, Javadoc -> unit coverage artifact
-        |
-        +--> integration-test : PostgreSQL tests -> merged coverage gate, summary + artifacts
-        |
-        +--> security-scan    : Trivy on production Maven dependencies (parallel)
+```mermaid
+flowchart LR
+    event["Pull request or push to main"]
+    unit["unit-test<br/>Unit and architecture tests, Javadoc"]
+    integration["integration-test<br/>PostgreSQL tests, combined coverage gate"]
+    scan["security-scan<br/>Trivy on production Maven dependencies"]
+    results["Coverage summary and artifacts"]
+    event --> unit
+    event --> scan
+    unit -->|unit coverage artifact| integration
+    integration --> results
 ```
 
 Continuous **integration** only. There is no automated delivery or deployment stage.
