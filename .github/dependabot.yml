@@ -1,0 +1,26 @@
+# Weekly update pull requests for everything the build downloads. Each one runs the normal CI, so an update that breaks
+# a test or an architecture rule is visible before it is merged. Spring Boot is updated through its parent POM, so Boot
+# and its managed libraries move together in one pull request.
+version: 2
+updates:
+  - package-ecosystem: maven
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      maven-minor-and-patch:
+        update-types: [minor, patch]
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
+
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
