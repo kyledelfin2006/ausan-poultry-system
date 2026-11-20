@@ -12,7 +12,8 @@ Downloads of ledger entries and reports for spreadsheets. They carry exactly the
 | `GET /api/reports/profit-series.csv?from=&to=&granularity=` | **OWNER only** | `GET /api/reports/profit-series` |
 
 Parameters, roles and errors are the same as for the JSON endpoint. Periods are at most 366 days (`422` otherwise, also for a
-backwards period).
+backwards period). Each file is produced from a single database read, so it is a consistent snapshot: an entry recorded while
+the file is being written is either in it or not, and no row is ever repeated or skipped.
 
 ## Downloading from the browser
 

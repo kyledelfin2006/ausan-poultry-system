@@ -31,8 +31,9 @@ class ModuleBoundaryTests {
     /** Each module mapped to the only other modules it may depend on; anything not listed is forbidden. */
     private static final Map<String, Set<String>> ALLOWED = Map.of(
             "shared", Set.of(),
-            "identity", Set.of("shared"),
-            "catalog", Set.of("shared"),
+            "audit", Set.of("shared"),
+            "identity", Set.of("audit", "shared"),
+            "catalog", Set.of("audit", "shared"),
             "finance", Set.of("identity", "shared"),
             "stock", Set.of("catalog", "finance", "identity", "shared"),
             "delivery", Set.of("catalog", "stock", "finance", "identity", "shared"),

@@ -61,6 +61,8 @@ class AuthService {
                 .subject(String.valueOf(user.id()))
                 .claim("role", user.role().name())
                 .claim("username", user.username())
+                // Checked on every request: a logout or password change raises the user's version and kills this token.
+                .claim("ver", user.tokenVersion())
                 .issuedAt(now).expiresAt(expires).build();
         String token = jwt.encode(JwtEncoderParameters.from(JwsHeader.with(MacAlgorithm.HS256).build(), claims)).getTokenValue();
         return new LoginResponse(token, expires, user.role(), user.displayName());

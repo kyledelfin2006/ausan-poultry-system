@@ -13,7 +13,6 @@ import kyle.poultry.identity.Actor;
 import kyle.poultry.shared.Csv;
 import kyle.poultry.shared.RuleViolation;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
@@ -32,8 +31,6 @@ import org.springframework.web.bind.annotation.*;
 class FinanceController {
     /** Longest period one CSV export may cover; one full leap year, like the reports. */
     private static final int MAX_EXPORT_DAYS = 366;
-    /** Entries fetched per database round trip while writing the CSV. */
-    private static final int EXPORT_PAGE_SIZE = 1000;
 
     private final FinanceApi finance;
 
@@ -91,7 +88,8 @@ class FinanceController {
 
     /**
      * Downloads every ledger entry of an inclusive period as CSV, newest first (the same order and filter as
-     * {@link #entries}, without paging). The period may span at most 366 days, so a download stays bounded.
+     * {@link #entries}, without paging). The file is read with a single query, so it is a consistent snapshot even while
+     * entries are being recorded. The period may span at most 366 days, so a download stays bounded.
      *
      * @param from first business date included (ISO yyyy-MM-dd)
      * @param to   last business date included (ISO yyyy-MM-dd)
@@ -108,15 +106,11 @@ class FinanceController {
             throw new RuleViolation("An export period cannot exceed " + MAX_EXPORT_DAYS + " days");
         var csv = Csv.builder().row("id", "occurredOn", "type", "cashDirection", "amount", "paymentMethod", "description",
                 "sourceType", "sourceId", "reversesId", "createdBy", "createdAt");
-        // Walk the ledger page by page so a long period is never held in memory as entities at once.
-        Page<EntryView> page;
-        int number = 0;
-        do {
-            page = finance.entries(from, to, type, PageRequest.of(number++, EXPORT_PAGE_SIZE));
-            for (EntryView e : page.getContent())
-                csv.row(e.id(), e.occurredOn(), e.type(), e.cashDirection(), e.amount(), e.method(), e.description(),
-                        e.sourceType(), e.sourceId(), e.reversesId(), e.createdBy(), e.createdAt());
-        } while (page.hasNext());
+        // One query = one consistent snapshot. Paging with offsets would repeat or skip rows if an entry were recorded
+        // while the file is being written; the 366-day limit keeps the single result bounded.
+        for (EntryView e : finance.entries(from, to, type, Pageable.unpaged()))
+            csv.row(e.id(), e.occurredOn(), e.type(), e.cashDirection(), e.amount(), e.method(), e.description(),
+                    e.sourceType(), e.sourceId(), e.reversesId(), e.createdBy(), e.createdAt());
         return Csv.download("ledger-entries-" + from + "-to-" + to + ".csv", csv.build());
     }
 }

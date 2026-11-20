@@ -85,4 +85,33 @@ class ReceiptAllocationTests {
 
         assertThat(costs).containsExactly(new BigDecimal("15.50"));
     }
+
+    /** Rounding every line down and then topping up never produces a negative share: 0.02 over four lines. */
+    @Test
+    void tinyCostNeverGivesALineANegativeShare() {
+        var lines = List.of(line(1, 1), line(2, 1), line(3, 1), line(4, 1));
+        var packages = Map.of(1L, pack(1, 1), 2L, pack(2, 1), 3L, pack(3, 1), 4L, pack(4, 1));
+        var costs = zeros(4);
+
+        DeliveryReceiptService.allocate(new BigDecimal("0.02"), 1, lines, packages, costs);
+
+        // Two centavos, four equal lines: the last two lines get one centavo each, none goes below zero.
+        assertThat(costs).containsExactly(new BigDecimal("0.00"), new BigDecimal("0.00"), new BigDecimal("0.01"), new BigDecimal("0.01"));
+        assertThat(costs).allSatisfy(c -> assertThat(c.signum()).isGreaterThanOrEqualTo(0));
+    }
+
+    /** Leftover centavos go to the lines with the biggest remainder, and the shares always sum to the cost. */
+    @Test
+    void leftoverCentavosGoToTheLargestRemainders() {
+        // Units 1, 2, 4 out of 7; cost 0.10 = 10 centavos: exact shares 1.43, 2.86, 5.71 -> floors 1, 2, 5 = 8, two left over.
+        var lines = List.of(line(1, 1), line(2, 2), line(3, 4));
+        var packages = Map.of(1L, pack(1, 1), 2L, pack(2, 1), 3L, pack(3, 1));
+        var costs = zeros(3);
+
+        DeliveryReceiptService.allocate(new BigDecimal("0.10"), 1, lines, packages, costs);
+
+        // Remainders are 3/7, 6/7 and 5/7 of a centavo: the 2nd and 3rd lines receive the two extra centavos.
+        assertThat(costs).containsExactly(new BigDecimal("0.01"), new BigDecimal("0.03"), new BigDecimal("0.06"));
+        assertThat(costs.stream().reduce(BigDecimal.ZERO, BigDecimal::add)).isEqualByComparingTo("0.10");
+    }
 }
