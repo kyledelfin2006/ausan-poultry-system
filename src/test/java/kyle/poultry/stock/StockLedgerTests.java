@@ -49,7 +49,8 @@ class StockLedgerTests {
     long product2Id;
     long branchId;
     Actor owner;
-    LocalDate today = LocalDate.now();
+    @Autowired java.time.Clock clock;
+    LocalDate today;
 
     /**
      * Fresh product + branch per test, so tests never see each other's stock.
@@ -57,6 +58,8 @@ class StockLedgerTests {
      */
     @BeforeEach
     void freshData() {
+        // "Today" comes from the application clock (Manila), as in the app; the machine zone (UTC on CI) can be a day behind.
+        today = LocalDate.now(clock);
         // The owner account is created at startup from the bootstrap properties; reuse it as the acting user.
         ownerId = jdbc.queryForObject("select id from app_user where username = ?", Long.class, TestcontainersConfiguration.OWNER_USERNAME);
         owner = new Actor(ownerId, Role.OWNER);

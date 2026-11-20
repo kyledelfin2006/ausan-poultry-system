@@ -1,9 +1,9 @@
-# Ausan Poultry Farm: business problem and proposed system
+# Ausan Poultry System: business problem and proposed system
 
 **Document status:** First-release proposal. Business requirements are based on the supplied draft; implementation details can be refined as development begins.
 
 **Business:** Ausan Poultry Farm  
-**Application:** Ausan Farm System  
+**Application:** Ausan Poultry System  
 **Coverage:** Two branches (Ausan is a trading business: it buys stock from suppliers and resells it through deliveries)
 
 ## Business problem

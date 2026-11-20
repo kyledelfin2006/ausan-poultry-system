@@ -44,7 +44,7 @@ class OpenApiConfig {
                 .description("Token from POST /api/auth/login, sent as `Authorization: Bearer <token>`. "
                         + "Tokens last 8 hours; there is no refresh, log in again.");
         return new OpenAPI()
-                .info(new Info().title("Ausan Farm System API").version("1")
+                .info(new Info().title("Ausan Poultry System API").version("1")
                         .description("Backend API for Ausan Poultry Farm: stock, deliveries, finance and reports. "
                                 + "Money is PHP with 2 decimals; dates are Manila business dates. Errors are RFC 9457 "
                                 + "problem details with a stable `code` (see the Problem schema)."))

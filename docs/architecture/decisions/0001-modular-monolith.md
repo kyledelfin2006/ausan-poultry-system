@@ -5,7 +5,7 @@
 
 ## Context
 
-Ausan is a small trading business with two branches and a handful of staff. It needs transactional correctness (stock and money
+The Ausan Poultry System serves Ausan, a small trading business with two branches and a handful of staff. It needs transactional correctness (stock and money
 must never disagree) far more than it needs independent scaling. One small team builds and runs it, and the operating budget
 is one server and one database.
 

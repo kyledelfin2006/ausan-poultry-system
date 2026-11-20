@@ -1,7 +1,7 @@
 # Architecture overview
 
 Ausan Poultry Farm is a **trading business** (it buys cages, chickens, nipples, feeders, feed and water jugs, and resells them in
-fixed packages through deliveries) with two branches. This backend records the stock, the deliveries and the money, and
+fixed packages through deliveries) with two branches. The **Ausan Poultry System** (this backend) records the stock, the deliveries and the money, and
 reports on them. Currency is PHP. The business context is in
 [../business-and-system-proposal.md](../business-and-system-proposal.md); this document describes the software.
 
@@ -13,7 +13,7 @@ flowchart LR
     assistant([Assistant]) --> ui
     ui["Web frontend<br/>(React, not built yet)"] -- "HTTPS, JSON, Bearer JWT" --> app
     subgraph host["Docker host"]
-        app["Ausan backend<br/>Spring Boot 4.1, Java 25"] -- "JDBC, Flyway" --> db[("PostgreSQL 17")]
+        app["Ausan Poultry System<br/>Spring Boot 4.1, Java 25"] -- "JDBC, Flyway" --> db[("PostgreSQL 17")]
     end
     ops([Operator]) -- "backup / restore scripts" --> db
     ops -- "/actuator/health" --> app

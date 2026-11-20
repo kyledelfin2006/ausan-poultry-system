@@ -1,4 +1,4 @@
-# Ausan API contract
+# Ausan Poultry System API contract
 
 This folder is the contract between the backend and the frontend. It describes what the running API does today.
 

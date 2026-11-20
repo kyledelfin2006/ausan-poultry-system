@@ -1,6 +1,6 @@
 # Architecture documentation
 
-How the Ausan backend is built, why it is built that way, and how the build keeps it that way. Start with the overview;
+How the Ausan Poultry System backend is built, why it is built that way, and how the build keeps it that way. Start with the overview;
 the rest can be read in any order.
 
 | Document | Read it to learn | Audience |

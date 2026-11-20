@@ -1438,7 +1438,7 @@
   },
   "info" : {
     "description" : "Backend API for Ausan Poultry Farm: stock, deliveries, finance and reports. Money is PHP with 2 decimals; dates are Manila business dates. Errors are RFC 9457 problem details with a stable `code` (see the Problem schema).",
-    "title" : "Ausan Farm System API",
+    "title" : "Ausan Poultry System API",
     "version" : "1"
   },
   "openapi" : "3.1.0",
