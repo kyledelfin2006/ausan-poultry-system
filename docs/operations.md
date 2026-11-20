@@ -84,7 +84,7 @@ Linux cron (`crontab -e`):
 
 Windows Task Scheduler (run as the user that runs Docker Desktop):
 ```powershell
-$action  = New-ScheduledTaskAction -Execute "pwsh.exe" -Argument "-NoProfile -File C:\ausan\scripts\backup.ps1 -BackupDir D:\ausan-backups"
+$action  = New-ScheduledTaskAction -Execute "pwsh.exe" -Argument "-NoProfile -File C:\ausan-poultry-system\scripts\backup.ps1 -BackupDir D:\ausan-backups"
 $trigger = New-ScheduledTaskTrigger -Daily -At 2am
 Register-ScheduledTask -TaskName "Ausan backup" -Action $action -Trigger $trigger
 ```
