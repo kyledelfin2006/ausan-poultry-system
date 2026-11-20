@@ -1,8 +1,10 @@
 package kyle.poultry.delivery;
 
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.math.RoundingMode;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -29,8 +31,8 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <p>Stock is taken out per product, not per package line, so a line's cost is allocated: each product's cost is split
  * over the lines that used it in proportion to the units they used (package contents are fixed after creation, so the
- * units are quantity x items). Centavo remainders go to the last line using the product, so the lines always add up to
- * the delivery's cost exactly. Read-only; package-private.
+ * units are quantity x items). The split is in whole centavos by the largest-remainder method, so no line gets a negative
+ * cost and the lines always add up to the delivery's cost exactly. Read-only; package-private.
  */
 @Service
 @Transactional(readOnly = true)
@@ -126,16 +128,28 @@ class DeliveryReceiptService {
             if (units > 0) { unitsByLine.put(i, units); totalUnits += units; }
         }
         if (totalUnits == 0) return;   // not reachable for a real delivery; the product row still carries the cost
-        BigDecimal allocated = BigDecimal.ZERO.setScale(2);
+        // Largest-remainder split in whole centavos: every line gets the rounded-down share of its units, then the
+        // centavos left over go one each to the lines with the biggest fractional remainder. No share is ever
+        // negative, no line is off by more than one centavo, and the shares add up to the product cost exactly.
+        BigInteger cents = productCost.movePointRight(2).toBigIntegerExact();
+        BigInteger units = BigInteger.valueOf(totalUnits);
         var using = unitsByLine.keySet().stream().sorted().toList();
+        BigInteger[] floor = new BigInteger[using.size()];
+        BigInteger[] remainder = new BigInteger[using.size()];
+        BigInteger assigned = BigInteger.ZERO;
         for (int n = 0; n < using.size(); n++) {
-            int i = using.get(n);
-            // The last line takes what is left, so rounding can never make the lines disagree with the product cost.
-            BigDecimal share = n == using.size() - 1 ? productCost.subtract(allocated)
-                    : productCost.multiply(BigDecimal.valueOf(unitsByLine.get(i)))
-                            .divide(BigDecimal.valueOf(totalUnits), 2, RoundingMode.HALF_UP);
-            allocated = allocated.add(share);
-            lineCosts.set(i, lineCosts.get(i).add(share));
+            var qr = cents.multiply(BigInteger.valueOf(unitsByLine.get(using.get(n)))).divideAndRemainder(units);
+            floor[n] = qr[0];
+            remainder[n] = qr[1];
+            assigned = assigned.add(qr[0]);
         }
+        int leftover = cents.subtract(assigned).intValueExact();   // fewer than one centavo per line
+        // Biggest remainder first; on a tie the later line wins, so an even split gives the odd centavo to the last line.
+        var byRemainder = new ArrayList<>(java.util.stream.IntStream.range(0, using.size()).boxed().toList());
+        byRemainder.sort(Comparator.<Integer, BigInteger>comparing(n -> remainder[n]).reversed()
+                .thenComparing(Comparator.<Integer>naturalOrder().reversed()));
+        for (int k = 0; k < leftover; k++) floor[byRemainder.get(k)] = floor[byRemainder.get(k)].add(BigInteger.ONE);
+        for (int n = 0; n < using.size(); n++)
+            lineCosts.set(using.get(n), lineCosts.get(using.get(n)).add(new BigDecimal(floor[n], 2)));
     }
 }

@@ -19,7 +19,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
  * HTTP tests (real PostgreSQL) of {@code GET /api/finance/entries.csv}: content, quoting of hostile descriptions,
- * the type filter, walking more than one internal page, roles and period validation. The data is written to 2015 and
+ * the type filter, a file larger than one page of the JSON list, roles and period validation. The data is written to 2015 and
  * 2016 dates that no other test uses.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -84,7 +84,7 @@ class EntriesExportTests {
         assertThat(api.call("GET", "/api/finance/entries.csv?from=2015-06-09&to=2015-06-09", api.owner(), null).body()).doesNotContain("only expense");
     }
 
-    /** More entries than one internal page (1,000) are all exported, none twice and none missing. */
+    /** More entries than the 1,000 a JSON page can hold are all exported, none twice and none missing. */
     @Test
     void exportsMoreThanOnePage() {
         for (int i = 0; i < 1005; i++) expense("bulk " + i, "2016-02-10");
