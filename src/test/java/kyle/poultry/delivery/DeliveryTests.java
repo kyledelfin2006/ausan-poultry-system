@@ -43,11 +43,14 @@ class DeliveryTests {
 
     long ownerId, branchId, chicken, cage, smallPackage;
     Actor owner, assistant;
-    LocalDate today = LocalDate.now();
+    @Autowired java.time.Clock clock;
+    LocalDate today;
 
     /** Fresh branch, two products and a package (24 chickens + 2 cages, PHP 70,000) per test, so tests are isolated. */
     @BeforeEach
     void freshData() {
+        // "Today" comes from the application clock (Manila), as in the app; the machine zone (UTC on CI) can be a day behind.
+        today = LocalDate.now(clock);
         ownerId = jdbc.queryForObject("select id from app_user where username = ?", Long.class, TestcontainersConfiguration.OWNER_USERNAME);
         owner = new Actor(ownerId, Role.OWNER);
         assistant = new Actor(ownerId, Role.ASSISTANT);

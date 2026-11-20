@@ -42,11 +42,14 @@ class FinanceAndCostTests {
 
     long ownerId, productId, branchId;
     Actor owner, assistant;
-    LocalDate today = LocalDate.now();
+    @Autowired java.time.Clock clock;
+    LocalDate today;
 
     /** Looks up the bootstrap owner and creates a fresh product and branch, so tests never share stock rows. */
     @BeforeEach
     void freshData() {
+        // "Today" comes from the application clock (Manila), as in the app; the machine zone (UTC on CI) can be a day behind.
+        today = LocalDate.now(clock);
         // The owner exists in every test database; assistant is the same user acting with a lower role.
         ownerId = jdbc.queryForObject("select id from app_user where username = ?", Long.class,
                 TestcontainersConfiguration.OWNER_USERNAME);
