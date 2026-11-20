@@ -88,12 +88,20 @@ class SecurityMatrixTests {
             new Row("POST", "/api/stock/movements", Access.ANY_ROLE, "/api/stock/movements", "{}"),
             new Row("GET", "/api/stock/balances", Access.ANY_ROLE, "/api/stock/balances?branchId=1", null),
             new Row("GET", "/api/stock/movements", Access.ANY_ROLE, "/api/stock/movements?productId=1&branchId=1", null),
+            new Row("GET", "/api/stock/summary", Access.ANY_ROLE, "/api/stock/summary", null),
+            new Row("GET", "/api/stock/reorder-levels", Access.ANY_ROLE, "/api/stock/reorder-levels", null),
+            new Row("PUT", "/api/stock/reorder-levels/{productId}", Access.OWNER_ONLY, "/api/stock/reorder-levels/999999", "{\"level\":5}"),
+            new Row("DELETE", "/api/stock/reorder-levels/{productId}", Access.OWNER_ONLY, "/api/stock/reorder-levels/999999", null),
             // finance
             new Row("POST", "/api/finance/expenses", Access.ANY_ROLE, "/api/finance/expenses", "{}"),
             new Row("GET", "/api/finance/entries", Access.ANY_ROLE, "/api/finance/entries", null),
+            new Row("GET", "/api/finance/entries.csv", Access.ANY_ROLE, "/api/finance/entries.csv?from=2026-01-01&to=2026-01-02", null),
             // deliveries
             new Row("POST", "/api/deliveries", Access.ANY_ROLE, "/api/deliveries", "{}"),
             new Row("GET", "/api/deliveries", Access.ANY_ROLE, "/api/deliveries", null),
+            new Row("GET", "/api/deliveries/summary", Access.ANY_ROLE, "/api/deliveries/summary", null),
+            // The receipt shows cost of goods and profit per line, so it is owner-only as a whole.
+            new Row("GET", "/api/deliveries/{id}/receipt", Access.OWNER_ONLY, "/api/deliveries/999999/receipt", null),
             new Row("GET", "/api/deliveries/{id}", Access.ANY_ROLE, "/api/deliveries/999999", null),
             new Row("POST", "/api/deliveries/{id}/done", Access.ANY_ROLE, "/api/deliveries/999999/done", "{\"completedAt\":\"2026-01-01T00:00:00Z\"}"),
             new Row("POST", "/api/deliveries/{id}/cancel", Access.OWNER_ONLY, "/api/deliveries/999999/cancel", "{\"reason\":\"matrix\"}"),
@@ -102,6 +110,15 @@ class SecurityMatrixTests {
             new Row("GET", "/api/reports/summary", Access.ANY_ROLE, "/api/reports/summary?from=2026-01-01&to=2026-01-02", null),
             new Row("GET", "/api/reports/profit", Access.OWNER_ONLY, "/api/reports/profit?from=2026-01-01&to=2026-01-02", null),
             new Row("GET", "/api/reports/inventory-value", Access.ANY_ROLE, "/api/reports/inventory-value", null),
+            new Row("GET", "/api/reports/series", Access.ANY_ROLE, "/api/reports/series?from=2026-01-01&to=2026-01-02", null),
+            new Row("GET", "/api/reports/profit-series", Access.OWNER_ONLY, "/api/reports/profit-series?from=2026-01-01&to=2026-01-02", null),
+            // Open to both roles; profit figures inside it are blanked for assistants (see dashboardHidesProfitFromAssistants).
+            new Row("GET", "/api/reports/dashboard", Access.ANY_ROLE, "/api/reports/dashboard", null),
+            new Row("GET", "/api/reports/summary.csv", Access.ANY_ROLE, "/api/reports/summary.csv?from=2026-01-01&to=2026-01-02", null),
+            new Row("GET", "/api/reports/profit.csv", Access.OWNER_ONLY, "/api/reports/profit.csv?from=2026-01-01&to=2026-01-02", null),
+            new Row("GET", "/api/reports/inventory-value.csv", Access.ANY_ROLE, "/api/reports/inventory-value.csv", null),
+            new Row("GET", "/api/reports/series.csv", Access.ANY_ROLE, "/api/reports/series.csv?from=2026-01-01&to=2026-01-02", null),
+            new Row("GET", "/api/reports/profit-series.csv", Access.OWNER_ONLY, "/api/reports/profit-series.csv?from=2026-01-01&to=2026-01-02", null),
             // operations (not Spring MVC controllers, so outside the mapping comparison)
             new Row("GET", "/actuator/health", Access.PUBLIC, "/actuator/health", null),
             new Row("GET", "/actuator/metrics", Access.OWNER_ONLY, "/actuator/metrics", null));
@@ -166,6 +183,48 @@ class SecurityMatrixTests {
             }
         }
         assertThat(failures).as("access violations").isEmpty();
+    }
+
+    /** The dashboard is open to both roles, but profit figures are only ever filled in for the owner. */
+    @Test
+    void dashboardHidesProfitFromAssistants() throws Exception {
+        var api = api();
+        String owner = api.ownerToken();
+        String assistant = api.login(api.createUser(owner, "ASSISTANT"), HttpApiClient.PASSWORD);
+        var profitFigure = java.util.regex.Pattern.compile("\"profit\":\\s*-?\\d");
+
+        var asAssistant = api.call("GET", "/api/reports/dashboard", assistant, null);
+        assertThat(asAssistant.statusCode()).isEqualTo(200);
+        assertThat(profitFigure.matcher(asAssistant.body()).find()).as("assistant dashboard: %s", asAssistant.body()).isFalse();
+
+        var asOwner = api.call("GET", "/api/reports/dashboard", owner, null);
+        assertThat(asOwner.statusCode()).isEqualTo(200);
+        assertThat(profitFigure.matcher(asOwner.body()).find()).as("owner dashboard: %s", asOwner.body()).isTrue();
+    }
+
+    /** Owner-only downloads give an assistant nothing at all: no body, no attachment header. */
+    @Test
+    void ownerOnlyExportsLeakNothingToAssistants() throws Exception {
+        var api = api();
+        String owner = api.ownerToken();
+        String assistant = api.login(api.createUser(owner, "ASSISTANT"), HttpApiClient.PASSWORD);
+        for (String path : List.of("/api/reports/profit.csv?from=2026-01-01&to=2026-01-02",
+                "/api/reports/profit-series.csv?from=2026-01-01&to=2026-01-02", "/api/deliveries/1/receipt")) {
+            var r = api.call("GET", path, assistant, null);
+            assertThat(r.statusCode()).as(path).isEqualTo(403);
+            assertThat(r.body()).as(path).doesNotContain("cost", "profit", ",");
+            assertThat(r.headers().firstValue("Content-Disposition")).as(path).isEmpty();
+        }
+    }
+
+    /** Paths that do not exist are still protected: anonymous callers get 401, so nothing can be probed without a token. */
+    @Test
+    void unknownAndSuffixVariantPathsAreNotPublic() throws Exception {
+        var api = api();
+        for (String path : List.of("/api/unknown", "/api/deliveries/summary.csv", "/api/reports/dashboard.csv", "/api/audit/", "/api/auth/me/",
+                "/api/stock/reorder-levels/", "/api/deliveries/1/receipt.csv", "/api/users/", "/actuator", "/actuator/env", "/error")) {
+            assertThat(api.call("GET", path, null, null).statusCode()).as(path).isEqualTo(401);
+        }
     }
 
     /** The matrix lists exactly the {@code /api} endpoints the application maps: nothing missing, nothing stale. */
