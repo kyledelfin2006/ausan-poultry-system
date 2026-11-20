@@ -88,6 +88,23 @@ class ErrorContractTests {
                 ErrorCodes.UNSUPPORTED_MEDIA_TYPE);
     }
 
+    /** The newer read endpoints (audit, series, deliveries filters, CSV) use the same codes as the older ones. */
+    @Test
+    void newerEndpointsShareTheErrorContract() throws Exception {
+        assertProblem(api.json("GET", "/api/audit?from=2026-02-01&to=2026-01-01", owner, null), 422, ErrorCodes.RULE_VIOLATION);
+        assertProblem(api.json("GET", "/api/deliveries?from=2026-02-01&to=2026-01-01", owner, null), 422, ErrorCodes.RULE_VIOLATION);
+        assertProblem(api.json("GET", "/api/reports/series?from=2026-01-01&to=2026-01-31&granularity=WEEK", owner, null), 400,
+                ErrorCodes.BAD_REQUEST);
+        assertProblem(api.json("GET", "/api/reports/summary.csv?from=2026-02-01&to=2026-01-01", owner, null), 422,
+                ErrorCodes.RULE_VIOLATION);
+        assertProblem(api.json("GET", "/api/deliveries/99999/receipt", owner, null), 404, ErrorCodes.NOT_FOUND);
+        // A password rule is a 422 with the shared code, and a bad token on the new /me endpoint is a bodiless 401.
+        assertProblem(api.json("POST", "/api/users", owner,
+                "{\"username\":\"pw-rule\",\"password\":\"aaaaaaaaaaaa\",\"displayName\":\"X\",\"role\":\"ASSISTANT\"}"),
+                422, ErrorCodes.RULE_VIOLATION);
+        assertThat(api.json("GET", "/api/auth/me", "garbage", null).statusCode()).isEqualTo(401);
+    }
+
     /** A broken business rule is 422 {@code RULE_VIOLATION}. */
     @Test
     void businessRuleViolationIs422() throws Exception {

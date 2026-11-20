@@ -19,7 +19,7 @@ import org.springframework.context.annotation.Configuration;
  * springdoc derives paths, parameters and request/response bodies from the controllers. This class holds the document's
  * fixed parts (title, JWT security scheme) and runs, in a fixed order, the helpers that add what the controllers cannot
  * say by themselves: error responses ({@link ErrorResponses}), paging ({@link PagingContract}), the delivery
- * idempotency header ({@link IdempotencyContract}), roles ({@link RoleExtensions}) and naming
+ * idempotency header ({@link IdempotencyContract}), CSV downloads ({@link CsvContract}), roles ({@link RoleExtensions}) and naming
  * ({@link OperationNormalizer}). A committed snapshot, {@code docs/api/openapi.json}, is compared with the generated
  * document by {@code OpenApiSnapshotTests}, so every change to the contract shows up in review.
  * <p>
@@ -76,6 +76,7 @@ class OpenApiConfig {
             ErrorResponses.apply(openApi);
             PagingContract.apply(openApi);
             IdempotencyContract.apply(openApi);
+            CsvContract.apply(openApi);
             RoleExtensions.apply(openApi);
             OperationNormalizer.apply(openApi);
         };
