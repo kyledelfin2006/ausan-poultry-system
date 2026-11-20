@@ -23,7 +23,15 @@ management:
   endpoints.web.exposure.include: health,info
   endpoint.health.show-details: never
 
+app:
+  cors:
+    # Empty by default: no browser origin may call the API cross-origin. Set APP_CORS_ALLOWED_ORIGINS to the exact
+    # address(es) the frontend is served from (comma-separated), unless the frontend shares the API's origin.
+    allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:}
+
 logging:
+  # One JSON object per line on the console, including the requestId and userId log-context values, for log tooling.
+  structured.format.console: logstash
   level:
     root: INFO
     kyle.poultry: INFO
