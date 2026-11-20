@@ -11,8 +11,11 @@ Backend for **Ausan Poultry Farm**. Despite the name, Ausan is a **trading busin
 | 3. Finance ledger and weighted average cost | built, tested |
 | 4. Packages and deliveries (create, done, cancel, refund) | built, tested |
 | 5. Reports (`/api/reports/*`: summary, profit, inventory value) | built, tested |
-| User administration, password change, login throttling, immediate token revocation | built, tested |
+| Read-side API: delivery filters and receipt, all-branch stock summary and reorder levels, dashboard, day/month series, CSV exports | built, tested |
+| User administration, password rules, login throttling, logout and immediate session revocation, `/api/auth/me` | built, tested; see [docs/security/](docs/security/README.md) |
+| Audit trail of master-data changes (`/api/audit`), request ids, structured logs, metrics, CORS, security headers | built, tested; see [docs/security/](docs/security/README.md) |
 | Delivery idempotency keys (`Idempotency-Key`) | built, tested |
+| Quality gates: coverage floor, architecture rules, concurrency tests, Javadoc lint | built; see [docs/quality/](docs/quality/README.md) |
 | Production packaging, backups, CI | built; see [docs/operations.md](docs/operations.md) |
 | API contract: OpenAPI spec, stable error codes, frontend docs | built; see [docs/api/](docs/api/README.md) |
 | Frontend (React + Vite + TypeScript) | not started |
@@ -71,7 +74,8 @@ A modular monolith in `kyle.poultry`:
 | `stock` | append-only stock movements, balances, weighted average cost |
 | `finance` | append-only financial ledger |
 | `delivery` | deliveries and their lifecycle; orchestrates stock and finance |
-| `report` | read-only period reports built from finance and stock |
+| `report` | read-only period reports, dashboard and series built from finance and stock |
+| `audit` | append-only audit trail of master-data changes |
 | `shared` | error handling and stable error codes, paging format, OpenAPI contract (`shared.openapi`), exceptions, clock |
 
 **Rule: modules talk to each other only through their public `*Api` interfaces** (`CatalogApi`, `StockApi`, `FinanceApi`). Implementations, entities and repositories are package-private. A module must never read another module's tables or classes directly.
@@ -85,6 +89,7 @@ A modular monolith in `kyle.poultry`:
 | Opening stock and adjustments | yes | no |
 | Cancel deliveries, record refunds | yes | no |
 | Edit products, branches, packages; create users | yes | no |
+| Profit reports, delivery receipts (cost and profit), reorder levels, audit trail | yes | no |
 
 ## Key business rules
 
@@ -110,6 +115,8 @@ Generate the HTML reference with `./mvnw javadoc:javadoc` (output in `target/rep
 
 - [docs/api/](docs/api/README.md): **the API contract for the frontend**: conventions, [errors](docs/api/errors.md), one page per area, the [integration guide](docs/api/integration-guide.md) and the generated [OpenAPI spec](docs/api/openapi.json)
 - [docs/architecture/](docs/architecture/README.md): system architecture, module map, data model and decision records
+- [docs/security/](docs/security/README.md): threat model, controls and the test behind each, [observability](docs/security/observability.md)
+- [docs/quality/](docs/quality/README.md): quality gates, [testing guide](docs/quality/testing-guide.md), [findings](docs/quality/findings.md)
 - [docs/operations.md](docs/operations.md): deploy, backup, restore
 - [docs/reports.md](docs/reports.md): report definitions
 - [docs/business-and-system-proposal.md](docs/business-and-system-proposal.md): business problem and scope

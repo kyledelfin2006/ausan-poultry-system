@@ -7,12 +7,18 @@ This folder is the contract between the backend and the frontend. It describes w
 | [integration-guide.md](integration-guide.md) | How to build a client: login flow, errors, money and dates, paging, retries, role-based UI, worked example. **Start here.** |
 | [errors.md](errors.md) | Every HTTP status and stable error `code`, and what the UI should do for each |
 | [auth.md](auth.md) | Login and changing your own password |
+| [auth-session.md](auth-session.md) | Who am I (`/me`), logout, password rules, request ids, CORS |
 | [users.md](users.md) | User administration (OWNER only) |
+| [audit.md](audit.md) | Audit trail of master-data changes (OWNER only) |
 | [catalog.md](catalog.md) | Products, branches, sales packages |
 | [stock.md](stock.md) | Stock movements, balances, history |
+| [stock-overview.md](stock-overview.md) | All-branch stock summary, low-stock flags, reorder levels |
 | [finance.md](finance.md) | Expenses and the append-only financial ledger |
 | [deliveries.md](deliveries.md) | Creating, finishing, cancelling and refunding deliveries; idempotency keys |
+| [deliveries-queries.md](deliveries-queries.md) | Delivery filters, status counts, owner's receipt |
 | [reports.md](reports.md) | Period summary, profit and inventory value |
+| [reports-dashboard-series.md](reports-dashboard-series.md) | Dashboard figures and day/month time series |
+| [exports-csv.md](exports-csv.md) | CSV downloads of the ledger and the reports |
 | [openapi.json](openapi.json) | Machine-readable OpenAPI 3 contract (generate a typed client from it) |
 
 The code-level reference is the Javadoc (`./mvnw javadoc:javadoc`, output in `target/reports/apidocs`).
@@ -60,34 +66,45 @@ return:
   "page": { "size": 20, "number": 0, "totalElements": 135, "totalPages": 7 } }
 ```
 
-Paged today: `GET /api/stock/movements`, `GET /api/finance/entries`, `GET /api/deliveries`. Every other list returns a
+Paged today: `GET /api/stock/movements`, `GET /api/finance/entries`, `GET /api/deliveries`, `GET /api/audit`. Every other list returns a
 plain JSON array.
 
 ### Who may call what
 
 | Area | OWNER | ASSISTANT |
 |---|---|---|
-| Login, change own password | yes | yes |
+| Login, `me`, logout, change own password | yes | yes |
 | User administration | yes | no (403) |
+| Audit trail | yes | no (403) |
 | Read products, branches, packages | yes | yes |
 | Create/edit products, branches, packages | yes | no (403) |
 | Stock: PURCHASE, DONATION, USAGE movements | yes | yes |
 | Stock: OPENING, ADJUSTMENT movements | yes | no (403) |
 | Stock balances and history | yes | yes |
 | Record expense, read ledger | yes | yes |
-| Create delivery, list, get, mark done | yes | yes |
-| Cancel delivery, refund | yes | no (403) |
-| Reports: summary, inventory value | yes | yes |
-| Report: profit | yes | no (403) |
+| Create delivery, list, filter, status counts, get, mark done | yes | yes |
+| Cancel delivery, refund, delivery receipt (cost and profit) | yes | no (403) |
+| Stock summary, read reorder levels | yes | yes |
+| Set or clear a reorder level | yes | no (403) |
+| Reports: summary, inventory value, dashboard, series | yes | yes |
+| Reports: profit, profit series | yes | no (403) |
+| CSV exports | as the matching JSON endpoint | as the matching JSON endpoint |
 
 The same information is in the spec as the `x-roles` extension on every operation, so a client can hide actions the
 current role cannot use.
 
 ## Added in the current development phase
 
-Endpoints that ship after this contract was written are listed here when their pull requests merge. Each links to its
-own page.
+Endpoints that shipped after the first version of this contract. Each links to its own page.
 
 | Endpoint | Page |
 |---|---|
-| *(none merged yet)* | |
+| `GET /api/auth/me`, `POST /api/auth/logout` | [auth-session.md](auth-session.md) |
+| `GET /api/audit` | [audit.md](audit.md) |
+| `GET /api/deliveries` filters, `GET /api/deliveries/summary`, `GET /api/deliveries/{id}/receipt` | [deliveries-queries.md](deliveries-queries.md) |
+| `GET /api/stock/summary`, `GET/PUT/DELETE /api/stock/reorder-levels` | [stock-overview.md](stock-overview.md) |
+| `GET /api/reports/dashboard`, `/series`, `/profit-series` | [reports-dashboard-series.md](reports-dashboard-series.md) |
+| `GET /api/finance/entries.csv`, `/api/reports/*.csv` | [exports-csv.md](exports-csv.md) |
+
+Behaviour that changed for existing endpoints: password changes and resets end sessions, passwords have extra rules (`422`),
+and every response has an `X-Request-Id` header; see [auth-session.md](auth-session.md).
