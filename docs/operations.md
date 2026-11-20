@@ -136,3 +136,6 @@ Workable for a small shop, with caveats:
 | App restarts repeatedly | `docker compose ... logs app`. Common: secret shorter than 32 bytes, wrong DB password, failed migration. |
 | `unhealthy` | The healthcheck calls `/actuator/health` inside the container; look for startup errors in the logs (start period is 60 s). |
 | 401 for everyone after a restart | The JWT secret changed. Log in again. |
+| 401 right after a user changed their password, or after logout | Expected: both end that user's sessions on every device. Log in again. |
+| Browser console says "blocked by CORS policy" | The frontend's exact origin is not in `APP_CORS_ALLOWED_ORIGINS` (scheme, host and port must match; no trailing slash). Fix `.env`, recreate the app container. See [security/README.md](security/README.md). |
+| Need to trace one failed action | Take the `X-Request-Id` from the response (or the frontend) and search the logs for it; logs are JSON in production. See [security/observability.md](security/observability.md). |
