@@ -126,6 +126,56 @@ public interface StockApi {
     Page<MovementView> history(long productId, long branchId, Pageable page);
 
     /**
+     * Every movement caused by one source record (for example a delivery's stock-outs and, if it was cancelled, their
+     * reversals), oldest first. Read-only; used to cost what a delivery contained.
+     *
+     * @param source the record that caused the movements
+     * @return its movements ordered by id ascending, empty when it caused none
+     */
+    List<MovementView> movementsFor(SourceRef source);
+
+    /**
+     * Stock per product across all branches with low-stock flags, ordered by product name. A branch is low on a product
+     * when the product has a reorder level and the branch holds at most that many units; a product is low when any of
+     * its branches is low (a product with a level that no branch has ever held counts as low too). Inactive products are
+     * listed only while some branch still holds them. Branches that never held a product are not listed for it.
+     *
+     * @param lowOnly true to return only the products that are low
+     * @return one entry per product
+     */
+    List<ProductStockView> summary(boolean lowOnly);
+
+    /**
+     * Lists every reorder level that is set, ordered by product name.
+     *
+     * @return the configured levels
+     */
+    List<ReorderLevelView> reorderLevels();
+
+    /**
+     * Sets (or replaces) the reorder level of a product. Owner only.
+     *
+     * @param productId the product, which must exist and be active
+     * @param level     units at or below which a branch is low; 0 or more
+     * @param actor     who sets it; must be the owner
+     * @return the stored level
+     * @throws org.springframework.security.access.AccessDeniedException if the actor is not the owner
+     * @throws kyle.poultry.shared.RuleViolation                         if the level is negative or the product is inactive
+     * @throws kyle.poultry.shared.NotFoundException                     if the product does not exist
+     */
+    ReorderLevelView setReorderLevel(long productId, long level, Actor actor);
+
+    /**
+     * Removes the reorder level of a product, so it is never flagged low. Owner only.
+     *
+     * @param productId the product
+     * @param actor     who removes it; must be the owner
+     * @throws org.springframework.security.access.AccessDeniedException if the actor is not the owner
+     * @throws kyle.poultry.shared.NotFoundException                     if the product has no level
+     */
+    void clearReorderLevel(long productId, Actor actor);
+
+    /**
      * Input for a manual movement.
      *
      * @param productId     the product affected
@@ -193,4 +243,39 @@ public interface StockApi {
      * @param averageCost weighted average cost per unit at 4 decimals
      */
     record BalanceView(long productId, String productName, String unit, long branchId, long quantity, BigDecimal averageCost) {}
+
+    /**
+     * One branch's stock of a product inside a {@link ProductStockView}.
+     *
+     * @param branchId    the branch
+     * @param quantity    units on hand
+     * @param averageCost weighted average cost per unit at 4 decimals
+     * @param low         true when the product has a reorder level and {@code quantity} is at or below it
+     */
+    record BranchStockView(long branchId, long quantity, BigDecimal averageCost, boolean low) {}
+
+    /**
+     * Stock of one product across all branches.
+     *
+     * @param productId     the product
+     * @param productName   the product's name
+     * @param unit          the product's unit of measure
+     * @param totalQuantity units on hand over all branches
+     * @param reorderLevel  the configured reorder level, or {@code null} when none is set
+     * @param low           true when the product is low (see {@link StockApi#summary})
+     * @param branches      the branches that have held the product, ordered by branch id
+     */
+    record ProductStockView(long productId, String productName, String unit, long totalQuantity, Long reorderLevel,
+                            boolean low, List<BranchStockView> branches) {}
+
+    /**
+     * A configured reorder level.
+     *
+     * @param productId   the product
+     * @param productName the product's name
+     * @param level       units at or below which a branch is low
+     * @param updatedBy   id of the user who last set it
+     * @param updatedAt   when it was last set
+     */
+    record ReorderLevelView(long productId, String productName, long level, long updatedBy, Instant updatedAt) {}
 }

@@ -2,6 +2,10 @@ package kyle.poultry.identity;
 
 import java.time.Clock;
 import java.util.List;
+import kyle.poultry.audit.AuditAction;
+import kyle.poultry.audit.AuditApi;
+import kyle.poultry.audit.AuditChanges;
+import kyle.poultry.audit.AuditEntity;
 import kyle.poultry.shared.ConflictException;
 import kyle.poultry.shared.NotFoundException;
 import kyle.poultry.shared.RuleViolation;
@@ -18,6 +22,7 @@ class UserService {
     private final AppUserRepository users;
     private final PasswordEncoder encoder;
     private final Clock clock;
+    private final AuditApi audit;
 
     /**
      * Creates the service.
@@ -25,9 +30,10 @@ class UserService {
      * @param users   user persistence
      * @param encoder BCrypt password encoder
      * @param clock   source of "now"
+     * @param audit   append-only trail of who changed what
      */
-    UserService(AppUserRepository users, PasswordEncoder encoder, Clock clock) {
-        this.users = users; this.encoder = encoder; this.clock = clock;
+    UserService(AppUserRepository users, PasswordEncoder encoder, Clock clock, AuditApi audit) {
+        this.users = users; this.encoder = encoder; this.clock = clock; this.audit = audit;
     }
 
     /**
@@ -39,12 +45,16 @@ class UserService {
      * @param role        authorization level
      * @return the created user
      * @throws ConflictException when the username is already taken
+     * @throws RuleViolation     when the password breaks the {@link PasswordPolicy}
      */
     @Transactional
     UserView create(String username, String password, String displayName, Role role) {
+        PasswordPolicy.check(password, username);
         if (users.findByUsername(username).isPresent()) throw new ConflictException("Username already taken");
         // Only the BCrypt hash is persisted.
         var u = users.save(new AppUser(username, encoder.encode(password), displayName, role, clock.instant()));
+        // The summary names the account and role but, like every audit text, never any password material.
+        audit.record(AuditAction.CREATED, AuditEntity.USER, u.id(), "username: " + username + "; role: " + role);
         return view(u);
     }
 
@@ -89,9 +99,16 @@ class UserService {
         if (isActiveOwner && !staysActiveOwner && owners.size() <= 1)
             throw new RuleViolation("The last active owner cannot be deactivated or demoted");
 
-        if (displayName != null) u.rename(displayName.strip());
+        var changes = AuditChanges.of();
+        if (displayName != null) {
+            changes.field("displayName", u.displayName(), displayName.strip());
+            u.rename(displayName.strip());
+        }
+        changes.field("role", u.role(), newRole).field("active", u.active(), newActive);
         u.changeRole(newRole);
         u.setActive(newActive);
+        // A PATCH that changed nothing leaves no trace, so the trail only shows real changes.
+        if (!changes.isEmpty()) audit.record(AuditAction.UPDATED, AuditEntity.USER, u.id(), changes.summary());
         return view(u);
     }
 
@@ -101,11 +118,16 @@ class UserService {
      * @param id          the user whose password changes
      * @param newPassword plain new password (hashed here, never stored or logged)
      * @throws NotFoundException when no user has that id
+     * @throws RuleViolation     when the password breaks the {@link PasswordPolicy}
      */
     @Transactional
     void resetPassword(long id, String newPassword) {
         var u = users.findById(id).orElseThrow(() -> new NotFoundException("User", id));
+        PasswordPolicy.check(newPassword, u.username());
         u.setPasswordHash(encoder.encode(newPassword));
+        // A reset is usually done because the old password may be known to someone else, so end that user's sessions.
+        u.revokeTokens();
+        audit.record(AuditAction.PASSWORD_RESET, AuditEntity.USER, u.id(), "password reset for " + u.username());
     }
 
     /**
@@ -117,14 +139,45 @@ class UserService {
      * @param currentPassword the caller's existing password
      * @param newPassword     the replacement
      * @throws NotFoundException when the user no longer exists
-     * @throws RuleViolation     when the current password does not match the stored hash
+     * @throws RuleViolation     when the current password does not match the stored hash, when the new one is the
+     *                           same as the current one, or when it breaks the {@link PasswordPolicy}
      */
     @Transactional
     void changeOwnPassword(long userId, String currentPassword, String newPassword) {
         var u = users.findById(userId).orElseThrow(() -> new NotFoundException("User", userId));
         // Requiring the current password stops a stolen token from silently taking over the account.
         if (!encoder.matches(currentPassword, u.passwordHash())) throw new RuleViolation("Current password is incorrect");
+        if (currentPassword.equals(newPassword)) throw new RuleViolation("The new password must differ from the current one");
+        PasswordPolicy.check(newPassword, u.username());
         u.setPasswordHash(encoder.encode(newPassword));
+        // Every existing token (including the one used for this call) stops working: the user logs in again.
+        u.revokeTokens();
+        audit.record(AuditAction.PASSWORD_CHANGED, AuditEntity.USER, u.id(), "password changed by the user");
+    }
+
+    /**
+     * Signs the user out everywhere: every token issued to them so far is refused from now on.
+     *
+     * @param userId the caller's id
+     * @throws NotFoundException when the user no longer exists
+     */
+    @Transactional
+    void signOut(long userId) {
+        var u = users.findById(userId).orElseThrow(() -> new NotFoundException("User", userId));
+        u.revokeTokens();
+        audit.record(AuditAction.SIGNED_OUT, AuditEntity.USER, u.id(), "signed out of all sessions");
+    }
+
+    /**
+     * Reads the caller's current profile.
+     *
+     * @param userId the caller's id
+     * @return the user's view
+     * @throws NotFoundException when the user no longer exists
+     */
+    @Transactional(readOnly = true)
+    UserView get(long userId) {
+        return view(users.findById(userId).orElseThrow(() -> new NotFoundException("User", userId)));
     }
 
     /** {@return how many users exist (used to decide whether to bootstrap the first owner)} */

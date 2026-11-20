@@ -1,10 +1,12 @@
 package kyle.poultry.identity;
 
+import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import java.time.Duration;
+import java.time.Instant;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -16,8 +18,9 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 /**
- * HTTP endpoints under {@code /api/auth}: login (public) and changing one's own password (any logged-in user).
- * Package-private; reached only over HTTP. Login is protected by {@link LoginThrottle}.
+ * HTTP endpoints under {@code /api/auth}: login (public), and for any logged-in user: who am I, log out, and change
+ * one's own password. Package-private; reached only over HTTP. Login is protected by {@link LoginThrottle} and counted
+ * in the {@code ausan.auth.logins} metric (tag {@code outcome}: success, failure or throttled).
  */
 @RestController
 @RequestMapping("/api/auth")
@@ -25,16 +28,18 @@ class AuthController {
     private final AuthService auth;
     private final LoginThrottle throttle;
     private final UserService users;
+    private final MeterRegistry metrics;
 
     /**
      * Creates the controller.
      *
      * @param auth     verifies credentials and issues tokens
      * @param throttle limits repeated failed logins
-     * @param users    changes passwords
+     * @param users    changes passwords, signs users out
+     * @param metrics  registry for the login and logout counters
      */
-    AuthController(AuthService auth, LoginThrottle throttle, UserService users) {
-        this.auth = auth; this.throttle = throttle; this.users = users;
+    AuthController(AuthService auth, LoginThrottle throttle, UserService users, MeterRegistry metrics) {
+        this.auth = auth; this.throttle = throttle; this.users = users; this.metrics = metrics;
     }
 
     /**
@@ -70,6 +75,7 @@ class AuthController {
         if (wait != null) {
             // Checked before verifying the password, so a blocked client learns nothing about correctness.
             long seconds = Math.max(1, wait.toSeconds() + (wait.toNanosPart() > 0 ? 1 : 0));   // round up
+            metrics.counter("ausan.auth.logins", "outcome", "throttled").increment();
             return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
                     .header(HttpHeaders.RETRY_AFTER, String.valueOf(seconds))
                     .body(ProblemDetail.forStatusAndDetail(HttpStatus.TOO_MANY_REQUESTS,
@@ -79,22 +85,53 @@ class AuthController {
             var response = auth.login(r.username(), r.password());
             // A success clears the failure counter for this key.
             throttle.recordSuccess(key);
+            metrics.counter("ausan.auth.logins", "outcome", "success").increment();
             return ResponseEntity.ok(response);
         } catch (AuthenticationException e) {
             // Every kind of failure counts, including unknown usernames, so existence is not revealed.
             throttle.recordFailure(key);
+            metrics.counter("ausan.auth.logins", "outcome", "failure").increment();
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid username or password");
         }
     }
 
     /**
-     * Lets the logged-in user change their own password.
+     * Tells the UI who is logged in, from the database (so a role change or deactivation shows up at once).
+     *
+     * @param jwt the authenticated principal
+     * @return the caller's profile and when their token expires
+     * @throws kyle.poultry.shared.NotFoundException (404) if the user was removed since the token check (not expected)
+     */
+    @GetMapping("/me")
+    MeView me(@AuthenticationPrincipal Jwt jwt) {
+        UserView u = users.get(Actor.from(jwt).userId());
+        Instant expires = jwt.getExpiresAt();
+        return new MeView(u.id(), u.username(), u.displayName(), u.role(), expires);
+    }
+
+    /**
+     * Logs the caller out of every device: all tokens issued to them so far stop working at once, including the one
+     * used for this call. Returns 204 on success; calling it again with the same token answers 401.
+     *
+     * @param jwt the authenticated principal
+     */
+    @PostMapping("/logout")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    void logout(@AuthenticationPrincipal Jwt jwt) {
+        users.signOut(Actor.from(jwt).userId());
+        metrics.counter("ausan.auth.logouts").increment();
+    }
+
+    /**
+     * Lets the logged-in user change their own password. All their tokens stop working afterwards, so the UI must
+     * send them back to the login screen.
      *
      * <p>A wrong current password answers 422, not 401: the token is valid, and clients treat 401 as "session expired".
      *
      * @param r   the current and new passwords
      * @param jwt the authenticated principal
-     * @throws kyle.poultry.shared.RuleViolation (422) when the current password is incorrect
+     * @throws kyle.poultry.shared.RuleViolation (422) when the current password is incorrect, the new one equals the
+     *                                                  current one, or it breaks the password policy
      */
     @PostMapping("/password")
     @ResponseStatus(HttpStatus.NO_CONTENT)

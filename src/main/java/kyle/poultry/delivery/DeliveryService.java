@@ -22,7 +22,9 @@ import kyle.poultry.stock.StockApi;
 import kyle.poultry.stock.StockApi.MovementView;
 import kyle.poultry.stock.StockApi.StockLine;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
@@ -322,17 +324,46 @@ class DeliveryService {
     }
 
     /**
-     * Lists deliveries, newest first.
+     * How many deliveries a selection holds in each status.
      *
-     * @param status only this status, or null for all
-     * @param page   page and size
+     * @param active    deliveries still on the road
+     * @param done      deliveries that arrived
+     * @param cancelled deliveries that were cancelled
+     * @param total     the three added together
+     */
+    record StatusCounts(long active, long done, long cancelled, long total) {}
+
+    /**
+     * Lists deliveries, newest first (by start time, then id). The caller's sort parameter is ignored so the order is
+     * always the documented one.
+     *
+     * @param filter the optional filters (the date range is read in the farm's zone)
+     * @param page   page number and size
      * @return one page of deliveries
+     * @throws RuleViolation when the filter's start date is after its end date
      */
     @Transactional(readOnly = true)
-    Page<DeliveryView> list(DeliveryStatus status, Pageable page) {
-        var result = status == null ? deliveries.findAllByOrderByStartedAtDescIdDesc(page)
-                : deliveries.findByStatusOrderByStartedAtDescIdDesc(status, page);
-        return result.map(this::view);
+    Page<DeliveryView> list(DeliveryFilter filter, Pageable page) {
+        var spec = filter.validated().toSpecification(clock.getZone());
+        var newestFirst = PageRequest.of(page.getPageNumber(), page.getPageSize(),
+                Sort.by(Sort.Order.desc("startedAt"), Sort.Order.desc("id")));
+        return deliveries.findAll(spec, newestFirst).map(this::view);
+    }
+
+    /**
+     * Counts deliveries per status for a selection. The filter's own status is ignored, since every status is counted.
+     *
+     * @param filter the optional filters
+     * @return the counts
+     * @throws RuleViolation when the filter's start date is after its end date
+     */
+    @Transactional(readOnly = true)
+    StatusCounts counts(DeliveryFilter filter) {
+        var base = filter.validated().withoutStatus();
+        long active = deliveries.count(base.withStatus(DeliveryStatus.ACTIVE).toSpecification(clock.getZone()));
+        long done = deliveries.count(base.withStatus(DeliveryStatus.DONE).toSpecification(clock.getZone()));
+        long cancelled = deliveries.count(base.withStatus(DeliveryStatus.CANCELLED).toSpecification(clock.getZone()));
+        return new StatusCounts(active, done, cancelled, active + done + cancelled);
     }
 
     /**

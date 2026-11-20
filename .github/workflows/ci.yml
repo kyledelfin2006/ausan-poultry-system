@@ -5,10 +5,18 @@ on:
   push:
     branches: [main]
 
+# A newer push to the same pull request makes the older run pointless, so cancel it. Runs on main are never cancelled,
+# so every merge keeps its own result.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 permissions:
   contents: read
 
 jobs:
+  # Compiles, runs every test (unit, integration against PostgreSQL, concurrency, architecture rules) and applies the
+  # coverage gate configured in pom.xml. Docker is preinstalled on ubuntu-latest; Testcontainers uses it for PostgreSQL.
   verify:
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -19,13 +27,56 @@ jobs:
           distribution: temurin
           java-version: '25'
           cache: maven
-      # Docker is preinstalled on ubuntu-latest; Testcontainers uses it for PostgreSQL.
-      # mvnw can be committed without the executable bit (e.g. from Windows); make sure it can run.
+      # Guard: a wrapper committed without the executable bit fails with "Permission denied" (exit 126).
       - run: chmod +x mvnw
-      - run: ./mvnw -B verify
+      - run: ./mvnw -B -ntp verify
+      # Show the coverage numbers on the run page, so a reviewer sees them without downloading anything.
+      - name: Coverage summary
+        if: always()
+        run: |
+          python3 - <<'EOF' >> "$GITHUB_STEP_SUMMARY"
+          import csv, os
+          path = "target/site/jacoco/jacoco.csv"
+          if not os.path.exists(path):
+              print("No coverage report was produced.")
+              raise SystemExit
+          rows = list(csv.DictReader(open(path)))
+          def ratio(counter, rs):
+              total = sum(int(r[counter + "_MISSED"]) + int(r[counter + "_COVERED"]) for r in rs)
+              hit = sum(int(r[counter + "_COVERED"]) for r in rs)
+              return "n/a" if total == 0 else f"{100 * hit / total:.1f}% ({hit}/{total})"
+          print("### Test coverage\n")
+          print("| Package | Lines | Branches |\n|---|---|---|")
+          packages = sorted({r["PACKAGE"] for r in rows})
+          for p in packages:
+              rs = [r for r in rows if r["PACKAGE"] == p]
+              print(f"| `{p}` | {ratio('LINE', rs)} | {ratio('BRANCH', rs)} |")
+          print(f"| **all** | **{ratio('LINE', rows)}** | **{ratio('BRANCH', rows)}** |")
+          EOF
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: jacoco-report
+          path: target/site/jacoco/
+          if-no-files-found: ignore
+          retention-days: 14
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: surefire-reports
           path: target/surefire-reports/
           if-no-files-found: ignore
+
+  # Documentation lint, in parallel with the tests and without Docker: broken Javadoc tags, links or HTML fail the build.
+  javadoc:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+      - run: chmod +x mvnw
+      - run: ./mvnw -B -ntp javadoc:javadoc

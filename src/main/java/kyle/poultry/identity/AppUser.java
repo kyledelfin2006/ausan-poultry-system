@@ -24,6 +24,11 @@ class AppUser {
     private boolean active = true;
     /** When the account was created. */
     @Column(nullable = false) private Instant createdAt;
+    /**
+     * Counter copied into every token at login (claim {@code ver}). Raising it makes all older tokens of this user
+     * invalid at once: that is how logout and password changes end sessions.
+     */
+    @Column(nullable = false) private int tokenVersion;
 
     /** Required by JPA; not for application code. */
     protected AppUser() {}
@@ -54,6 +59,8 @@ class AppUser {
     Role role() { return role; }
     /** {@return whether the account is active} */
     boolean active() { return active; }
+    /** {@return the current token version; tokens carrying any other value are refused} */
+    int tokenVersion() { return tokenVersion; }
 
     /** Replaces the display name. */
     void rename(String displayName) { this.displayName = displayName; }
@@ -61,6 +68,8 @@ class AppUser {
     void changeRole(Role role) { this.role = role; }
     /** Activates or deactivates the account. */
     void setActive(boolean active) { this.active = active; }
+    /** Invalidates every token issued so far to this user (sign-out everywhere). */
+    void revokeTokens() { this.tokenVersion++; }
     /** Replaces the password hash; the caller must pass a BCrypt hash. */
     void setPasswordHash(String hash) { this.passwordHash = hash; }
 }

@@ -6,6 +6,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import kyle.poultry.audit.AuditAction;
+import kyle.poultry.audit.AuditApi;
+import kyle.poultry.audit.AuditChanges;
+import kyle.poultry.audit.AuditEntity;
 import kyle.poultry.shared.NotFoundException;
 import kyle.poultry.shared.RuleViolation;
 import org.springframework.data.domain.Sort;
@@ -26,6 +30,7 @@ class CatalogService implements CatalogApi {
     private final ProductRepository products;
     private final BranchRepository branches;
     private final SalesPackageRepository packages;
+    private final AuditApi audit;
 
     /**
      * Creates the service.
@@ -33,9 +38,10 @@ class CatalogService implements CatalogApi {
      * @param products the product repository
      * @param branches the branch repository
      * @param packages the sales package repository
+     * @param audit    append-only trail of who changed what
      */
-    CatalogService(ProductRepository products, BranchRepository branches, SalesPackageRepository packages) {
-        this.products = products; this.branches = branches; this.packages = packages;
+    CatalogService(ProductRepository products, BranchRepository branches, SalesPackageRepository packages, AuditApi audit) {
+        this.products = products; this.branches = branches; this.packages = packages; this.audit = audit;
     }
 
     /** {@inheritDoc} */
@@ -98,7 +104,9 @@ class CatalogService implements CatalogApi {
      */
     @Transactional
     ProductView createProduct(String name, String unit, BigDecimal defaultPrice) {
-        return products.save(new Product(name, unit, defaultPrice)).view();
+        var saved = products.save(new Product(name, unit, defaultPrice)).view();
+        audit.record(AuditAction.CREATED, AuditEntity.PRODUCT, saved.id(), "name: " + saved.name() + "; unit: " + saved.unit());
+        return saved;
     }
 
     /**
@@ -115,9 +123,14 @@ class CatalogService implements CatalogApi {
     @Transactional
     ProductView updateProduct(long id, String name, String unit, BigDecimal defaultPrice, Boolean active) {
         var p = products.findById(id).orElseThrow(() -> new NotFoundException("Product", id));
+        var before = p.view();
         // No save() needed: the entity is managed, so the change is flushed when the transaction commits.
         p.update(name, unit, defaultPrice, active);
-        return p.view();
+        var after = p.view();
+        var changes = AuditChanges.of().field("name", before.name(), after.name()).field("unit", before.unit(), after.unit())
+                .field("defaultPrice", before.defaultPrice(), after.defaultPrice()).field("active", before.active(), after.active());
+        if (!changes.isEmpty()) audit.record(AuditAction.UPDATED, AuditEntity.PRODUCT, id, changes.summary());
+        return after;
     }
 
     /**
@@ -128,7 +141,9 @@ class CatalogService implements CatalogApi {
      */
     @Transactional
     BranchView createBranch(String name) {
-        return branches.save(new Branch(name)).view();
+        var saved = branches.save(new Branch(name)).view();
+        audit.record(AuditAction.CREATED, AuditEntity.BRANCH, saved.id(), "name: " + saved.name());
+        return saved;
     }
 
     /**
@@ -143,9 +158,13 @@ class CatalogService implements CatalogApi {
     @Transactional
     BranchView updateBranch(long id, String name, Boolean active) {
         var b = branches.findById(id).orElseThrow(() -> new NotFoundException("Branch", id));
+        var before = b.view();
         // No save() needed: the entity is managed, so the change is flushed when the transaction commits.
         b.update(name, active);
-        return b.view();
+        var after = b.view();
+        var changes = AuditChanges.of().field("name", before.name(), after.name()).field("active", before.active(), after.active());
+        if (!changes.isEmpty()) audit.record(AuditAction.UPDATED, AuditEntity.BRANCH, id, changes.summary());
+        return after;
     }
 
     /**
@@ -173,6 +192,8 @@ class CatalogService implements CatalogApi {
             requireActiveProduct(item.productId());
         }
         var saved = packages.save(new SalesPackage(sku, name, price, items));
+        audit.record(AuditAction.CREATED, AuditEntity.PACKAGE, saved.id(),
+                "sku: " + saved.sku() + "; name: " + saved.name() + "; price: " + saved.price().toPlainString());
         return view(saved, productNames());
     }
 
@@ -189,8 +210,12 @@ class CatalogService implements CatalogApi {
     @Transactional
     PackageView updatePackage(long id, String name, BigDecimal price, Boolean active) {
         var p = packages.findById(id).orElseThrow(() -> new NotFoundException("Package", id));
+        var beforeName = p.name(); var beforePrice = p.price(); var beforeActive = p.active();
         // No save() needed: the entity is managed, so the change is flushed when the transaction commits.
         p.update(name, price, active);
+        var changes = AuditChanges.of().field("name", beforeName, p.name()).field("price", beforePrice, p.price())
+                .field("active", beforeActive, p.active());
+        if (!changes.isEmpty()) audit.record(AuditAction.UPDATED, AuditEntity.PACKAGE, id, changes.summary());
         return view(p, productNames());
     }
 
