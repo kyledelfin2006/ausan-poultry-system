@@ -103,6 +103,17 @@ interface FinancialEntryRepository extends JpaRepository<FinancialEntry, Long> {
     List<Object[]> totalsByType(@Param("from") LocalDate from, @Param("to") LocalDate to);
 
     /**
+     * Adds up the amounts per business date and entry type inside the inclusive period. Each row is
+     * {@code [LocalDate, EntryType, BigDecimal]}; combinations with no entries do not appear. Feeds the report
+     * time series, which groups the days into days or months in memory (at most 366 days x 8 types).
+     */
+    @Query("""
+            select e.occurredOn, e.type, sum(e.amount) from FinancialEntry e
+             where e.occurredOn between :from and :to
+             group by e.occurredOn, e.type""")
+    List<Object[]> dailyTotalsByType(@Param("from") LocalDate from, @Param("to") LocalDate to);
+
+    /**
      * Net cash per payment method for the inclusive period. Each row is {@code [PaymentMethod, BigDecimal]}: cash-in
      * entries (direction equal to {@code in}) add, every other cash entry subtracts. Entries without a method
      * (sales, costs and their reversals move no cash) are excluded.
