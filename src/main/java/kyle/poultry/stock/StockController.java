@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -12,6 +13,8 @@ import kyle.poultry.finance.PaymentMethod;
 import kyle.poultry.identity.Actor;
 import kyle.poultry.stock.StockApi.BalanceView;
 import kyle.poultry.stock.StockApi.MovementView;
+import kyle.poultry.stock.StockApi.ProductStockView;
+import kyle.poultry.stock.StockApi.ReorderLevelView;
 import kyle.poultry.stock.StockApi.StockCommand;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -98,5 +101,55 @@ class StockController {
     @GetMapping("/movements")
     Page<MovementView> history(@RequestParam long productId, @RequestParam long branchId, Pageable page) {
         return stock.history(productId, branchId, page);
+    }
+
+    /**
+     * Body of {@code PUT /api/stock/reorder-levels/{productId}}.
+     *
+     * @param level units at or below which a branch counts as low on the product; 0 or more
+     */
+    record ReorderLevelBody(@NotNull @PositiveOrZero Long level) {}
+
+    /**
+     * Stock per product across all branches, with low-stock flags (any role).
+     *
+     * @param lowOnly true to list only products that are low; default false
+     * @return products ordered by name, each with its per-branch quantities
+     */
+    @GetMapping("/summary")
+    List<ProductStockView> summary(@RequestParam(defaultValue = "false") boolean lowOnly) { return stock.summary(lowOnly); }
+
+    /**
+     * Lists the configured reorder levels (any role).
+     *
+     * @return levels ordered by product name
+     */
+    @GetMapping("/reorder-levels")
+    List<ReorderLevelView> reorderLevels() { return stock.reorderLevels(); }
+
+    /**
+     * Sets or replaces a product's reorder level (owner only: 403 otherwise).
+     *
+     * @param productId the product
+     * @param b         the level
+     * @param jwt       the caller's token
+     * @return the stored level
+     */
+    @PutMapping("/reorder-levels/{productId}")
+    ReorderLevelView setReorderLevel(@PathVariable long productId, @Valid @RequestBody ReorderLevelBody b,
+                                     @AuthenticationPrincipal Jwt jwt) {
+        return stock.setReorderLevel(productId, b.level(), Actor.from(jwt));
+    }
+
+    /**
+     * Removes a product's reorder level (owner only: 403 otherwise; 404 when none is set).
+     *
+     * @param productId the product
+     * @param jwt       the caller's token
+     */
+    @DeleteMapping("/reorder-levels/{productId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    void clearReorderLevel(@PathVariable long productId, @AuthenticationPrincipal Jwt jwt) {
+        stock.clearReorderLevel(productId, Actor.from(jwt));
     }
 }

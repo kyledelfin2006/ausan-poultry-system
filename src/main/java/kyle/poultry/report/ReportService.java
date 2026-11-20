@@ -244,7 +244,7 @@ class ReportService {
      * @param to   last date of the period
      * @throws RuleViolation if a date is missing, {@code from} is after {@code to}, or the period exceeds 366 days
      */
-    private static void requirePeriod(LocalDate from, LocalDate to) {
+    static void requirePeriod(LocalDate from, LocalDate to) {
         if (from == null || to == null) throw new RuleViolation("from and to dates are required");
         if (to.isBefore(from)) throw new RuleViolation("The start date must not be after the end date");
         // Both ends are inclusive, hence +1: 2020-01-01..2020-12-31 is 366 days.
