@@ -65,6 +65,8 @@ class StockLedgerUnitTests {
     @Mock StockBalanceRepository balances;
     @Mock CatalogApi catalog;
     @Mock FinanceApi finance;
+    /** The read model behind the summary and reorder levels; recording never touches it. */
+    @Mock StockOverviewService overview;
 
     /** Hands out ids 100, 101, ... to saved movements, like the database identity column would. */
     private final AtomicLong nextId = new AtomicLong(100);
@@ -75,7 +77,7 @@ class StockLedgerUnitTests {
     /** Builds the ledger with a fixed clock before every test. */
     @BeforeEach
     void setUp() {
-        ledger = new StockLedger(movements, balances, catalog, finance, clockAt("2026-11-20T02:15:00Z"));
+        ledger = new StockLedger(movements, balances, catalog, finance, clockAt("2026-11-20T02:15:00Z"), overview);
     }
 
     /** Makes {@code movements.save} behave like the database: the entity comes back with an id. */
@@ -167,7 +169,7 @@ class StockLedgerUnitTests {
     @Test
     void todayIsTheBusinessDateNotTheUtcDate() {
         var earlyMorningInManila = clockAt("2026-11-19T17:00:00Z");
-        var early = new StockLedger(movements, balances, catalog, finance, earlyMorningInManila);
+        var early = new StockLedger(movements, balances, catalog, finance, earlyMorningInManila, overview);
         saveAssignsIds();
         balanceUpdatesSucceed();
 
