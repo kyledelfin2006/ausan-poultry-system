@@ -23,7 +23,6 @@ Suggested fix for both: trim in the request mapping (or the entity setter) and v
 | Id | Owner | Summary | Why it matters | Suggested action |
 |---|---|---|---|---|
 | Q-003 | delivery (Claude 2) | There is no upper bound on the quantity of a package line. A huge value (`2^62 + 1`, `Long.MAX_VALUE`) fails cleanly, but through a database overflow guard, so the client sees the generic `409 "The change conflicts with existing data"` and not a validation message. Nothing is written (`DeliveryEdgeCaseTests` proves it). | Poor error message; the safety depends on a database column size rather than on a rule. | Validate a sensible maximum (for example 10,000 packages) at the request and answer 400. |
-| Q-004 | identity/audit (Claude 3) | `ModuleBoundaryTests` keeps a table of allowed module dependencies. A new `audit` module is not in it. | The table is where a new module's dependencies are checked; an unregistered module may fail or pass unchecked depending on the rule. `CodingRulesTests` is module-agnostic and already covers the new module's classes. | Add `audit` and its allowed dependencies to `ModuleBoundaryTests` in the same change that introduces the module. |
 | Q-005 | all modules (unowned) | Javadoc lint runs with `-Xdoclint:all,-missing`. Under strict `-Xdoclint:all` the existing code produces at least 100 warnings (javadoc stops counting at 100): about 80 "no comment" on private fields, 13 "no @param", 4 default constructors without a comment, 3 "no @return". | The project's documentation standard asks for Javadoc everywhere; the gate currently enforces *correctness* of what is written, not *completeness*. | Document the backlog module by module, then remove `-missing` from the `<doclint>` setting in `pom.xml` so the gate also enforces completeness. |
 | Q-006 | identity (Claude 3) | `LoginThrottle` keeps its counters in memory (5 failures per 15 minutes per username and address, at most 10,000 keys). | A restart resets it and several instances would each count separately. Fine for one instance. | Move to a shared store before running more than one instance. Already listed under known limits in [../architecture/overview.md](../architecture/overview.md). |
 
@@ -46,4 +45,6 @@ Suggested fix for both: trim in the request mapping (or the entity setter) and v
 
 ## Resolved
 
-Nothing yet.
+| Id | Resolution |
+|---|---|
+| Q-004 | The `audit` module was registered in `ModuleBoundaryTests` (audit depends on `shared`; `identity` and `catalog` may depend on `audit`) in the change that introduced it. `CodingRulesTests` covers its classes without changes. |
