@@ -43,6 +43,15 @@ interface StockMovementRepository extends JpaRepository<StockMovement, Long> {
     List<StockMovement> findBySourceTypeAndSourceIdAndType(String sourceType, long sourceId, MovementType type);
 
     /**
+     * Finds every movement caused by one source record, oldest first.
+     *
+     * @param sourceType the kind of source record
+     * @param sourceId   the id of the source record
+     * @return the movements ordered by id ascending, possibly empty
+     */
+    List<StockMovement> findBySourceTypeAndSourceIdOrderByIdAsc(String sourceType, long sourceId);
+
+    /**
      * Tells whether a movement has already been reversed by another movement.
      *
      * @param reversesId the id of the original movement

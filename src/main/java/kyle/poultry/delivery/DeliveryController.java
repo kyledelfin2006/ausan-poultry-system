@@ -10,17 +10,21 @@ import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 import kyle.poultry.delivery.DeliveryService.CreateRequest;
 import kyle.poultry.delivery.DeliveryService.CreateResult;
 import kyle.poultry.delivery.DeliveryService.LineRequest;
+import kyle.poultry.delivery.DeliveryService.StatusCounts;
 import kyle.poultry.finance.PaymentMethod;
 import kyle.poultry.identity.Actor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
@@ -34,13 +38,17 @@ import org.springframework.web.server.ResponseStatusException;
 @RequestMapping("/api/deliveries")
 class DeliveryController {
     private final DeliveryService deliveries;
+    private final DeliveryReceiptService receipts;
 
     /**
      * Creates the controller.
      *
      * @param deliveries the delivery service
+     * @param receipts   builds the owner's cost-and-profit receipt
      */
-    DeliveryController(DeliveryService deliveries) { this.deliveries = deliveries; }
+    DeliveryController(DeliveryService deliveries, DeliveryReceiptService receipts) {
+        this.deliveries = deliveries; this.receipts = receipts;
+    }
 
     /**
      * One package line in the request body; unitPrice is optional: it defaults to the package price and may be
@@ -128,16 +136,55 @@ class DeliveryController {
     }
 
     /**
-     * Lists deliveries, newest first.
+     * Lists deliveries, newest first, with optional filters that are combined with AND.
      *
-     * @param status optional status filter
-     * @param page   paging parameters
+     * @param status   optional status filter
+     * @param branchId optional: only deliveries whose stock came from this branch
+     * @param customer optional: text the customer name contains, ignoring case
+     * @param from     optional first business date (ISO yyyy-MM-dd) of the start time, inclusive
+     * @param to       optional last business date (ISO yyyy-MM-dd) of the start time, inclusive
+     * @param page     paging parameters (the sort parameter is ignored)
      * @return one page of deliveries
+     * @throws kyle.poultry.shared.RuleViolation if from is after to (HTTP 422)
      */
     @GetMapping
-    Page<DeliveryView> list(@RequestParam(required = false) DeliveryStatus status, Pageable page) {
-        return deliveries.list(status, page);
+    Page<DeliveryView> list(@RequestParam(required = false) DeliveryStatus status,
+                            @RequestParam(required = false) Long branchId,
+                            @RequestParam(required = false) @Size(max = 120) String customer,
+                            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+                            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+                            Pageable page) {
+        return deliveries.list(new DeliveryFilter(status, branchId, customer, from, to), page);
     }
+
+    /**
+     * Counts deliveries per status for the same filters as the list (the status filter itself is not used).
+     *
+     * @param branchId optional branch filter
+     * @param customer optional customer-name filter
+     * @param from     optional first business date, inclusive
+     * @param to       optional last business date, inclusive
+     * @return the active, done and cancelled counts and their total
+     * @throws kyle.poultry.shared.RuleViolation if from is after to (HTTP 422)
+     */
+    @GetMapping("/summary")
+    StatusCounts summary(@RequestParam(required = false) Long branchId,
+                         @RequestParam(required = false) @Size(max = 120) String customer,
+                         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+                         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        return deliveries.counts(new DeliveryFilter(null, branchId, customer, from, to));
+    }
+
+    /**
+     * The owner's view of one delivery: what was sold, what it cost and what it earned, per package line and per
+     * product. Owner only (403 for an assistant).
+     *
+     * @param id the delivery id
+     * @return the receipt (404 when the delivery does not exist)
+     */
+    @GetMapping("/{id}/receipt")
+    @PreAuthorize("hasRole('OWNER')")
+    DeliveryReceipt receipt(@PathVariable long id) { return receipts.receipt(id); }
 
     /**
      * Reads one delivery.
