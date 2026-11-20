@@ -15,7 +15,7 @@
   <img alt="React and TypeScript frontend: planned" src="https://img.shields.io/badge/React%20%2B%20TypeScript-planned-lightgrey?logo=react&logoColor=white">
 </p>
 
-> **Naming.** The official name of the system is **Ausan Poultry System**. The repository (`poultry-management-system`), Maven artifact (`poultry`) and Java package (`kyle.poultry`) are technical identifiers and keep their names.
+> **Naming.** The official name of the system is **Ausan Poultry System**; the repository is `ausan-poultry-system`. The Maven artifact (`poultry`) and Java package (`kyle.poultry`) are technical identifiers and keep their names.
 
 ## Project Overview
 

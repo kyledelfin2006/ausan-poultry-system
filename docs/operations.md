@@ -9,7 +9,7 @@ Production runs as two containers (app and PostgreSQL 17) from `compose.prod.yam
 Prerequisites: Docker with Compose v2 on the host (Docker Desktop on Windows/macOS, Docker Engine on Linux), Git, ports 8080 (or `APP_PORT`) open to the people or proxy that need the API.
 
 ```powershell
-git clone <repo-url> ausan; cd ausan
+git clone https://github.com/kyledelfin2006/ausan-poultry-system.git; cd ausan-poultry-system
 Copy-Item .env.example .env
 ```
 
@@ -79,7 +79,7 @@ Daily is the minimum for a business that records money; copy the dump **off the 
 
 Linux cron (`crontab -e`):
 ```
-0 2 * * * cd /srv/ausan && BACKUP_DIR=/srv/ausan-backups ./scripts/backup.sh >> /var/log/ausan-backup.log 2>&1
+0 2 * * * cd /srv/ausan-poultry-system && BACKUP_DIR=/srv/ausan-backups ./scripts/backup.sh >> /var/log/ausan-backup.log 2>&1
 ```
 
 Windows Task Scheduler (run as the user that runs Docker Desktop):
