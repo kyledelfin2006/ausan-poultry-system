@@ -1,18 +1,19 @@
+<h1 align="center">Ausan Poultry System - Stock, Delivery and Finance Management</h1>
+
 <p align="center">
   <img src="assets/ausan-poultry-system-logo.png" alt="Ausan Poultry System logo" width="480">
 </p>
 
-<h1 align="center">Ausan Poultry System</h1>
-
 <!-- Badges: CI, CD, Java, Spring Boot, React, TypeScript, PostgreSQL, Docker -->
 <p align="center">
-  <a href="https://github.com/kyledelfin2006/ausan-poultry-system/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/kyledelfin2006/ausan-poultry-system/actions/workflows/ci.yml/badge.svg"></a>
-  <img alt="CD: not set up yet" src="https://img.shields.io/badge/CD-manual%20deploy-lightgrey">
+  <a href="https://github.com/kyledelfin2006/ausan-poultry-system/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/kyledelfin2006/ausan-poultry-system/ci.yml?branch=main&label=CI&logo=github"></a>
+  <img alt="CD: manual deploy" src="https://img.shields.io/badge/CD-manual-lightgrey?logo=github">
   <img alt="Java 25" src="https://img.shields.io/badge/Java-25-ED8B00?logo=openjdk&logoColor=white">
-  <img alt="Spring Boot 4.1" src="https://img.shields.io/badge/Spring%20Boot-4.1-6DB33F?logo=springboot&logoColor=white">
+  <img alt="Spring Boot 4.1.2" src="https://img.shields.io/badge/Spring%20Boot-4.1.2-6DB33F?logo=springboot&logoColor=white">
+  <img alt="React: planned" src="https://img.shields.io/badge/React-planned-lightgrey?logo=react&logoColor=white">
+  <img alt="TypeScript: planned" src="https://img.shields.io/badge/TypeScript-planned-lightgrey?logo=typescript&logoColor=white">
   <img alt="PostgreSQL 17" src="https://img.shields.io/badge/PostgreSQL-17-4169E1?logo=postgresql&logoColor=white">
-  <img alt="Docker" src="https://img.shields.io/badge/Docker-ready-2496ED?logo=docker&logoColor=white">
-  <img alt="React and TypeScript frontend: planned" src="https://img.shields.io/badge/React%20%2B%20TypeScript-planned-lightgrey?logo=react&logoColor=white">
+  <img alt="Docker" src="https://img.shields.io/badge/Docker-Containerized-2496ED?logo=docker&logoColor=white">
 </p>
 
 > **Naming.** The official name of the system is **Ausan Poultry System**; the repository is `ausan-poultry-system`. The Maven artifact (`poultry`) and Java package (`kyle.poultry`) are technical identifiers and keep their names.
