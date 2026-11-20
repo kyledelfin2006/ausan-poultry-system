@@ -10,8 +10,11 @@ Backend for **Ausan Poultry Farm**. Despite the name, Ausan is a **trading busin
 | 2. Stock ledger and balances | built, tested |
 | 3. Finance ledger and weighted average cost | built, tested |
 | 4. Packages and deliveries (create, done, cancel, refund) | built, tested |
-| Reports (`/api/reports/*`) | in progress (another agent) |
-| User administration and delivery idempotency keys | in progress (another agent) |
+| 5. Reports (`/api/reports/*`: summary, profit, inventory value) | built, tested |
+| User administration, password change, login throttling, immediate token revocation | built, tested |
+| Delivery idempotency keys (`Idempotency-Key`) | built, tested |
+| Production packaging, backups, CI | built; see [docs/operations.md](docs/operations.md) |
+| API contract: OpenAPI spec, stable error codes, frontend docs | built; see [docs/api/](docs/api/README.md) |
 | Frontend (React + Vite + TypeScript) | not started |
 
 ## Tech stack
@@ -36,7 +39,7 @@ $env:APP_BOOTSTRAP_OWNER_PASSWORD = "dev-owner-password"
 
 bash: `export APP_SECURITY_JWT_SECRET=...` and the same for the other two variables, then `./mvnw spring-boot:run`.
 
-The API is then on <http://localhost:8080>. Log in and call it as shown in [docs/api.md](docs/api.md).
+The API is then on <http://localhost:8080>. Log in and call it as shown in the [integration guide](docs/api/integration-guide.md).
 
 ### Tests
 
@@ -68,7 +71,8 @@ A modular monolith in `kyle.poultry`:
 | `stock` | append-only stock movements, balances, weighted average cost |
 | `finance` | append-only financial ledger |
 | `delivery` | deliveries and their lifecycle; orchestrates stock and finance |
-| `shared` | error handling, exceptions, clock |
+| `report` | read-only period reports built from finance and stock |
+| `shared` | error handling and stable error codes, paging format, OpenAPI contract (`shared.openapi`), exceptions, clock |
 
 **Rule: modules talk to each other only through their public `*Api` interfaces** (`CatalogApi`, `StockApi`, `FinanceApi`). Implementations, entities and repositories are package-private. A module must never read another module's tables or classes directly.
 
@@ -104,7 +108,16 @@ Generate the HTML reference with `./mvnw javadoc:javadoc` (output in `target/rep
 
 ## Documents
 
-- [docs/api.md](docs/api.md): frontend API contract
+- [docs/api/](docs/api/README.md): **the API contract for the frontend**: conventions, [errors](docs/api/errors.md), one page per area, the [integration guide](docs/api/integration-guide.md) and the generated [OpenAPI spec](docs/api/openapi.json)
+- [docs/architecture/](docs/architecture/README.md): system architecture, module map, data model and decision records
 - [docs/operations.md](docs/operations.md): deploy, backup, restore
+- [docs/reports.md](docs/reports.md): report definitions
 - [docs/business-and-system-proposal.md](docs/business-and-system-proposal.md): business problem and scope
 - [docs/design-foundation-and-stock.md](docs/design-foundation-and-stock.md): design notes
+
+### Keeping the API contract in sync
+
+The OpenAPI spec is generated from the code and committed as `docs/api/openapi.json`; `OpenApiSnapshotTests` fails
+when they differ. After an intended API change run `./mvnw test "-Dtest=OpenApiSnapshotTests" "-Dopenapi.update=true"`,
+commit the regenerated file, and update the matching page under `docs/api/`. The running app also serves the spec at
+`/v3/api-docs` (bearer token required).
