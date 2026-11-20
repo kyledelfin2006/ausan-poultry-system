@@ -24,6 +24,7 @@ import kyle.poultry.stock.MovementType;
 import kyle.poultry.stock.StockApi;
 import kyle.poultry.stock.StockApi.StockCommand;
 import kyle.poultry.stock.StockApi.StockLine;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,6 +39,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * exact-number scenarios live in historic windows (2012, 2019, 2021) that no other test writes to; the delivery test
  * works on deltas of today's figures instead.
  */
+@Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Import(TestcontainersConfiguration.class)
 class ReportTests {

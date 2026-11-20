@@ -20,6 +20,7 @@ import kyle.poultry.stock.InsufficientStockException;
 import kyle.poultry.stock.MovementType;
 import kyle.poultry.stock.StockApi;
 import kyle.poultry.stock.StockApi.StockCommand;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,6 +34,7 @@ import org.springframework.security.access.AccessDeniedException;
  * DeliveryService directly with explicit actors. Each test builds its own branch, products and package so tests are
  * independent.
  */
+@Tag("integration")
 @SpringBootTest
 @Import(TestcontainersConfiguration.class)
 class DeliveryTests {

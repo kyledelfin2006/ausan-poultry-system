@@ -228,6 +228,25 @@
                             <goal>prepare-agent</goal>
                         </goals>
                     </execution>
+                    <!-- CI combines the disjoint unit and integration coverage files before the existing report and gate. -->
+                    <execution>
+                        <id>ci-merge-coverage</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>merge</goal>
+                        </goals>
+                        <configuration>
+                            <destFile>${project.build.directory}/jacoco.exec</destFile>
+                            <fileSets>
+                                <fileSet>
+                                    <directory>${project.build.directory}/coverage</directory>
+                                    <includes>
+                                        <include>*.exec</include>
+                                    </includes>
+                                </fileSet>
+                            </fileSets>
+                        </configuration>
+                    </execution>
                     <execution>
                         <id>jacoco-report</id>
                         <phase>verify</phase>

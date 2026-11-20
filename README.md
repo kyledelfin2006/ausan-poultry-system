@@ -211,7 +211,7 @@ All production settings come from a `.env` file (template: [.env.example](.env.e
 
 ### CI/CD Secrets
 
-The CI workflow needs **no secrets**: it only reads the repository (`permissions: contents: read`) and runs tests against a Testcontainers PostgreSQL. There is no CD workflow yet, so no deployment credentials exist in GitHub.
+The CI workflow needs **no secrets**: it reads the repository (`permissions: contents: read`), runs tests against a Testcontainers PostgreSQL, and scans Maven dependencies for known vulnerabilities. There is no CD workflow yet, so no deployment credentials exist in GitHub.
 
 ### Security Policy
 
@@ -361,9 +361,11 @@ Base images are pinned to a major tag (`postgres:17`, `eclipse-temurin:25-*`), n
 ```
 pull request / push to main
         |
-        +--> verify  : ./mvnw verify  -> tests + architecture rules + coverage gate -> coverage summary + artifacts
+        +--> unit-test        : unit + architecture tests, Javadoc -> unit coverage artifact
         |
-        +--> javadoc : ./mvnw javadoc:javadoc  (parallel, no Docker)
+        +--> integration-test : PostgreSQL tests -> merged coverage gate, summary + artifacts
+        |
+        +--> security-scan    : Trivy on production Maven dependencies (parallel)
 ```
 
 Continuous **integration** only. There is no automated delivery or deployment stage.
@@ -374,8 +376,9 @@ Continuous **integration** only. There is no automated delivery or deployment st
 
 | Job | What it does |
 |---|---|
-| `verify` | Java 25 (Temurin) with Maven cache, `./mvnw -B -ntp verify` (unit, integration against PostgreSQL via Testcontainers, concurrency and ArchUnit tests, JaCoCo check), prints a per-package coverage table on the run page, uploads the `jacoco-report` artifact and, on failure, the Surefire reports |
-| `javadoc` | Javadoc lint in parallel: malformed tags, broken links or bad HTML fail the build |
+| `unit-test` | Java 25 (Temurin) with Maven cache; untagged unit and ArchUnit tests, then Javadoc lint; uploads unit JaCoCo data for the coverage gate and Surefire reports on failure |
+| `integration-test` | Waits for `unit-test`, runs only `@Tag("integration")` PostgreSQL tests, merges both jobs' JaCoCo data, enforces the existing coverage floors, publishes the coverage table and report |
+| `security-scan` | Runs independently; Trivy scans Maven compile/runtime dependencies, including transitives, and fails on HIGH or CRITICAL known vulnerabilities |
 
 ### Triggers & Quality Gates
 
@@ -389,6 +392,7 @@ Triggers: every pull request and every push to `main`. A newer push to the same 
 | Javadoc lint | a malformed tag, broken `{@link}` or bad HTML |
 | Build environment (enforcer) | Java below 25, Maven below 3.9, duplicate dependency versions |
 | Migrations | Flyway and Hibernate `validate` disagree |
+| Dependency scan | Trivy finds a HIGH or CRITICAL known vulnerability in production Maven dependencies |
 
 Details: [docs/quality/](docs/quality/README.md).
 
@@ -417,6 +421,8 @@ Upgrade by pulling the new revision and re-running the `up -d --build` command. 
 ./mvnw verify                                  # everything: tests, coverage check, report (Docker must be running)
 ./mvnw javadoc:javadoc                         # Javadoc lint
 ./mvnw -Dtest=DeliveryServiceUnitTests test    # one class (pure unit tests need no Docker)
+./mvnw clean test -DexcludedGroups=integration  # CI's unit/architecture selection (no Docker)
+./mvnw test -Dgroups=integration                 # CI's PostgreSQL selection (Docker required)
 ```
 
 The suite has about 270 tests: pure unit tests for logic, integration tests against a real PostgreSQL 17 (Testcontainers), concurrency tests, security-matrix tests, ArchUnit architecture rules and the OpenAPI snapshot. The coverage report is written to `target/site/jacoco/index.html`. Guide: [docs/quality/testing-guide.md](docs/quality/testing-guide.md).

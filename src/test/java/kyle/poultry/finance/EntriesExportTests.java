@@ -9,6 +9,7 @@ import kyle.poultry.ApiTestClient;
 import kyle.poultry.TestcontainersConfiguration;
 import kyle.poultry.identity.Actor;
 import kyle.poultry.identity.Role;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,6 +23,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * the type filter, a file larger than one page of the JSON list, roles and period validation. The data is written to 2015 and
  * 2016 dates that no other test uses.
  */
+@Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Import(TestcontainersConfiguration.class)
 class EntriesExportTests {

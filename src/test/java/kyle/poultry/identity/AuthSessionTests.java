@@ -9,6 +9,7 @@ import java.time.Clock;
 import java.time.Duration;
 import kyle.poultry.TestcontainersConfiguration;
 import kyle.poultry.support.HttpApiClient;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -24,6 +25,7 @@ import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
  * End-to-end tests of who-am-I, logout, session revocation on password changes, the password policy over HTTP, and the
  * authentication metrics. Each test creates its own random users so the shared database never causes clashes.
  */
+@Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Import(TestcontainersConfiguration.class)
 class AuthSessionTests {

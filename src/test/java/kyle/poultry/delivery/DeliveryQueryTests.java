@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.UUID;
 import kyle.poultry.ApiTestClient;
 import kyle.poultry.TestcontainersConfiguration;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,6 +25,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * <p>Deliveries are created with explicit start times around Manila midnight. Manila is UTC+8, so
  * {@code 2021-07-14T16:00:00Z} is the first instant of 15 July in Manila.
  */
+@Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Import(TestcontainersConfiguration.class)
 class DeliveryQueryTests {

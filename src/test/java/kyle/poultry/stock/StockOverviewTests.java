@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.UUID;
 import kyle.poultry.ApiTestClient;
 import kyle.poultry.TestcontainersConfiguration;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -23,6 +24,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * the reorder level, per branch) and the owner-only reorder-level endpoints. Each test builds its own products and
  * branches and removes the reorder levels it set, so the shared database stays free of leftover "low" products.
  */
+@Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Import(TestcontainersConfiguration.class)
 class StockOverviewTests {

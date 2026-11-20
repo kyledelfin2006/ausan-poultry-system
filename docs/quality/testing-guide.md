@@ -15,6 +15,11 @@ How tests are written in this project, so a new one looks like the old ones and 
 
 A mock repeats the author's assumption; only a real database can disprove it. Do not mock what you are trying to prove.
 
+CI runs the suites separately: mark every Spring Boot/PostgreSQL test class with `@Tag("integration")`. Leave pure unit
+and ArchUnit classes untagged. `./mvnw test -DexcludedGroups=integration` runs the Docker-free selection;
+`./mvnw test -Dgroups=integration` runs the PostgreSQL selection. A normal `./mvnw verify` still runs all tests
+and applies the coverage gate locally.
+
 ## 2. Conventions
 
 1. **Javadoc on every test class and method**, one sentence stating the *rule* being proven, not the mechanics. The method name is a

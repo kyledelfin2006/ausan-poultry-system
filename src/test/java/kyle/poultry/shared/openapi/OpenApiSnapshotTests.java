@@ -13,6 +13,7 @@ import java.util.TreeMap;
 import kyle.poultry.TestcontainersConfiguration;
 import kyle.poultry.shared.ApiTestClient;
 import kyle.poultry.shared.ErrorCodes;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -28,6 +29,7 @@ import tools.jackson.databind.json.JsonMapper;
  * <p>
  * Regenerate with {@code ./mvnw test -Dtest=OpenApiSnapshotTests -Dopenapi.update=true} and commit the file.
  */
+@Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Import(TestcontainersConfiguration.class)
 class OpenApiSnapshotTests {

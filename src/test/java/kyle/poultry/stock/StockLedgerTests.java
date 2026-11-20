@@ -20,6 +20,7 @@ import kyle.poultry.shared.RuleViolation;
 import kyle.poultry.shared.SourceRef;
 import kyle.poultry.stock.StockApi.StockCommand;
 import kyle.poultry.stock.StockApi.StockLine;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -37,6 +38,7 @@ import org.springframework.security.access.AccessDeniedException;
  * and the sign, role and date rules hold. Each test creates its own product and branch so tests never
  * see each other's data.
  */
+@Tag("integration")
 @SpringBootTest
 @Import(TestcontainersConfiguration.class)
 class StockLedgerTests {

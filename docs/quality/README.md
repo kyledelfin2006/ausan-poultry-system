@@ -9,9 +9,10 @@ What must be true before code is merged, how to check it on your own machine, an
 | **Tests** | Unit, integration and concurrency tests (JUnit 5) | `src/test` | any test fails |
 | **Coverage floor** | JaCoCo over the whole application | `pom.xml`, `jacoco:check` at `verify` | line coverage < 85 % or branch coverage < 75 % |
 | **Architecture rules** | Module boundaries, layering and coding rules (ArchUnit) | `ModuleBoundaryTests`, `CodingRulesTests` | a rule is broken |
-| **Javadoc lint** | Javadoc is well-formed (`-Xdoclint:all,-missing`, private members included) | `./mvnw javadoc:javadoc`, CI job `javadoc` | a malformed tag, broken `{@link}`, bad HTML |
+| **Javadoc lint** | Javadoc is well-formed (`-Xdoclint:all,-missing`, private members included) | `./mvnw javadoc:javadoc`, CI job `unit-test` | a malformed tag, broken `{@link}`, bad HTML |
 | **Build environment** | Java 25+, Maven 3.9+, no duplicate dependency versions | maven-enforcer | the toolchain is wrong |
 | **Migrations** | Flyway applies on an empty PostgreSQL and Hibernate `validate` agrees with it | every integration test | schema and entities disagree |
+| **Dependency scan** | Trivy checks production Maven dependencies | CI job `security-scan` | any HIGH or CRITICAL known vulnerability is found |
 
 The coverage floors are deliberately a little below the current values so that normal work does not trip them, and high enough that
 dropping a module's tests does. Raise them when coverage rises; never lower them to make a build pass: write the missing test.
@@ -22,6 +23,8 @@ dropping a module's tests does. Raise them when coverage rises; never lower them
 ./mvnw verify                 # everything: tests, coverage check, report (needs Docker running)
 ./mvnw javadoc:javadoc        # Javadoc lint
 ./mvnw -Dtest=DeliveryServiceUnitTests test   # one class (pure unit tests need no Docker)
+./mvnw clean test -DexcludedGroups=integration # unit/architecture selection
+./mvnw test -Dgroups=integration                # PostgreSQL selection (Docker required)
 ```
 
 The coverage report is written to `target/site/jacoco/index.html`. CI uploads it as the `jacoco-report` artifact and prints a
@@ -34,8 +37,9 @@ Docker must be running: integration tests start PostgreSQL 17 through Testcontai
 
 `.github/workflows/ci.yml` runs on every pull request and on pushes to `main`:
 
-- **verify**: `./mvnw -B -ntp verify`, then the coverage summary, the JaCoCo report artifact and, on failure, the Surefire reports.
-- **javadoc**: the Javadoc lint as a separate, quick job.
+- **unit-test**: untagged unit and architecture tests, then Javadoc lint; uploads coverage data for the combined gate.
+- **integration-test**: tagged PostgreSQL tests after `unit-test`; merges both JaCoCo files, enforces coverage, and uploads the report.
+- **security-scan**: independent Trivy scan of compile/runtime Maven dependencies, failing on HIGH or CRITICAL findings.
 - A newer push to the same pull request cancels the older run.
 
 `.github/dependabot.yml` proposes weekly updates for Maven, GitHub Actions and Docker. `.github/pull_request_template.md` is the

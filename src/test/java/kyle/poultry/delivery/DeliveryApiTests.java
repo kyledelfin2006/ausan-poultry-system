@@ -9,6 +9,7 @@ import java.net.http.HttpResponse;
 import java.util.UUID;
 import java.util.regex.Pattern;
 import kyle.poultry.TestcontainersConfiguration;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -20,6 +21,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * End-to-end HTTP tests of the catalog seed data and the delivery lifecycle against a real Postgres. Runs the whole
  * application on a random port; uses fresh branches so it does not depend on other test classes.
  */
+@Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Import(TestcontainersConfiguration.class)
 class DeliveryApiTests {
