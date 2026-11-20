@@ -1,58 +1,120 @@
+# Run the three quality gates for every proposed change and every merge to main.
 name: CI
 
+# Check pull requests before merge and check the exact commit that lands on main.
 on:
   pull_request:
   push:
     branches: [main]
 
-# A newer push to the same pull request makes the older run pointless, so cancel it. Runs on main are never cancelled,
-# so every merge keeps its own result.
+# Share a group only among runs for the same workflow and Git ref.
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
+  # Cancel superseded PR runs; retain a result for every push to main.
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+# Tests and the dependency scanner only need to read repository contents.
 permissions:
   contents: read
 
+# The unit and security jobs start together; integration waits for unit coverage.
 jobs:
-  # Compiles, runs every test (unit, integration against PostgreSQL, concurrency, architecture rules) and applies the
-  # coverage gate configured in pom.xml. Docker is preinstalled on ubuntu-latest; Testcontainers uses it for PostgreSQL.
-  verify:
+  # Run pure unit and architecture tests without starting Docker.
+  unit-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      # Fetch the exact commit being checked.
+      - uses: actions/checkout@v7
+      # Match the Maven toolchain in pom.xml and reuse downloaded dependencies.
+      - uses: actions/setup-java@v6
+        with:
+          # Temurin supplies the JDK required by Maven Enforcer.
+          distribution: temurin
+          java-version: '25'
+          # Cache ~/.m2 by pom.xml for repeat runs.
+          cache: maven
+      # The wrapper must be executable even if its Git mode was lost.
+      - run: chmod +x mvnw
+      # Exclude tagged PostgreSQL tests and write coverage to a transferable file.
+      - name: Run unit and architecture tests
+        run: ./mvnw -B -ntp clean test -DexcludedGroups=integration -Djacoco.destFile=target/coverage/unit.exec
+      # Preserve the existing Javadoc gate inside the requested three-job layout.
+      - name: Check Javadoc
+        if: ${{ !cancelled() }}
+        run: ./mvnw -B -ntp javadoc:javadoc
+      # The integration job needs this exact unit execution data for the combined gate.
+      - uses: actions/upload-artifact@v7
+        with:
+          # A named artifact transfers execution data between isolated jobs.
+          name: unit-coverage
+          path: target/coverage/unit.exec
+          # Missing coverage means the integration gate would be invalid.
+          if-no-files-found: error
+          retention-days: 1
+      # Keep failed test reports available without hiding the job failure.
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: unit-surefire-reports
+          path: target/surefire-reports/
+          if-no-files-found: ignore
+
+  # Exercise Spring Boot, PostgreSQL, HTTP, security, and concurrency behavior.
+  integration-test:
+    # Wait for the unit result and its JaCoCo artifact before calculating total coverage.
+    needs: unit-test
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
+      # Build the same commit whose unit coverage was uploaded.
       - uses: actions/checkout@v7
+      # Testcontainers uses Docker preinstalled on the Ubuntu runner.
       - uses: actions/setup-java@v6
         with:
+          # Use the same JDK and dependency cache as unit-test.
           distribution: temurin
           java-version: '25'
           cache: maven
-      # Guard: a wrapper committed without the executable bit fails with "Permission denied" (exit 126).
+      # Fix wrapper execution before invoking Maven.
       - run: chmod +x mvnw
-      - run: ./mvnw -B -ntp verify
-      # Show the coverage numbers on the run page, so a reviewer sees them without downloading anything.
+      # Restore unit data under the directory read by JaCoCo's verify-phase merge.
+      - uses: actions/download-artifact@v7
+        with:
+          # Download the artifact produced by this workflow's unit-test job.
+          name: unit-coverage
+          path: target/coverage/
+      # Run only tagged integration tests, enable the CI-only merge, and enforce the existing floors.
+      - name: Run integration tests and combined coverage gate
+        run: ./mvnw -B -ntp verify -Dgroups=integration -Djacoco.destFile=target/coverage/integration.exec -Dci.coverage.merge.skip=false
+      # Print package and total line/branch coverage directly on the run page.
       - name: Coverage summary
         if: always()
         run: |
+          # Append the merged JaCoCo CSV totals to the GitHub run summary.
           python3 - <<'EOF' >> "$GITHUB_STEP_SUMMARY"
           import csv, os
+          # A failed build may not reach JaCoCo's report phase.
           path = "target/site/jacoco/jacoco.csv"
           if not os.path.exists(path):
               print("No coverage report was produced.")
               raise SystemExit
           rows = list(csv.DictReader(open(path)))
+          # Sum counters before dividing so large and small packages are weighted correctly.
           def ratio(counter, rs):
               total = sum(int(r[counter + "_MISSED"]) + int(r[counter + "_COVERED"]) for r in rs)
               hit = sum(int(r[counter + "_COVERED"]) for r in rs)
               return "n/a" if total == 0 else f"{100 * hit / total:.1f}% ({hit}/{total})"
-          print("### Test coverage\n")
+          print("### Combined test coverage\n")
           print("| Package | Lines | Branches |\n|---|---|---|")
+          # Show each package as well as the same bundle totals used by the coverage gate.
           packages = sorted({r["PACKAGE"] for r in rows})
           for p in packages:
               rs = [r for r in rows if r["PACKAGE"] == p]
               print(f"| `{p}` | {ratio('LINE', rs)} | {ratio('BRANCH', rs)} |")
           print(f"| **all** | **{ratio('LINE', rows)}** | **{ratio('BRANCH', rows)}** |")
           EOF
+      # Keep the browsable JaCoCo HTML report for two weeks.
       - uses: actions/upload-artifact@v7
         if: always()
         with:
@@ -60,23 +122,47 @@ jobs:
           path: target/site/jacoco/
           if-no-files-found: ignore
           retention-days: 14
+      # Preserve Surefire diagnostics whenever integration or coverage fails.
       - uses: actions/upload-artifact@v7
         if: failure()
         with:
-          name: surefire-reports
+          name: integration-surefire-reports
           path: target/surefire-reports/
           if-no-files-found: ignore
 
-  # Documentation lint, in parallel with the tests and without Docker: broken Javadoc tags, links or HTML fail the build.
-  javadoc:
+  # Block known HIGH and CRITICAL vulnerabilities in production Maven dependencies.
+  security-scan:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
+      # Trivy reads the pom.xml from this commit, with no repository write access.
       - uses: actions/checkout@v7
+      # A warm Maven cache lets Trivy resolve transitive POMs without excess remote requests.
       - uses: actions/setup-java@v6
         with:
+          # Java and Maven match the build; Maven's cache also speeds up POM resolution.
           distribution: temurin
           java-version: '25'
           cache: maven
+      # Make the checked-in Maven wrapper callable on Ubuntu.
       - run: chmod +x mvnw
-      - run: ./mvnw -B -ntp javadoc:javadoc
+      # Resolve the Maven tree before scanning; this step does not run application tests.
+      - run: ./mvnw -B -ntp dependency:resolve
+      # Trivy's filesystem scanner reads Maven compile/runtime scopes, including transitives.
+      - name: Scan production dependencies
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          # The filesystem mode reads dependency metadata from this checkout.
+          scan-type: fs
+          scan-ref: pom.xml
+          # Limit this gate to known vulnerabilities in library packages.
+          scanners: vuln
+          vuln-type: library
+          # Emit a readable list in the job log.
+          format: table
+          # CRITICAL is included because it exceeds HIGH severity.
+          severity: HIGH,CRITICAL
+          # A finding or scanner error must make the job fail.
+          exit-code: '1'
+          # Block a finding even when no fixed version has been published.
+          ignore-unfixed: false

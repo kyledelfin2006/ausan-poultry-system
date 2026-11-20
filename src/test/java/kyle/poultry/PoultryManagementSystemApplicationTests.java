@@ -1,5 +1,6 @@
 package kyle.poultry;
 
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
@@ -11,6 +12,7 @@ import org.springframework.context.annotation.Import;
  * bean or a bad configuration property fails here before any more specific test runs.
  */
 @Import(TestcontainersConfiguration.class)
+@Tag("integration")
 @SpringBootTest
 class PoultryManagementSystemApplicationTests {
 

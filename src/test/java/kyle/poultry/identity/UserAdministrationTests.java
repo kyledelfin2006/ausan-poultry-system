@@ -12,6 +12,7 @@ import java.util.UUID;
 import java.util.regex.Pattern;
 import kyle.poultry.TestcontainersConfiguration;
 import kyle.poultry.shared.RuleViolation;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -24,6 +25,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * real Postgres. Users get random names so the shared database never causes clashes; tests that need a single owner
  * restore the others in a finally block.
  */
+@Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Import(TestcontainersConfiguration.class)
 class UserAdministrationTests {

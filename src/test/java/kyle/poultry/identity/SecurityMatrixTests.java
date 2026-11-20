@@ -8,6 +8,7 @@ import java.util.Set;
 import java.util.TreeSet;
 import kyle.poultry.TestcontainersConfiguration;
 import kyle.poultry.support.HttpApiClient;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -34,6 +35,7 @@ import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandl
  * leave a stale row. Owner-only rows send a VALID body: body validation runs before the role check on method-secured
  * controllers, so an invalid body would answer 400 instead of 403 and hide a missing rule.
  */
+@Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Import(TestcontainersConfiguration.class)
 class SecurityMatrixTests {

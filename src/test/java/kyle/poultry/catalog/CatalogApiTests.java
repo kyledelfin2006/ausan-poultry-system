@@ -9,6 +9,7 @@ import java.net.http.HttpResponse;
 import java.util.UUID;
 import java.util.regex.Pattern;
 import kyle.poultry.TestcontainersConfiguration;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -26,6 +27,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * the tests are independent of each other and of the seed data. Two tests are {@link Disabled}: each reproduces a defect
  * listed in {@code docs/quality/findings.md} and will start passing when the defect is fixed.
  */
+@Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Import(TestcontainersConfiguration.class)
 class CatalogApiTests {

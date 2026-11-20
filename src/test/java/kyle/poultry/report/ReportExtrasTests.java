@@ -23,6 +23,7 @@ import kyle.poultry.stock.MovementType;
 import kyle.poultry.stock.StockApi;
 import kyle.poultry.stock.StockApi.StockCommand;
 import kyle.poultry.stock.StockApi.StockLine;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,6 +41,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * payment of a cancelled delivery is cumulative from the beginning of time, so a cancellation dated before another test's
  * period end would change that test's exact figure.
  */
+@Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Import(TestcontainersConfiguration.class)
 class ReportExtrasTests {

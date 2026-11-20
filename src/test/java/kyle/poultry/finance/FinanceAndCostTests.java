@@ -18,6 +18,7 @@ import kyle.poultry.stock.StockApi;
 import kyle.poultry.stock.StockApi.MovementView;
 import kyle.poultry.stock.StockApi.StockCommand;
 import kyle.poultry.stock.StockApi.StockLine;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,6 +33,7 @@ import org.springframework.security.access.AccessDeniedException;
  * purchases and average cost, sale/cost/payment linkage, cancellation reversals, refunds, amount validation and
  * the database's own consistency checks. Each test uses fresh product and branch rows because the database is shared.
  */
+@Tag("integration")
 @SpringBootTest
 @Import(TestcontainersConfiguration.class)
 class FinanceAndCostTests {

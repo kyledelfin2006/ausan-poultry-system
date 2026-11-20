@@ -25,6 +25,7 @@ import kyle.poultry.stock.StockApi;
 import kyle.poultry.stock.StockApi.StockCommand;
 import kyle.poultry.support.ConcurrentRunner;
 import kyle.poultry.support.ConcurrentRunner.Outcome;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -43,6 +44,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * a task throws anything other than the failure the business rule predicts (a deadlock or a constraint error would
  * show up as an unexpected exception).
  */
+@Tag("integration")
 @SpringBootTest
 @Import(TestcontainersConfiguration.class)
 class DeliveryConcurrencyTests {

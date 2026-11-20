@@ -19,6 +19,7 @@ import kyle.poultry.shared.RuleViolation;
 import kyle.poultry.stock.MovementType;
 import kyle.poultry.stock.StockApi;
 import kyle.poultry.stock.StockApi.StockCommand;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,6 +36,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * "Fail cleanly" means three things in each test: an exception of a predictable kind, no delivery row, and no change to any
  * balance.
  */
+@Tag("integration")
 @SpringBootTest
 @Import(TestcontainersConfiguration.class)
 class DeliveryEdgeCaseTests {

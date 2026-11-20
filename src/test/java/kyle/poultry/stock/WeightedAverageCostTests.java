@@ -17,6 +17,7 @@ import kyle.poultry.identity.Role;
 import kyle.poultry.shared.SourceRef;
 import kyle.poultry.stock.StockApi.StockCommand;
 import kyle.poultry.stock.StockApi.StockLine;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,6 +35,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * usage, adjustments and delivery stock-outs and reversals compared, step by step, with a simple {@link BigDecimal}
  * model of the same rule. After every step the stored balance must also equal the sum of the ledger.
  */
+@Tag("integration")
 @SpringBootTest
 @Import(TestcontainersConfiguration.class)
 class WeightedAverageCostTests {

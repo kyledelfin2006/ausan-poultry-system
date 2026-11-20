@@ -13,6 +13,7 @@ import java.util.Map;
 import java.util.regex.Pattern;
 import kyle.poultry.TestcontainersConfiguration;
 import kyle.poultry.support.HttpApiClient;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -27,6 +28,7 @@ import org.springframework.transaction.IllegalTransactionStateException;
  * never recorded, the owner-only read endpoint, and the database-level append-only guarantee. Names are random so the
  * shared database never causes clashes.
  */
+@Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Import(TestcontainersConfiguration.class)
 class AuditTrailTests {

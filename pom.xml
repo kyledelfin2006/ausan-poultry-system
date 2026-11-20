@@ -28,6 +28,8 @@
     </scm>
     <properties>
         <java.version>25</java.version>
+        <!-- Only the split CI run merges coverage; an ordinary local verify uses its own fresh jacoco.exec. -->
+        <ci.coverage.merge.skip>true</ci.coverage.merge.skip>
         <!-- springdoc 3.x is the Spring Boot 4 line; the "-api" starter serves the spec only (no Swagger UI). -->
         <springdoc.version>3.2.0</springdoc.version>
     </properties>
@@ -227,6 +229,26 @@
                         <goals>
                             <goal>prepare-agent</goal>
                         </goals>
+                    </execution>
+                    <!-- CI combines the disjoint unit and integration coverage files before the existing report and gate. -->
+                    <execution>
+                        <id>ci-merge-coverage</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>merge</goal>
+                        </goals>
+                        <configuration>
+                            <skip>${ci.coverage.merge.skip}</skip>
+                            <destFile>${project.build.directory}/jacoco.exec</destFile>
+                            <fileSets>
+                                <fileSet>
+                                    <directory>${project.build.directory}/coverage</directory>
+                                    <includes>
+                                        <include>*.exec</include>
+                                    </includes>
+                                </fileSet>
+                            </fileSets>
+                        </configuration>
                     </execution>
                     <execution>
                         <id>jacoco-report</id>

@@ -7,6 +7,7 @@ import java.net.http.HttpResponse;
 import java.util.UUID;
 import kyle.poultry.TestcontainersConfiguration;
 import kyle.poultry.support.HttpApiClient;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
@@ -17,6 +18,7 @@ import org.springframework.context.annotation.Import;
  * response headers, the request id header, and who may read operational (actuator) endpoints. The allowed origins
  * come from the default {@code application.yaml} (local frontend dev servers).
  */
+@Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Import(TestcontainersConfiguration.class)
 class SecurityHeadersAndCorsTests {

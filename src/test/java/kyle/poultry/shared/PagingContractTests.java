@@ -3,6 +3,7 @@ package kyle.poultry.shared;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import kyle.poultry.TestcontainersConfiguration;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
@@ -13,6 +14,7 @@ import org.springframework.context.annotation.Import;
  * {@code { "content": [...], "page": { size, number, totalElements, totalPages } }}, with none of Spring Data's
  * internal fields.
  */
+@Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Import(TestcontainersConfiguration.class)
 class PagingContractTests {
