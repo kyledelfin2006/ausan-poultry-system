@@ -15,7 +15,7 @@ mistake is fixed by recording a correcting movement (an `ADJUSTMENT`, owner only
 | unitCost | number | PURCHASE | >= 0, up to 2 decimals. Required for `PURCHASE`; `OPENING`/`DONATION` default to 0. |
 | paymentMethod | `CASH` \| `GCASH` \| `BANK_TRANSFER` \| `OTHER` | PURCHASE | How the supplier was paid. |
 | reason | string | USAGE, ADJUSTMENT | max 255. For chickens, put the age in weeks here (e.g. `6 weeks old`). |
-| occurredOn | date | yes | not in the future |
+| occurredOn | date | yes | not in the future; assistants may backdate at most 7 calendar days, owners may use any past date |
 
 - A `PURCHASE` also appends a `STOCK_PURCHASE` row to the [finance ledger](finance.md) (cash out) in the same
   transaction and updates the weighted average cost.
@@ -36,7 +36,8 @@ product or branch, missing payment method on a purchase, a type that only delive
 
 ## `GET /api/stock/balances?branchId=` (any role)
 
-`branchId` is optional (omit it for all branches). `200`, a plain array:
+`branchId` is optional (omit it for all branches). `200`, a plain array. Owners receive `averageCost`; assistants receive
+the same quantities and product details with `averageCost` omitted:
 
 ```json
 [ { "productId": 2, "productName": "Chicken", "unit": "head", "branchId": 1, "quantity": 100, "averageCost": 380.0000 } ]
@@ -44,6 +45,11 @@ product or branch, missing payment method on a purchase, a type that only delive
 
 ## `GET /api/stock/movements?productId=&branchId=&page=&size=` (any role)
 
-`productId` and `branchId` are required (`400` if missing). A [paged](README.md#paging) list of the movement shape
-above, newest first. Movements produced by deliveries carry `sourceType: "DELIVERY"` and the delivery's `sourceId`;
-reversals carry `reversesId`.
+`productId` and `branchId` are required (`400` if missing). A [paged](README.md#paging) list of movements, newest
+first. Owners receive every `unitCost`; assistants receive it only on `PURCHASE` rows they recorded themselves. Cost fields
+are omitted from their other rows. Movements produced by deliveries carry `sourceType: "DELIVERY"` and the delivery's
+`sourceId`; reversals carry `reversesId`.
+
+`GET /api/stock/summary` keeps product and branch quantities visible to both roles; the per-branch `averageCost` field
+is omitted for assistants. They can see their submitted supplier price in the purchase response and later on their own
+`PURCHASE` history rows.

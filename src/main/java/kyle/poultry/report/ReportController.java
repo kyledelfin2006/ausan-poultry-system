@@ -1,6 +1,7 @@
 package kyle.poultry.report;
 
 import java.time.LocalDate;
+import java.util.List;
 import kyle.poultry.identity.Actor;
 import kyle.poultry.report.DashboardService.Dashboard;
 import kyle.poultry.report.ReportService.InventoryValue;
@@ -9,6 +10,7 @@ import kyle.poultry.report.ReportService.Summary;
 import kyle.poultry.report.SeriesService.Granularity;
 import kyle.poultry.report.SeriesService.ProfitSeries;
 import kyle.poultry.report.SeriesService.Series;
+import kyle.poultry.report.SeriesService.SeriesPoint;
 import kyle.poultry.shared.Csv;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
@@ -44,7 +46,7 @@ class ReportController {
     }
 
     /**
-     * Sales, collections, purchases, expenses and cash movement for a period; open to owner and assistant.
+     * Sales and collections are open to both roles. Cost and cash-flow fields are omitted for assistants.
      *
      * @param from first business date included (ISO yyyy-MM-dd)
      * @param to   last business date included (ISO yyyy-MM-dd)
@@ -53,8 +55,9 @@ class ReportController {
      */
     @GetMapping("/summary")
     Summary summary(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
-                    @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
-        return reports.summary(from, to);
+                    @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+                    @AuthenticationPrincipal Jwt jwt) {
+        return visibleSummary(reports.summary(from, to), Actor.from(jwt).isOwner());
     }
 
     /**
@@ -73,15 +76,16 @@ class ReportController {
     }
 
     /**
-     * Value of the stock on hand now, per branch and product; open to owner and assistant.
+     * Value of the stock on hand now, per branch and product; owner only.
      *
      * @return the inventory valuation
      */
     @GetMapping("/inventory-value")
+    @PreAuthorize("hasRole('OWNER')")
     InventoryValue inventoryValue() { return reports.inventoryValue(); }
 
     /**
-     * The summary report cut into one point per day or month; open to owner and assistant.
+     * The summary report cut into one point per day or month; cost and cash-flow fields are omitted for assistants.
      *
      * @param from        first business date included (ISO yyyy-MM-dd)
      * @param to          last business date included (ISO yyyy-MM-dd)
@@ -92,8 +96,9 @@ class ReportController {
     @GetMapping("/series")
     Series series(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
                   @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
-                  @RequestParam(defaultValue = "DAY") Granularity granularity) {
-        return series.series(from, to, granularity);
+                  @RequestParam(defaultValue = "DAY") Granularity granularity,
+                  @AuthenticationPrincipal Jwt jwt) {
+        return visibleSeries(series.series(from, to, granularity), Actor.from(jwt).isOwner());
     }
 
     /**
@@ -114,10 +119,10 @@ class ReportController {
     }
 
     /**
-     * Today's and the month's figures, stock value and low-stock count for the home screen. Profit figures are filled
-     * in for the owner only and are {@code null} for an assistant.
+     * Today's and the month's safe sales and collection figures and low-stock count. Cost, cash-flow, stock-value and
+     * profit fields are owner-only and omitted for assistants.
      *
-     * @param jwt the caller's token, which decides whether profit is included
+     * @param jwt the caller's token, which decides which fields are included
      * @return the dashboard
      */
     @GetMapping("/dashboard")
@@ -132,8 +137,10 @@ class ReportController {
      */
     @GetMapping("/summary.csv")
     ResponseEntity<byte[]> summaryCsv(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
-                                      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
-        return Csv.download("summary-" + from + "-to-" + to + ".csv", ReportCsv.summary(reports.summary(from, to)));
+                                      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+                                      @AuthenticationPrincipal Jwt jwt) {
+        return Csv.download("summary-" + from + "-to-" + to + ".csv",
+                ReportCsv.summary(visibleSummary(reports.summary(from, to), Actor.from(jwt).isOwner())));
     }
 
     /**
@@ -151,11 +158,12 @@ class ReportController {
     }
 
     /**
-     * The inventory valuation as a CSV download; open to owner and assistant.
+     * The inventory valuation as a CSV download; owner only.
      *
      * @return a {@code text/csv} attachment with one row per branch and product, then a TOTAL row
      */
     @GetMapping("/inventory-value.csv")
+    @PreAuthorize("hasRole('OWNER')")
     ResponseEntity<byte[]> inventoryValueCsv() {
         return Csv.download("inventory-value.csv", ReportCsv.inventoryValue(reports.inventoryValue()));
     }
@@ -171,8 +179,10 @@ class ReportController {
     @GetMapping("/series.csv")
     ResponseEntity<byte[]> seriesCsv(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
                                      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
-                                     @RequestParam(defaultValue = "DAY") Granularity granularity) {
-        return Csv.download("series-" + from + "-to-" + to + ".csv", ReportCsv.series(series.series(from, to, granularity)));
+                                     @RequestParam(defaultValue = "DAY") Granularity granularity,
+                                     @AuthenticationPrincipal Jwt jwt) {
+        return Csv.download("series-" + from + "-to-" + to + ".csv",
+                ReportCsv.series(visibleSeries(series.series(from, to, granularity), Actor.from(jwt).isOwner())));
     }
 
     /**
@@ -190,5 +200,19 @@ class ReportController {
                                            @RequestParam(defaultValue = "DAY") Granularity granularity) {
         return Csv.download("profit-series-" + from + "-to-" + to + ".csv",
                 ReportCsv.profitSeries(series.profitSeries(from, to, granularity)));
+    }
+
+    private static Summary visibleSummary(Summary summary, boolean owner) {
+        return owner ? summary : new Summary(summary.period(), summary.sales(), summary.collections(), null, null, null);
+    }
+
+    private static Series visibleSeries(Series result, boolean owner) {
+        if (owner) return result;
+        List<SeriesPoint> points = result.points().stream().map(ReportController::withoutCosts).toList();
+        return new Series(result.period(), result.granularity(), points, withoutCosts(result.totals()));
+    }
+
+    private static SeriesPoint withoutCosts(SeriesPoint point) {
+        return new SeriesPoint(point.from(), point.to(), point.netSales(), point.netCollected(), null, null, null);
     }
 }

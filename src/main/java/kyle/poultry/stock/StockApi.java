@@ -8,6 +8,7 @@ import java.util.List;
 import kyle.poultry.finance.PaymentMethod;
 import kyle.poultry.identity.Actor;
 import kyle.poultry.shared.SourceRef;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -38,16 +39,17 @@ public interface StockApi {
      * A PURCHASE also records the cash paid in the finance ledger, in the same transaction.
      * <p>
      * Validated: the type is one a person may enter ({@link MovementType#MANUAL}); opening and adjustment
-     * need the owner role; the date is not in the future; the quantity sign matches the type; usage and
+     * need the owner role; future dates are rejected and assistants may backdate at most 7 calendar days;
+     * the quantity sign matches the type; usage and
      * adjustment carry a reason; a purchase has a payment method and a unit cost above zero; the product
      * and branch exist and are active. Validation happens before any write.
      *
      * @param cmd   the movement to record
      * @param actor the signed-in user, stored as the creator and checked for owner-only types
      * @return the saved movement, including the cost stamped on it
-     * @throws kyle.poultry.shared.RuleViolation if the type is not manual, the date is in the future or
-     *         missing, the sign or cost is wrong for the type, a reason or payment method is missing, or
-     *         the product or branch is inactive
+     * @throws kyle.poultry.shared.RuleViolation if the type is not manual, the date is missing or outside the
+     *         actor's allowed range, the sign or cost is wrong for the type, a reason or payment method is missing,
+     *         or the product or branch is inactive
      * @throws org.springframework.security.access.AccessDeniedException if a non-owner records opening
      *         stock or an adjustment
      * @throws InsufficientStockException if a negative quantity exceeds what the branch holds
@@ -184,7 +186,7 @@ public interface StockApi {
      * @param quantityDelta signed units: positive adds stock, negative removes it, zero is never allowed
      * @param unitCost      required for PURCHASE; OPENING and DONATION default to zero
      * @param reason        free text, required for USAGE and ADJUSTMENT
-     * @param occurredOn    the business date, which may not be in the future
+     * @param occurredOn    the business date; assistants may backdate at most 7 days, owners may use any past date
      * @param paymentMethod required for PURCHASE (how the supplier was paid)
      */
     record StockCommand(long productId, long branchId, MovementType type, long quantityDelta,
@@ -206,7 +208,8 @@ public interface StockApi {
      * @param branchId      the branch affected
      * @param type          the movement type
      * @param quantityDelta signed units added (positive) or removed (negative)
-     * @param unitCost      cost per unit at 4 decimals, or {@code null} if none was recorded
+     * @param unitCost      cost per unit at 4 decimals, or {@code null} if none was recorded; assistant history reads
+     *                      include it only for PURCHASE rows they recorded themselves
      * @param reason        the free-text reason, if any
      * @param occurredOn    the business date
      * @param sourceType    the kind of record that caused it (e.g. DELIVERY), or {@code null}
@@ -216,7 +219,7 @@ public interface StockApi {
      * @param createdAt     the moment it was recorded
      */
     record MovementView(long id, long productId, long branchId, MovementType type, long quantityDelta,
-                        BigDecimal unitCost, String reason, LocalDate occurredOn,
+                        @JsonInclude(JsonInclude.Include.NON_NULL) BigDecimal unitCost, String reason, LocalDate occurredOn,
                         String sourceType, Long sourceId, Long reversesId, long createdBy, Instant createdAt) {
 
         /**
@@ -240,19 +243,21 @@ public interface StockApi {
      * @param unit        the product's unit of measure
      * @param branchId    the branch
      * @param quantity    units on hand
-     * @param averageCost weighted average cost per unit at 4 decimals
+     * @param averageCost weighted average cost per unit at 4 decimals; omitted from assistant responses
      */
-    record BalanceView(long productId, String productName, String unit, long branchId, long quantity, BigDecimal averageCost) {}
+    record BalanceView(long productId, String productName, String unit, long branchId, long quantity,
+                       @JsonInclude(JsonInclude.Include.NON_NULL) BigDecimal averageCost) {}
 
     /**
      * One branch's stock of a product inside a {@link ProductStockView}.
      *
      * @param branchId    the branch
      * @param quantity    units on hand
-     * @param averageCost weighted average cost per unit at 4 decimals
+     * @param averageCost weighted average cost per unit at 4 decimals; omitted from assistant responses
      * @param low         true when the product has a reorder level and {@code quantity} is at or below it
      */
-    record BranchStockView(long branchId, long quantity, BigDecimal averageCost, boolean low) {}
+    record BranchStockView(long branchId, long quantity,
+                           @JsonInclude(JsonInclude.Include.NON_NULL) BigDecimal averageCost, boolean low) {}
 
     /**
      * Stock of one product across all branches.

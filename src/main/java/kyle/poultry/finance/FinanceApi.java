@@ -3,6 +3,7 @@ package kyle.poultry.finance;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Map;
 import kyle.poultry.finance.EntryType.CashDirection;
 import kyle.poultry.identity.Actor;
@@ -29,7 +30,8 @@ public interface FinanceApi {
      * @param source      the record that caused it (e.g. the stock movement)
      * @param actor       who is recording it
      * @return the stored entry
-     * @throws kyle.poultry.shared.RuleViolation if the amount is not a positive peso value or the method is missing
+     * @throws kyle.poultry.shared.RuleViolation if the amount is not a positive peso value, the method is missing,
+     *         or the business date is outside the actor's allowed range
      */
     EntryView recordStockPurchase(BigDecimal amount, PaymentMethod method, LocalDate on, String description,
                                   SourceRef source, Actor actor);
@@ -39,12 +41,12 @@ public interface FinanceApi {
      *
      * @param amount      cash paid, positive, at most 2 decimals
      * @param method      how it was paid
-     * @param on          business date, not in the future
+     * @param on          business date; assistants may backdate at most 7 days, owners may use any past date
      * @param description what the money was for; required
      * @param actor       who is recording it
      * @return the stored entry
-     * @throws kyle.poultry.shared.RuleViolation if the description is blank, the date is in the future or the
-     *                                           amount is invalid
+     * @throws kyle.poultry.shared.RuleViolation if the description is blank, the date is outside the actor's allowed
+     *                                           range, or the amount is invalid
      */
     EntryView recordExpense(BigDecimal amount, PaymentMethod method, LocalDate on, String description, Actor actor);
 
@@ -80,7 +82,8 @@ public interface FinanceApi {
      * @param source the record it pays for (e.g. the delivery); required
      * @param actor  who is recording it
      * @return the stored entry
-     * @throws kyle.poultry.shared.RuleViolation if the source or method is missing or the amount is invalid
+     * @throws kyle.poultry.shared.RuleViolation if the source or method is missing, the date is outside the actor's
+     *         allowed range, or the amount is invalid
      */
     EntryView recordPayment(BigDecimal amount, PaymentMethod method, LocalDate on, SourceRef source, Actor actor);
 
@@ -104,8 +107,8 @@ public interface FinanceApi {
      * @param source      the record being refunded; required
      * @param actor       who is refunding; must be the owner
      * @return the stored entry
-     * @throws kyle.poultry.shared.RuleViolation if the amount exceeds the payment still held, the source is missing
-     *                                           or the date is in the future
+     * @throws kyle.poultry.shared.RuleViolation if the amount exceeds the payment still held, the source is missing,
+     *                                           or the date is outside the actor's allowed range
      * @throws org.springframework.security.access.AccessDeniedException if the actor is not the owner
      */
     EntryView recordRefund(BigDecimal amount, PaymentMethod method, LocalDate on, String description,
@@ -118,6 +121,15 @@ public interface FinanceApi {
      * @return the amount still held, zero if nothing
      */
     BigDecimal retainedPayment(SourceRef source);
+
+    /**
+     * Returns retained payment totals for multiple sources in one grouped query.
+     *
+     * @param sourceType kind of record
+     * @param sourceIds  ids to include; an empty list returns an empty map
+     * @return retained amount by source id, scale 2
+     */
+    Map<Long, BigDecimal> retainedPayments(String sourceType, List<Long> sourceIds);
 
     /**
      * Sum of amounts per entry type for the inclusive business-date period. Every {@link EntryType} is present;
@@ -166,16 +178,18 @@ public interface FinanceApi {
 
     /**
      * Lists ledger entries for an inclusive period, newest first, optionally of one type. This is the drill-down
-     * behind every report figure.
+     * behind every report figure. Assistants can read only sales, sale reversals, payments, and refunds; asking for
+     * a hidden type returns an empty page.
      *
      * @param from first business date included
      * @param to   last business date included
      * @param type only this type, or null for all
      * @param page paging and size
+     * @param actor the caller; assistants see sales, sale reversals, payments, and refunds only
      * @return a page of entries
      * @throws kyle.poultry.shared.RuleViolation if a date is missing or {@code to} is before {@code from}
      */
-    Page<EntryView> entries(LocalDate from, LocalDate to, EntryType type, Pageable page);
+    Page<EntryView> entries(LocalDate from, LocalDate to, EntryType type, Pageable page, Actor actor);
 
     /**
      * Read-only copy of one ledger entry, safe to hand to other modules and to serialise.

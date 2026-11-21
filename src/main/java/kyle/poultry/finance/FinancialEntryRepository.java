@@ -61,6 +61,16 @@ interface FinancialEntryRepository extends JpaRepository<FinancialEntry, Long> {
     java.math.BigDecimal sum(@Param("sourceType") String sourceType, @Param("sourceId") long sourceId,
                              @Param("type") EntryType type);
 
+    /** Groups retained payment totals by source for a page of cancelled deliveries. */
+    @Query("""
+            select e.sourceId, sum(case when e.type = :paid then e.amount else -e.amount end)
+              from FinancialEntry e
+             where e.sourceType = :sourceType and e.sourceId in :sourceIds and e.type in (:paid, :refund)
+             group by e.sourceId""")
+    List<Object[]> retainedPaymentsBySources(@Param("sourceType") String sourceType,
+                                             @Param("sourceIds") List<Long> sourceIds,
+                                             @Param("paid") EntryType paid, @Param("refund") EntryType refund);
+
     /**
      * Pages through all entries dated inside the inclusive period, newest date first and, within a day, newest id
      * first (so the order is stable).
@@ -91,6 +101,14 @@ interface FinancialEntryRepository extends JpaRepository<FinancialEntry, Long> {
              order by e.occurredOn desc, e.id desc""")
     Page<FinancialEntry> periodByType(@Param("from") LocalDate from, @Param("to") LocalDate to,
                                       @Param("type") EntryType type, Pageable page);
+
+    /** Same as {@link #period}, restricted to the entry types visible to an assistant. */
+    @Query("""
+            select e from FinancialEntry e
+             where e.occurredOn between :from and :to and e.type in :types
+             order by e.occurredOn desc, e.id desc""")
+    Page<FinancialEntry> periodByTypes(@Param("from") LocalDate from, @Param("to") LocalDate to,
+                                       @Param("types") List<EntryType> types, Pageable page);
 
     /**
      * Adds up the amounts of all entries dated inside the inclusive period, one row per entry type that has entries.

@@ -1,13 +1,13 @@
 # Reports: dashboard and time series
 
 Additions to the report endpoints (the summary, profit and inventory-value reports are documented in
-[docs/reports.md](../reports.md)). All figures use the same definitions as those reports, so a dashboard or chart can never
+[reports.md](reports.md)). All figures use the same definitions as those reports, so a dashboard or chart can never
 disagree with them. PHP, 2 decimals; dates are Manila business dates.
 
 | Endpoint | Roles | Content |
 |---|---|---|
-| `GET /api/reports/dashboard` | OWNER, ASSISTANT (profit: owner) | today, month to date, stock value, low-stock count |
-| `GET /api/reports/series?from=&to=&granularity=` | OWNER, ASSISTANT | summary figures per day or month |
+| `GET /api/reports/dashboard` | OWNER, ASSISTANT (cost fields: owner) | today, month to date, low-stock count, retained payments; inventory value for owner |
+| `GET /api/reports/series?from=&to=&granularity=` | OWNER, ASSISTANT (cost fields: owner) | sales and collection figures per day or month for assistants; full summary for owner |
 | `GET /api/reports/profit-series?from=&to=&granularity=` | **OWNER only** | profit figures per day or month |
 
 ## `GET /api/reports/dashboard`
@@ -28,11 +28,13 @@ already the next day.
 }
 ```
 
-- The figures per period are those of `GET /api/reports/summary` (net sales, net collected, stock purchases, other
-  expenses, cash movement) for that period. `profit` is that of `GET /api/reports/profit`.
-- **`profit` is `null` for an assistant** (profit is owner-only). Every other field is the same for both roles.
+- For owners, the figures per period are those of `GET /api/reports/summary` (net sales, net collected, stock purchases,
+  other expenses, cash movement). `profit` is that of `GET /api/reports/profit`.
+- Assistants receive `netSales` and `netCollected`; `stockPurchases`, `otherExpenses`, `cashMovement`, and `profit` are
+  omitted. The top-level `inventoryValue` is also omitted. `lowStockProducts` and `retainedOnCancelledDeliveries` remain.
 - `monthToDate` runs from the first of the month to today; on the 1st it is the single day.
-- `inventoryValue` is the stock on hand now at weighted average cost (the grand total of `inventory-value`).
+- `inventoryValue` is the stock on hand now at weighted average cost (the grand total of `inventory-value`); it is
+  owner-only.
 - `lowStockProducts` is the number of products that are low (see [stock-overview.md](stock-overview.md)).
 - `retainedOnCancelledDeliveries` is the money still held for cancelled deliveries as of today.
 
@@ -55,6 +57,9 @@ A month at an edge of the period is cut to the period: the first point starts on
               "stockPurchases": 1000.00, "otherExpenses": 150.00, "cashMovement": 5350.00 }
 }
 ```
+
+Assistants receive `netSales` and `netCollected` on each point and in `totals`; `stockPurchases`, `otherExpenses`, and
+`cashMovement` are omitted. Owners receive every field. The same rule applies to `series.csv` columns.
 
 | Field | Definition |
 |---|---|

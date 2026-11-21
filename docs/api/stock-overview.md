@@ -1,7 +1,7 @@
 # Stock: all-branch summary, low-stock flags and reorder levels
 
-Read-side additions to the stock endpoints. Recording movements, balances and history are unchanged (see the main API
-contract).
+Details for the all-branch stock summary and reorder-level endpoints. The assistant view keeps quantities and low-stock
+flags while omitting average costs (see the main [stock API contract](stock.md)).
 
 | Endpoint | Roles | Purpose |
 |---|---|---|
@@ -42,7 +42,8 @@ are always listed (with a total of 0 when nothing is held); an inactive product 
 ]
 ```
 
-`branches` is ordered by branch id. Branch names belong to the catalog: look them up with `GET /api/branches`.
+`branches` is ordered by branch id. Branch names belong to the catalog: look them up with `GET /api/branches`. The
+example shows owner data; assistants receive the same product and branch quantities with each `averageCost` omitted.
 
 ## `GET /api/stock/reorder-levels`
 

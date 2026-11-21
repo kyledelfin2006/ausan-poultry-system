@@ -82,8 +82,8 @@ class FinanceController {
     Page<EntryView> entries(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
                             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
                             @RequestParam(required = false) EntryType type,
-                            Pageable page) {
-        return finance.entries(from, to, type, page);
+                            Pageable page, @AuthenticationPrincipal Jwt jwt) {
+        return finance.entries(from, to, type, page, Actor.from(jwt));
     }
 
     /**
@@ -100,7 +100,8 @@ class FinanceController {
     @GetMapping("/entries.csv")
     ResponseEntity<byte[]> entriesCsv(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
                                       @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
-                                      @RequestParam(required = false) EntryType type) {
+                                      @RequestParam(required = false) EntryType type,
+                                      @AuthenticationPrincipal Jwt jwt) {
         // A from/to that is missing or backwards is rejected by the ledger; only the length limit is added here.
         if (from.isBefore(to.minusDays(MAX_EXPORT_DAYS - 1L)))
             throw new RuleViolation("An export period cannot exceed " + MAX_EXPORT_DAYS + " days");
@@ -108,7 +109,7 @@ class FinanceController {
                 "sourceType", "sourceId", "reversesId", "createdBy", "createdAt");
         // One query = one consistent snapshot. Paging with offsets would repeat or skip rows if an entry were recorded
         // while the file is being written; the 366-day limit keeps the single result bounded.
-        for (EntryView e : finance.entries(from, to, type, Pageable.unpaged()))
+        for (EntryView e : finance.entries(from, to, type, Pageable.unpaged(), Actor.from(jwt)))
             csv.row(e.id(), e.occurredOn(), e.type(), e.cashDirection(), e.amount(), e.method(), e.description(),
                     e.sourceType(), e.sourceId(), e.reversesId(), e.createdBy(), e.createdAt());
         return Csv.download("ledger-entries-" + from + "-to-" + to + ".csv", csv.build());

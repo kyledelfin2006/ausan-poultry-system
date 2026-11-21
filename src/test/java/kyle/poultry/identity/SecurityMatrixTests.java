@@ -2,10 +2,13 @@ package kyle.poultry.identity;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.UUID;
 import kyle.poultry.TestcontainersConfiguration;
 import kyle.poultry.support.HttpApiClient;
 import org.junit.jupiter.api.Tag;
@@ -111,14 +114,14 @@ class SecurityMatrixTests {
             // reports
             new Row("GET", "/api/reports/summary", Access.ANY_ROLE, "/api/reports/summary?from=2026-01-01&to=2026-01-02", null),
             new Row("GET", "/api/reports/profit", Access.OWNER_ONLY, "/api/reports/profit?from=2026-01-01&to=2026-01-02", null),
-            new Row("GET", "/api/reports/inventory-value", Access.ANY_ROLE, "/api/reports/inventory-value", null),
+            new Row("GET", "/api/reports/inventory-value", Access.OWNER_ONLY, "/api/reports/inventory-value", null),
             new Row("GET", "/api/reports/series", Access.ANY_ROLE, "/api/reports/series?from=2026-01-01&to=2026-01-02", null),
             new Row("GET", "/api/reports/profit-series", Access.OWNER_ONLY, "/api/reports/profit-series?from=2026-01-01&to=2026-01-02", null),
             // Open to both roles; profit figures inside it are blanked for assistants (see dashboardHidesProfitFromAssistants).
             new Row("GET", "/api/reports/dashboard", Access.ANY_ROLE, "/api/reports/dashboard", null),
             new Row("GET", "/api/reports/summary.csv", Access.ANY_ROLE, "/api/reports/summary.csv?from=2026-01-01&to=2026-01-02", null),
             new Row("GET", "/api/reports/profit.csv", Access.OWNER_ONLY, "/api/reports/profit.csv?from=2026-01-01&to=2026-01-02", null),
-            new Row("GET", "/api/reports/inventory-value.csv", Access.ANY_ROLE, "/api/reports/inventory-value.csv", null),
+            new Row("GET", "/api/reports/inventory-value.csv", Access.OWNER_ONLY, "/api/reports/inventory-value.csv", null),
             new Row("GET", "/api/reports/series.csv", Access.ANY_ROLE, "/api/reports/series.csv?from=2026-01-01&to=2026-01-02", null),
             new Row("GET", "/api/reports/profit-series.csv", Access.OWNER_ONLY, "/api/reports/profit-series.csv?from=2026-01-01&to=2026-01-02", null),
             // operations (not Spring MVC controllers, so outside the mapping comparison)
@@ -204,6 +207,72 @@ class SecurityMatrixTests {
         assertThat(profitFigure.matcher(asOwner.body()).find()).as("owner dashboard: %s", asOwner.body()).isTrue();
     }
 
+    /** Cost figures are absent across the assistant's ledger, stock, summary and dashboard read models. */
+    @Test
+    void assistantsCannotReadAggregateCostData() throws Exception {
+        var api = api();
+        String owner = api.ownerToken();
+        String assistant = api.login(api.createUser(owner, "ASSISTANT"), HttpApiClient.PASSWORD);
+        String suffix = UUID.randomUUID().toString().substring(0, 8);
+        String today = LocalDate.now(ZoneId.of("Asia/Manila")).toString();
+        long branchId = Long.parseLong(HttpApiClient.field(api.call("POST", "/api/branches", owner,
+                "{\"name\":\"cost-branch-" + suffix + "\"}").body(), "id"));
+        long productId = Long.parseLong(HttpApiClient.field(api.call("POST", "/api/products", owner,
+                "{\"name\":\"cost-product-" + suffix + "\",\"unit\":\"head\"}").body(), "id"));
+
+        var otherPurchase = api.call("POST", "/api/stock/movements", owner,
+                "{\"productId\":" + productId + ",\"branchId\":" + branchId
+                        + ",\"type\":\"PURCHASE\",\"quantityDelta\":10,\"unitCost\":20.00,"
+                        + "\"paymentMethod\":\"CASH\",\"occurredOn\":\"" + today + "\"}");
+        assertThat(otherPurchase.statusCode()).isEqualTo(201);
+        var purchase = api.call("POST", "/api/stock/movements", assistant,
+                "{\"productId\":" + productId + ",\"branchId\":" + branchId
+                        + ",\"type\":\"PURCHASE\",\"quantityDelta\":10,\"unitCost\":10.00,"
+                        + "\"paymentMethod\":\"CASH\",\"occurredOn\":\"" + today + "\"}");
+        assertThat(purchase.statusCode()).isEqualTo(201);
+        assertThat(purchase.body()).contains("\"unitCost\":10");
+        var expense = api.call("POST", "/api/finance/expenses", assistant,
+                "{\"amount\":5.00,\"method\":\"CASH\",\"occurredOn\":\"" + today
+                        + "\",\"description\":\"test expense\"}");
+        assertThat(expense.statusCode()).isEqualTo(201);
+
+        String period = "?from=" + today + "&to=" + today;
+        var assistantLedger = api.call("GET", "/api/finance/entries" + period, assistant, null);
+        var ownerLedger = api.call("GET", "/api/finance/entries" + period, owner, null);
+        assertThat(assistantLedger.body()).doesNotContain("STOCK_PURCHASE", "EXPENSE");
+        assertThat(ownerLedger.body()).contains("STOCK_PURCHASE", "EXPENSE");
+        assertThat(api.call("GET", "/api/finance/entries.csv" + period, assistant, null).body())
+                .doesNotContain("STOCK_PURCHASE", "EXPENSE");
+
+        String balances = "/api/stock/balances?branchId=" + branchId;
+        assertThat(api.call("GET", balances, assistant, null).body()).contains("\"quantity\":20").doesNotContain("averageCost");
+        assertThat(api.call("GET", balances, owner, null).body()).contains("averageCost");
+        String history = "/api/stock/movements?productId=" + productId + "&branchId=" + branchId;
+        assertThat(api.call("GET", history, assistant, null).body()).contains("\"unitCost\":10").doesNotContain("\"unitCost\":20");
+        assertThat(api.call("GET", history, owner, null).body()).contains("\"unitCost\":10", "\"unitCost\":20");
+        assertThat(api.call("GET", "/api/stock/summary", assistant, null).body()).doesNotContain("averageCost");
+        assertThat(api.call("GET", "/api/stock/summary", owner, null).body()).contains("averageCost");
+
+        var assistantSummary = api.call("GET", "/api/reports/summary" + period, assistant, null);
+        var ownerSummary = api.call("GET", "/api/reports/summary" + period, owner, null);
+        assertThat(assistantSummary.body()).contains("sales", "collections").doesNotContain("stockPurchases", "otherExpenses", "cashMovement");
+        assertThat(ownerSummary.body()).contains("stockPurchases", "otherExpenses", "cashMovement");
+        assertThat(api.call("GET", "/api/reports/summary.csv" + period, assistant, null).body())
+                .doesNotContain("stockPurchases", "otherExpenses", "cashMovement");
+        assertThat(api.call("GET", "/api/reports/summary.csv" + period, owner, null).body())
+                .contains("stockPurchases", "otherExpenses", "cashMovement");
+        assertThat(api.call("GET", "/api/reports/series" + period, assistant, null).body())
+                .doesNotContain("stockPurchases", "otherExpenses", "cashMovement");
+        assertThat(api.call("GET", "/api/reports/series.csv" + period, assistant, null).body())
+                .doesNotContain("stockPurchases", "otherExpenses", "cashMovement");
+        var assistantDashboard = api.call("GET", "/api/reports/dashboard", assistant, null);
+        assertThat(assistantDashboard.body()).doesNotContain("stockPurchases", "otherExpenses", "cashMovement", "inventoryValue", "profit");
+        assertThat(api.call("GET", "/api/reports/dashboard", owner, null).body()).contains("inventoryValue");
+
+        assertThat(api.call("GET", "/api/reports/inventory-value", assistant, null).statusCode()).isEqualTo(403);
+        assertThat(api.call("GET", "/api/reports/inventory-value.csv", assistant, null).statusCode()).isEqualTo(403);
+    }
+
     /** Owner-only downloads give an assistant nothing at all: no body, no attachment header. */
     @Test
     void ownerOnlyExportsLeakNothingToAssistants() throws Exception {
@@ -211,7 +280,8 @@ class SecurityMatrixTests {
         String owner = api.ownerToken();
         String assistant = api.login(api.createUser(owner, "ASSISTANT"), HttpApiClient.PASSWORD);
         for (String path : List.of("/api/reports/profit.csv?from=2026-01-01&to=2026-01-02",
-                "/api/reports/profit-series.csv?from=2026-01-01&to=2026-01-02", "/api/deliveries/1/receipt")) {
+                "/api/reports/profit-series.csv?from=2026-01-01&to=2026-01-02",
+                "/api/reports/inventory-value.csv", "/api/deliveries/1/receipt")) {
             var r = api.call("GET", path, assistant, null);
             assertThat(r.statusCode()).as(path).isEqualTo(403);
             assertThat(r.body()).as(path).doesNotContain("cost", "profit", ",");

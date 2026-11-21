@@ -7,6 +7,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Clock;
 import java.time.Duration;
+import java.util.UUID;
 import kyle.poultry.TestcontainersConfiguration;
 import kyle.poultry.support.HttpApiClient;
 import org.junit.jupiter.api.Tag;
@@ -194,6 +195,23 @@ class AuthSessionTests {
         assertThat(count("ausan.auth.logins", "outcome", "success")).isEqualTo(success + 1);
         assertThat(count("ausan.auth.logins", "outcome", "failure")).isEqualTo(failure + 1);
         assertThat(count("ausan.auth.logouts")).isEqualTo(logouts + 1);
+    }
+
+    /** Client-controlled forwarded addresses cannot create fresh throttle keys in the direct-access configuration. */
+    @Test
+    void forwardedForCannotChangeThrottleAddress() throws Exception {
+        var api = api();
+        String username = "forwarded-" + UUID.randomUUID().toString().substring(0, 8);
+        for (int i = 0; i < LoginThrottle.MAX_FAILURES; i++) {
+            var failed = api.call("POST", "/api/auth/login", null,
+                    "{\"username\":\"%s\",\"password\":\"wrong-password\"}".formatted(username),
+                    "X-Forwarded-For", "203.0.113." + (i + 1));
+            assertThat(failed.statusCode()).isEqualTo(401);
+        }
+        var blocked = api.call("POST", "/api/auth/login", null,
+                "{\"username\":\"%s\",\"password\":\"wrong-password\"}".formatted(username),
+                "X-Forwarded-For", "198.51.100.99");
+        assertThat(blocked.statusCode()).isEqualTo(429);
     }
 
     /**

@@ -3,11 +3,14 @@ package kyle.poultry.delivery;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.jayway.jsonpath.JsonPath;
+import jakarta.persistence.EntityManagerFactory;
 import java.net.http.HttpResponse;
 import java.util.List;
 import java.util.UUID;
 import kyle.poultry.ApiTestClient;
 import kyle.poultry.TestcontainersConfiguration;
+import org.hibernate.SessionFactory;
+import org.hibernate.stat.Statistics;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -32,6 +35,7 @@ class DeliveryQueryTests {
 
     @LocalServerPort int port;
     @Autowired JdbcTemplate jdbc;
+    @Autowired EntityManagerFactory entityManagerFactory;
 
     ApiTestClient api;
     String owner, assistant;
@@ -77,7 +81,7 @@ class DeliveryQueryTests {
      * @return the new delivery's id
      */
     long deliver(long branch, String customer, String startedAt) {
-        var r = api.call("POST", "/api/deliveries", assistant, """
+        var r = api.call("POST", "/api/deliveries", owner, """
                 {"customerName":"%s","driverName":"Pedro","fromBranchId":%d,"destination":"Davao","startedAt":"%s",
                  "paymentMethod":"CASH","lines":[{"packageId":%d,"quantity":1}]}""".formatted(customer, branch, startedAt, pkg));
         assertThat(r.statusCode()).as(r.body()).isEqualTo(201);
@@ -174,6 +178,35 @@ class DeliveryQueryTests {
                 .containsExactly("Cancelled one", "Active one", "Done one");
     }
 
+    /** A requested page larger than the API limit is clamped to 100. */
+    @Test
+    void deliveryPageSizeIsCappedAtOneHundred() {
+        var page = api.call("GET", "/api/deliveries?branchId=" + branchA + "&size=1000", assistant, null);
+        assertThat(page.statusCode()).isEqualTo(200);
+        assertThat((Integer) JsonPath.read(page.body(), "$.page.size")).isEqualTo(100);
+    }
+
+    /** Lines and cancelled retained payments load in batches instead of once per delivery. */
+    @Test
+    void deliveryListQueryCountStaysBoundedForCancelledRows() {
+        for (int i = 0; i < 15; i++) {
+            long id = deliver(branchA, "Cancelled " + i, "2021-10-02T01:00:00Z");
+            var cancelled = api.call("POST", "/api/deliveries/" + id + "/cancel", owner, "{\"reason\":\"test\"}");
+            assertThat(cancelled.statusCode()).isEqualTo(200);
+        }
+
+        Statistics statistics = entityManagerFactory.unwrap(SessionFactory.class).getStatistics();
+        statistics.setStatisticsEnabled(true);
+        statistics.clear();
+        var list = api.call("GET", "/api/deliveries?branchId=" + branchA + "&size=50", assistant, null);
+
+        assertThat(list.statusCode()).isEqualTo(200);
+        assertThat((Integer) JsonPath.read(list.body(), "$.content.length()"))
+                .isGreaterThanOrEqualTo(15);
+        assertThat(statistics.getPrepareStatementCount()).as("Hibernate statements for one delivery page")
+                .isLessThanOrEqualTo(8);
+    }
+
     /** The list needs a token. */
     @Test
     void listAndSummaryRequireAuthentication() {
@@ -245,7 +278,7 @@ class DeliveryQueryTests {
         long big = jdbc.queryForObject("insert into sales_package (sku, name, price) values (?, ?, 5000) returning id", Long.class,
                 "SKU-" + tag, "Big " + tag);
         jdbc.update("insert into package_item (package_id, product_id, quantity) values (?, ?, 3)", big, chicken);
-        var created = api.call("POST", "/api/deliveries", assistant, """
+        var created = api.call("POST", "/api/deliveries", owner, """
                 {"customerName":"Two lines","driverName":"Pedro","fromBranchId":%d,"destination":"Davao","startedAt":"2022-01-01T01:00:00Z",
                  "paymentMethod":"CASH","lines":[{"packageId":%d,"quantity":1},{"packageId":%d,"quantity":1}]}""".formatted(branchA, pkg, big));
         assertThat(created.statusCode()).as(created.body()).isEqualTo(201);

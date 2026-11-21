@@ -2487,6 +2487,7 @@
     },
     "/api/finance/entries" : {
       "get" : {
+        "description" : "Assistants receive only SALE, SALE_REVERSAL, PAYMENT_IN, and REFUND entries.",
         "operationId" : "entries",
         "parameters" : [ {
           "in" : "query",
@@ -2590,6 +2591,7 @@
     },
     "/api/finance/entries.csv" : {
       "get" : {
+        "description" : "Assistants receive only SALE, SALE_REVERSAL, PAYMENT_IN, and REFUND entries.",
         "operationId" : "entriesCsv",
         "parameters" : [ {
           "in" : "query",
@@ -3054,7 +3056,7 @@
     },
     "/api/reports/dashboard" : {
       "get" : {
-        "description" : "The `profit` member is null for an assistant; every other member is the same for both roles.",
+        "description" : "Cost, cash-movement, inventory-value, and profit members are omitted for assistants; `netSales`, `netCollected`, `lowStockProducts`, and `retainedOnCancelledDeliveries` remain.",
         "operationId" : "dashboard",
         "responses" : {
           "200" : {
@@ -3100,7 +3102,7 @@
           }
         },
         "tags" : [ "Reports" ],
-        "x-roles" : [ "OWNER", "ASSISTANT" ]
+        "x-roles" : [ "OWNER" ]
       }
     },
     "/api/reports/inventory-value.csv" : {
@@ -3134,7 +3136,7 @@
           }
         },
         "tags" : [ "Reports" ],
-        "x-roles" : [ "OWNER", "ASSISTANT" ]
+        "x-roles" : [ "OWNER" ]
       }
     },
     "/api/reports/profit" : {
@@ -3423,6 +3425,7 @@
     },
     "/api/reports/series" : {
       "get" : {
+        "description" : "Cost and cash-movement fields are omitted for assistants; sales and collection fields remain.",
         "operationId" : "series",
         "parameters" : [ {
           "in" : "query",
@@ -3494,6 +3497,7 @@
     },
     "/api/reports/series.csv" : {
       "get" : {
+        "description" : "Cost and cash-movement columns are omitted for assistants; sales and collection columns remain.",
         "operationId" : "seriesCsv",
         "parameters" : [ {
           "in" : "query",
@@ -3574,6 +3578,7 @@
     },
     "/api/reports/summary" : {
       "get" : {
+        "description" : "Cost and cash-movement fields are omitted for assistants; sales and collection fields remain.",
         "operationId" : "reportsSummary",
         "parameters" : [ {
           "in" : "query",
@@ -3636,6 +3641,7 @@
     },
     "/api/reports/summary.csv" : {
       "get" : {
+        "description" : "Cost and cash-movement rows are omitted for assistants; sales and collection rows remain.",
         "operationId" : "summaryCsv",
         "parameters" : [ {
           "in" : "query",
@@ -3707,6 +3713,7 @@
     },
     "/api/stock/balances" : {
       "get" : {
+        "description" : "Average cost is omitted for assistants; quantities remain visible.",
         "operationId" : "balances",
         "parameters" : [ {
           "in" : "query",
@@ -3754,6 +3761,7 @@
     },
     "/api/stock/movements" : {
       "get" : {
+        "description" : "Unit cost is omitted for assistants except on PURCHASE rows they recorded; quantities remain visible.",
         "operationId" : "history",
         "parameters" : [ {
           "in" : "query",
@@ -3837,7 +3845,7 @@
         "x-roles" : [ "OWNER", "ASSISTANT" ]
       },
       "post" : {
-        "description" : "Any role may record PURCHASE, DONATION and USAGE movements; OPENING and ADJUSTMENT are OWNER only (403 for an assistant).",
+        "description" : "Any role may record PURCHASE, DONATION and USAGE movements; OPENING and ADJUSTMENT are OWNER only (403 for an assistant). The purchase response includes the unit cost entered by that caller.",
         "operationId" : "record",
         "requestBody" : {
           "content" : {
@@ -4060,6 +4068,7 @@
     },
     "/api/stock/summary" : {
       "get" : {
+        "description" : "Per-branch average cost is omitted for assistants; quantities remain visible.",
         "operationId" : "stockSummary",
         "parameters" : [ {
           "in" : "query",

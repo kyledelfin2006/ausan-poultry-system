@@ -205,7 +205,6 @@ All production settings come from a `.env` file (template: [.env.example](.env.e
 | `APP_SECURITY_JWT_SECRET` | yes | HS256 signing key, at least 32 bytes. Changing it logs everyone out |
 | `APP_BOOTSTRAP_OWNER_USERNAME`, `_PASSWORD` | first start only | Creates the first OWNER when no users exist; remove afterwards |
 | `APP_CORS_ALLOWED_ORIGINS` | no | Exact frontend origins, comma-separated; empty means same-origin only |
-| `SERVER_FORWARD_HEADERS_STRATEGY` | no | Set to `framework` only behind a trusted TLS proxy |
 | `APP_PORT` | no | Host port for the API (default 8080) |
 | `JAVA_OPTS` | no | JVM flags (default `-XX:MaxRAMPercentage=75`) |
 
@@ -327,7 +326,7 @@ docker compose -f compose.prod.yaml --env-file .env up -d --build
 
 ### Caddy reverse proxy
 
-Not used. TLS termination is not part of this repository. If you put a TLS proxy in front, set `SERVER_FORWARD_HEADERS_STRATEGY=framework` so HSTS and redirects see HTTPS, and list the frontend origin in `APP_CORS_ALLOWED_ORIGINS` (or serve frontend and `/api` from one origin). See [docs/security/README.md](docs/security/README.md).
+Not used. The production Compose file fixes forwarded-header handling to `none`; the login throttle uses the direct network peer, and client-supplied `X-Forwarded-*` headers are ignored. If a TLS proxy is added later, configure and verify a trusted proxy address chain before changing this setting, and prevent direct public access to the app port. See [docs/security/README.md](docs/security/README.md).
 
 ### Operations scripts
 
@@ -353,7 +352,7 @@ Base images are pinned to a major tag (`postgres:17`, `eclipse-temurin:25-*`), n
 - Never commit `.env`; keep production passwords long and random.
 - Do not publish the PostgreSQL port in production.
 - Do not run `docker compose down -v` (or delete `ausan_pgdata`) unless you mean to destroy the data; take a backup first.
-- Set `SERVER_FORWARD_HEADERS_STRATEGY=framework` only behind a proxy you control; otherwise clients can forge `X-Forwarded-*`.
+- Production Compose ignores forwarded headers. If adding a proxy, verify its trusted address chain and header behavior before enabling forwarded-header support.
 - Remove the `APP_BOOTSTRAP_OWNER_*` values after the first start.
 
 ## CI/CD Pipeline Architecture

@@ -13,7 +13,7 @@ import org.springframework.web.method.HandlerMethod;
  * <p>
  * Three sources, in order of precedence: the {@link #SERVICE_ENFORCED} table (owner-only rules enforced inside a
  * service, invisible to annotations), {@code @PreAuthorize("hasRole('OWNER')")} on the controller method or class, and
- * the default "any logged-in role". Rules that apply to only part of an operation are explained in
+ * the default "any logged-in role". Rules that apply only to some actions or response fields are explained in
  * {@link #PARTIAL_RULES} and appended to its description.
  */
 final class RoleExtensions {
@@ -32,12 +32,22 @@ final class RoleExtensions {
             "DELETE /api/stock/reorder-levels/{productId}", OWNER);
 
     /** Rules that restrict only some inputs of an operation, keyed by {@code "METHOD /path"}. */
-    static final Map<String, String> PARTIAL_RULES = Map.of(
-            "POST /api/stock/movements",
-            "Any role may record PURCHASE, DONATION and USAGE movements; OPENING and ADJUSTMENT are OWNER only (403 "
-                    + "for an assistant).",
-            "GET /api/reports/dashboard",
-            "The `profit` member is null for an assistant; every other member is the same for both roles.");
+    static final Map<String, String> PARTIAL_RULES = Map.ofEntries(
+            Map.entry("POST /api/stock/movements",
+                    "Any role may record PURCHASE, DONATION and USAGE movements; OPENING and ADJUSTMENT are OWNER only "
+                            + "(403 for an assistant). The purchase response includes the unit cost entered by that caller."),
+            Map.entry("GET /api/stock/balances", "Average cost is omitted for assistants; quantities remain visible."),
+            Map.entry("GET /api/stock/movements", "Unit cost is omitted for assistants except on PURCHASE rows they recorded; quantities remain visible."),
+            Map.entry("GET /api/stock/summary", "Per-branch average cost is omitted for assistants; quantities remain visible."),
+            Map.entry("GET /api/finance/entries", "Assistants receive only SALE, SALE_REVERSAL, PAYMENT_IN, and REFUND entries."),
+            Map.entry("GET /api/finance/entries.csv", "Assistants receive only SALE, SALE_REVERSAL, PAYMENT_IN, and REFUND entries."),
+            Map.entry("GET /api/reports/summary", "Cost and cash-movement fields are omitted for assistants; sales and collection fields remain."),
+            Map.entry("GET /api/reports/summary.csv", "Cost and cash-movement rows are omitted for assistants; sales and collection rows remain."),
+            Map.entry("GET /api/reports/series", "Cost and cash-movement fields are omitted for assistants; sales and collection fields remain."),
+            Map.entry("GET /api/reports/series.csv", "Cost and cash-movement columns are omitted for assistants; sales and collection columns remain."),
+            Map.entry("GET /api/reports/dashboard",
+                    "Cost, cash-movement, inventory-value, and profit members are omitted for assistants; `netSales`, "
+                            + "`netCollected`, `lowStockProducts`, and `retainedOnCancelledDeliveries` remain."));
 
     /** Not instantiable: static helpers only. */
     private RoleExtensions() {}

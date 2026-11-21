@@ -58,7 +58,7 @@ change, demotion or deactivation applies at once.
 
 | # | Threat | Mitigation | Evidence (test) | Residual risk |
 |---|---|---|---|---|
-| S1 | Guessing or brute-forcing passwords | BCrypt; 5 failures per username+address in 15 minutes then `429`; unknown users cost the same BCrypt work (no user enumeration by timing); one message for every login failure | `LoginThrottleTests`, `UserAdministrationTests` | Throttle is in memory, per instance, reset on restart; an attacker rotating addresses and usernames is not slowed globally |
+| S1 | Guessing or brute-forcing passwords | BCrypt; 5 failures per username+direct peer address in 15 minutes then `429`; forwarded headers are ignored in the production direct-access deployment; unknown users cost the same BCrypt work (no user enumeration by timing); one message for every login failure | `LoginThrottleTests`, `AuthSessionTests`, `UserAdministrationTests` | Throttle is in memory, per instance, reset on restart; an attacker rotating addresses and usernames is not slowed globally |
 | S2 | Weak passwords | `PasswordPolicy`: 10+ characters, 72-byte cap, blocklist, not the username, not repeated | `PasswordPolicyTests`, `AuthSessionTests` | Blocklist is small, not a breach database; no MFA |
 | S3 | Stolen or leaked token used after the user is done | 8-hour lifetime; **logout** and **password change/reset** invalidate all of a user's tokens at once (`token_version`); deactivation is checked on every request | `AuthSessionTests` | No per-device logout; a stolen token works until the user logs out or changes password |
 | S4 | Forged token | HS256 pinned (no algorithm confusion); secret must be at least 32 bytes or startup fails; signature and expiry checked by the resource-server filter | `ApiSecurityTests` | One shared secret: whoever reads it can mint tokens. Rotate on suspicion (see operations guide) |
@@ -66,7 +66,7 @@ change, demotion or deactivation applies at once.
 | T1 | Editing history (ledger, stock, audit) | Ledgers are append-only by design; corrections are reversals; `audit_log` rejects UPDATE, DELETE and TRUNCATE in the database | `AuditTrailTests.theTableIsAppendOnlyInTheDatabase`, finance and stock tests | A DBA with superuser rights can drop the trigger; out of scope |
 | T2 | Double submit creating two deliveries | `Idempotency-Key` header | `DeliveryIdempotencyTests` | Clients must send the header |
 | R1 | "I did not change that price" | Audit trail: actor (id and username copy), action, changed fields, request id, in the same transaction as the change | `AuditTrailTests` | Stock and finance rows carry their own author; reads are not audited |
-| I1 | Data exposed to the wrong role | Method-level role checks; assistant gets `403` for owner-only; everything that shows cost or profit is owner-only (profit report and series, delivery receipt, `profit*.csv`; the dashboard blanks its profit fields for assistants); audit owner-only; reorder-level changes owner-only; actuator owner-only | `SecurityMatrixTests` (every endpoint x anonymous/assistant/owner) | Roles are coarse: an assistant can read all branches' stock and all deliveries |
+| I1 | Data exposed to the wrong role | Method-level role checks; assistants see sales, collections and quantities, while cost fields are omitted from finance entries, stock balances/history, summaries, series and dashboard; inventory valuation, profit reports and delivery receipts are owner-only; audit, reorder-level changes and actuator are owner-only | `SecurityMatrixTests` (every endpoint x anonymous/assistant/owner) plus response-field assertions | Assistants still know purchase prices they submit when recording stock purchases; roles are coarse and assistants can read all branches' stock and deliveries |
 | I2 | Information in error responses | ProblemDetail with fixed messages for database errors; `prod` hides messages, stack traces and binding errors; login failures identical | `ApiSecurityTests`, prod profile | none known |
 | I3 | Secrets or personal data in logs | Access log records method, path and status only (no query string, no body); audit summaries never include passwords or tokens; BCrypt hash never returned | `AuditTrailTests.userChanges...`, `UserAdministrationTests` | Customer names are in the database and API, by design |
 | I4 | Browser-based cross-site calls | Bearer tokens only (no cookies), so a malicious site cannot ride an existing session; CORS restricts which origins browsers let read responses; wildcard origins refused at startup | `SecurityHeadersAndCorsTests`, `CorsPropertiesTests` | If the frontend ever stores the token in a cookie, CSRF protection must be added first |
@@ -100,11 +100,11 @@ endpoint x role is executable in `SecurityMatrixTests`, which also fails the bui
 | Production, frontend on the same origin | empty | no cross-origin access |
 
 ### Transport security
-The application speaks plain HTTP inside the compose network. **Terminate TLS in front of it** (reverse proxy or load
-balancer) for anything beyond a trusted LAN. HSTS is emitted only on requests the app sees as HTTPS, so the proxy must
-send `X-Forwarded-Proto: https` and the application should run with `server.forward-headers-strategy=framework`
-(set `SERVER_FORWARD_HEADERS_STRATEGY=framework` in the container environment) once a trusted proxy is in place. Do not
-enable that setting when the app is directly reachable from the internet, because clients could then forge those headers.
+The production Compose setup is direct access and fixes `server.forward-headers-strategy=none`. Login throttling therefore
+uses the socket peer address and ignores client-supplied `X-Forwarded-*` headers. Keep direct access on a trusted network;
+terminate TLS before exposing the API to the internet. If a reverse proxy is introduced later, configure and verify a
+trusted proxy address chain, require it to overwrite forwarded-address headers, and block direct public access to the app
+port before enabling forwarded-header support. The current deployment does not configure that trust chain.
 
 ### Data protection
 - Passwords: BCrypt hashes only, never returned, logged or audited.

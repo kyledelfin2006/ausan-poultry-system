@@ -55,7 +55,12 @@ class EntriesExportTests {
         expense("fuel, \"premium\"", "2015-05-11");
         expense("Peña hauling", "2015-05-12");
 
-        var r = api.call("GET", "/api/finance/entries.csv?from=2015-05-01&to=2015-05-31", api.assistant(), null);
+        // Expenses are cost data: an assistant's export of the same period must not contain them.
+        var hidden = api.call("GET", "/api/finance/entries.csv?from=2015-05-01&to=2015-05-31", api.assistant(), null);
+        assertThat(hidden.statusCode()).isEqualTo(200);
+        assertThat(hidden.body()).doesNotContain("EXPENSE", "HYPERLINK", "Peña hauling");
+
+        var r = api.call("GET", "/api/finance/entries.csv?from=2015-05-01&to=2015-05-31", api.owner(), null);
 
         assertThat(r.statusCode()).isEqualTo(200);
         assertThat(r.headers().firstValue("Content-Type").orElse("")).startsWith("text/csv");

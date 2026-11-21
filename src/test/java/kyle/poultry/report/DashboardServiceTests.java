@@ -104,12 +104,13 @@ class DashboardServiceTests {
 
     /** Stock figures and the retained payment come from the modules that own them. */
     @Test
-    void takesStockAndRetainedFiguresFromTheirModules() {
+    void assistantsKeepSafeStockAndRetainedFiguresButNoInventoryValuation() {
         var d = serviceAt("2026-06-10T04:00:00Z").dashboard(false);
 
         assertThat(d.lowStockProducts()).isEqualTo(2);
-        assertThat(d.inventoryValue()).isEqualByComparingTo("0.00");
+        assertThat(d.inventoryValue()).isNull();
         assertThat(d.retainedOnCancelledDeliveries()).isEqualByComparingTo("12.00");
+        verify(stock, never()).balances(null);
         // The retained amount is measured as of today.
         verify(finance, atLeastOnce()).retainedOnCancelledSources(LocalDate.of(2026, 6, 10));
         verify(finance, never()).totalsByType(LocalDate.of(2026, 6, 11), LocalDate.of(2026, 6, 11));

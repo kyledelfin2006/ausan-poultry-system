@@ -379,7 +379,12 @@ class ReportTests {
 
         assertThat(call("GET", "/api/reports/summary" + period, null, null).statusCode()).isEqualTo(401);
 
-        var summary = call("GET", "/api/reports/summary" + period, assistant, null);
+        var assistantSummary = call("GET", "/api/reports/summary" + period, assistant, null);
+        assertThat(assistantSummary.statusCode()).isEqualTo(200);
+        assertThat(assistantSummary.body()).contains("\"gross\":110000.00", "\"netCollected\":95000.00")
+                .doesNotContain("stockPurchases", "otherExpenses", "cashMovement", "GCASH");
+
+        var summary = call("GET", "/api/reports/summary" + period, ownerToken, null);
         assertThat(summary.statusCode()).isEqualTo(200);
         assertThat(summary.body()).contains("\"gross\":110000.00", "\"net\":70000.00", "\"netCollected\":95000.00",
                 "\"retainedOnCancelledDeliveries\":25000.00", "\"stockPurchases\":1000.00", "\"otherExpenses\":500.00",
@@ -390,7 +395,7 @@ class ReportTests {
         assertThat(profit.statusCode()).isEqualTo(200);
         assertThat(profit.body()).contains("\"profit\":69260.00");
 
-        assertThat(call("GET", "/api/reports/inventory-value", assistant, null).statusCode()).isEqualTo(200);
+        assertThat(call("GET", "/api/reports/inventory-value", assistant, null).statusCode()).isEqualTo(403);
         assertThat(call("GET", "/api/reports/inventory-value", ownerToken, null).body()).contains("grandTotal");
 
         // Backwards period, 367-day period: business rule violations (422); unparsable date: bad request (400).

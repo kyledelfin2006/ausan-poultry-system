@@ -9,6 +9,7 @@ import kyle.poultry.audit.AuditEntity;
 import kyle.poultry.shared.ConflictException;
 import kyle.poultry.shared.NotFoundException;
 import kyle.poultry.shared.RuleViolation;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -52,7 +53,13 @@ class UserService {
         PasswordPolicy.check(password, username);
         if (users.findByUsername(username).isPresent()) throw new ConflictException("Username already taken");
         // Only the BCrypt hash is persisted.
-        var u = users.save(new AppUser(username, encoder.encode(password), displayName, role, clock.instant()));
+        AppUser u;
+        try {
+            u = users.saveAndFlush(new AppUser(username, encoder.encode(password), displayName, role, clock.instant()));
+        } catch (DataIntegrityViolationException e) {
+            if (isUsernameConstraint(e)) throw new ConflictException("Username already taken");
+            throw e;
+        }
         // The summary names the account and role but, like every audit text, never any password material.
         audit.record(AuditAction.CREATED, AuditEntity.USER, u.id(), "username: " + username + "; role: " + role);
         return view(u);
@@ -182,6 +189,13 @@ class UserService {
 
     /** {@return how many users exist (used to decide whether to bootstrap the first owner)} */
     long count() { return users.count(); }
+
+    private static boolean isUsernameConstraint(DataIntegrityViolationException failure) {
+        for (Throwable cause = failure; cause != null; cause = cause.getCause())
+            if (cause instanceof org.hibernate.exception.ConstraintViolationException violation
+                    && "app_user_username_key".equals(violation.getConstraintName())) return true;
+        return false;
+    }
 
     /**
      * Maps an entity to its API view, leaving out the password hash.
