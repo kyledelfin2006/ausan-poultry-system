@@ -161,7 +161,7 @@ class DeliveryQueryTests {
         long done = deliver(branchA, "Done one", "2021-10-01T01:00:00Z");
         deliver(branchA, "Active one", "2021-10-01T02:00:00Z");
         long cancelled = deliver(branchA, "Cancelled one", "2021-10-01T03:00:00Z");
-        assertThat(api.call("POST", "/api/deliveries/" + done + "/done", assistant, "{\"completedAt\":\"2021-10-01T05:00:00Z\"}").statusCode())
+        assertThat(api.call("POST", "/api/deliveries/" + done + "/done", owner, "{\"completedAt\":\"2021-10-01T05:00:00Z\"}").statusCode())
                 .isEqualTo(200);
         assertThat(api.call("POST", "/api/deliveries/" + cancelled + "/cancel", owner, "{\"reason\":\"no show\"}").statusCode()).isEqualTo(200);
 
@@ -224,7 +224,7 @@ class DeliveryQueryTests {
         deliver(branchA, "S3", "2021-11-01T03:00:00Z");
         long cancelled = deliver(branchA, "S4", "2021-11-01T04:00:00Z");
         deliver(branchB, "Elsewhere", "2021-11-01T04:00:00Z");
-        api.call("POST", "/api/deliveries/" + done + "/done", assistant, "{\"completedAt\":\"2021-11-01T06:00:00Z\"}");
+        api.call("POST", "/api/deliveries/" + done + "/done", owner, "{\"completedAt\":\"2021-11-01T06:00:00Z\"}");
         api.call("POST", "/api/deliveries/" + cancelled + "/cancel", owner, "{\"reason\":\"x\"}");
 
         var r = api.call("GET", "/api/deliveries/summary?branchId=" + branchA + "&from=2021-11-01&to=2021-11-01", assistant, null);

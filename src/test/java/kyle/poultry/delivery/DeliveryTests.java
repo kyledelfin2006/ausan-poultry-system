@@ -254,4 +254,24 @@ class DeliveryTests {
         var full = deliveries.refund(d.id(), new BigDecimal("20000.00"), PaymentMethod.GCASH, null, owner);
         assertThat(full.retainedPayment()).isEqualByComparingTo("0");
     }
+
+    /**
+     * An assistant cannot record an arrival more than seven days back, even on an old delivery the owner created; the
+     * rejected attempt leaves the delivery ACTIVE, and the owner may use the same timestamp.
+     */
+    @Test
+    void assistantCannotCompleteAnOldDeliveryButTheOwnerCan() {
+        var base = request(null, 1);
+        Instant longAgo = Instant.now().minus(java.time.Duration.ofDays(30));
+        var old = deliveries.create(new CreateRequest(base.customerName(), base.driverName(), base.fromBranchId(),
+                base.destination(), longAgo, base.paymentMethod(), base.lines()), owner);
+        Instant arrival = Instant.now().minus(java.time.Duration.ofDays(20));
+
+        assertThatThrownBy(() -> deliveries.markDone(old.id(), arrival, assistant))
+                .isInstanceOf(RuleViolation.class).hasMessageContaining("backdated");
+
+        var done = deliveries.markDone(old.id(), arrival, owner);
+        assertThat(done.status()).isEqualTo(DeliveryStatus.DONE);
+        assertThat(done.completedAt()).isNotNull();
+    }
 }
