@@ -7,7 +7,7 @@ Downloads of ledger entries and reports for spreadsheets. They carry exactly the
 | `GET /api/finance/entries.csv?from=&to=&type=` | OWNER, ASSISTANT | `GET /api/finance/entries` (without paging) |
 | `GET /api/reports/summary.csv?from=&to=` | OWNER, ASSISTANT | `GET /api/reports/summary` |
 | `GET /api/reports/profit.csv?from=&to=` | **OWNER only** | `GET /api/reports/profit` |
-| `GET /api/reports/inventory-value.csv` | OWNER, ASSISTANT | `GET /api/reports/inventory-value` |
+| `GET /api/reports/inventory-value.csv` | **OWNER only** | `GET /api/reports/inventory-value` |
 | `GET /api/reports/series.csv?from=&to=&granularity=` | OWNER, ASSISTANT | `GET /api/reports/series` |
 | `GET /api/reports/profit-series.csv?from=&to=&granularity=` | **OWNER only** | `GET /api/reports/profit-series` |
 
@@ -46,10 +46,12 @@ the file is just the header.
 
 **`summary.csv`, `profit.csv`**: header `metric,value`, then rows such as `from`, `to`, `sales.gross`, `sales.net`,
 `collections.netCollected`, `stockPurchases`, `cashMovement.total` and one `cashMovement.<METHOD>` row per payment method
-(summary); `netSales`, `costOfGoods.net`, `grossProfit`, `profit` (profit). Metric names are the JSON field paths.
+(summary); `netSales`, `costOfGoods.net`, `grossProfit`, `profit` (profit). Assistants receive only sales and collection rows
+from `summary.csv`; cost and cash-movement rows are omitted. `profit.csv` remains owner-only. Metric names are the JSON field paths.
 
-**`inventory-value.csv`**: header `branchId,productId,productName,unit,quantity,averageCost,value`, one row per product with
+**`inventory-value.csv` (owner only)**: header `branchId,productId,productName,unit,quantity,averageCost,value`, one row per product with
 stock in each branch, then a closing row `,,TOTAL,,,,<grand total>`.
 
 **`series.csv`, `profit-series.csv`**: header `row,from,to,<figures>`, one `POINT` row per day or month, then one `TOTAL` row for
-the whole period (equal to the matching report).
+the whole period (equal to the matching report). `profit-series.csv` is owner-only. `series.csv` omits cost and cash-movement
+columns for assistants.

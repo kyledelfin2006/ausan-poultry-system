@@ -297,6 +297,23 @@ class DeliveryServiceUnitTests {
                 .isInstanceOf(RuleViolation.class).hasMessageContaining("future");
     }
 
+    /** Assistant deliveries may use a business date exactly seven days back but not an older one. */
+    @Test
+    void assistantDeliveryStartDateHasASevenDayWindow() {
+        packageA();
+        repositoryNumbersAndSaves();
+        when(stock.deduct(any(), eq(1L), any(), any(), any())).thenReturn(List.of(out(5, 3, "10.0000")));
+        var line = List.of(new LineRequest(10, 1, null));
+        Instant cutoff = Instant.parse("2026-11-13T02:15:00Z");
+
+        var accepted = service.create(new CreateRequest("Juan", "Pedro", 1, "Tarlac", cutoff,
+                PaymentMethod.CASH, line), ASSISTANT);
+        assertThat(accepted.startedAt()).isEqualTo(cutoff);
+        assertThatThrownBy(() -> service.create(new CreateRequest("Juan", "Pedro", 1, "Tarlac",
+                Instant.parse("2026-11-12T02:15:00Z"), PaymentMethod.CASH, line), ASSISTANT))
+                .isInstanceOf(RuleViolation.class).hasMessageContaining("7 days");
+    }
+
     /** Only the owner may cancel: an assistant is refused before the delivery is even loaded. */
     @Test
     void anAssistantCannotCancel() {

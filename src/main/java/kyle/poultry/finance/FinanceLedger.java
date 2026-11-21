@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import kyle.poultry.identity.Actor;
+import kyle.poultry.shared.BusinessDatePolicy;
 import kyle.poultry.shared.RuleViolation;
 import kyle.poultry.shared.SourceRef;
 import org.springframework.data.domain.Page;
@@ -27,6 +28,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @Transactional
 class FinanceLedger implements FinanceApi {
+    private static final List<EntryType> ASSISTANT_VISIBLE_TYPES =
+            List.of(EntryType.SALE, EntryType.SALE_REVERSAL, EntryType.PAYMENT_IN, EntryType.REFUND);
+
     private final FinancialEntryRepository entries;
     private final Clock clock;
 
@@ -52,7 +56,6 @@ class FinanceLedger implements FinanceApi {
                                    Actor actor) {
         // An expense has no source record, so the description is the only explanation and must not be empty.
         if (description == null || description.isBlank()) throw new RuleViolation("An expense needs a description");
-        requireNotFuture(on);
         return append(EntryType.EXPENSE, amount, method, on, description, null, actor);
     }
 
@@ -81,6 +84,7 @@ class FinanceLedger implements FinanceApi {
     /** {@inheritDoc} */
     @Override
     public void reverseSaleAndCost(SourceRef source, LocalDate on, Actor actor) {
+        BusinessDatePolicy.requireAllowed(on, actor.isOwner(), clock);
         // Find the source's sale and cost rows, skip those already reversed (makes the call idempotent),
         // and append a compensating row for each. Originals are never touched, so the audit trail stays intact.
         entries.findBySourceTypeAndSourceIdAndTypeIn(source.type(), source.id(),
@@ -98,7 +102,7 @@ class FinanceLedger implements FinanceApi {
         if (!actor.isOwner()) throw new AccessDeniedException("Refunds are restricted to the owner");
         BigDecimal refund = normalise(amount);
         requireSource(source);
-        requireNotFuture(on);
+        BusinessDatePolicy.requireAllowed(on, actor.isOwner(), clock);
         // Locking the payment rows makes concurrent refunds for one source queue up, so the cap below
         // is checked against up-to-date totals and the source cannot be over-refunded.
         entries.findBySourceTypeAndSourceIdAndType(source.type(), source.id(), EntryType.PAYMENT_IN);
@@ -115,6 +119,18 @@ class FinanceLedger implements FinanceApi {
         // Money still held = everything received minus everything already handed back.
         return entries.sum(source.type(), source.id(), EntryType.PAYMENT_IN)
                 .subtract(entries.sum(source.type(), source.id(), EntryType.REFUND));
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    @Transactional(readOnly = true)
+    public Map<Long, BigDecimal> retainedPayments(String sourceType, List<Long> sourceIds) {
+        if (sourceIds.isEmpty()) return Map.of();
+        Map<Long, BigDecimal> result = new java.util.HashMap<>();
+        for (Object[] row : entries.retainedPaymentsBySources(sourceType, sourceIds,
+                EntryType.PAYMENT_IN, EntryType.REFUND))
+            result.put((Long) row[0], ((BigDecimal) row[1]).setScale(2, RoundingMode.UNNECESSARY));
+        return Map.copyOf(result);
     }
 
     /** {@inheritDoc} Read-only: reports must never write to the ledger. */
@@ -180,10 +196,13 @@ class FinanceLedger implements FinanceApi {
     /** {@inheritDoc} */
     @Override
     @Transactional(readOnly = true)
-    public Page<EntryView> entries(LocalDate from, LocalDate to, EntryType type, Pageable page) {
+    public Page<EntryView> entries(LocalDate from, LocalDate to, EntryType type, Pageable page, Actor actor) {
         requirePeriod(from, to);
-        // A null type means "all types".
-        var result = type == null ? entries.period(from, to, page) : entries.periodByType(from, to, type, page);
+        if (!actor.isOwner() && type != null && !ASSISTANT_VISIBLE_TYPES.contains(type)) return Page.empty(page);
+        var result = actor.isOwner()
+                ? type == null ? entries.period(from, to, page) : entries.periodByType(from, to, type, page)
+                : type == null ? entries.periodByTypes(from, to, ASSISTANT_VISIBLE_TYPES, page)
+                : entries.periodByType(from, to, type, page);
         // Hand out views, not entities, so callers cannot depend on the persistence model.
         return result.map(FinancialEntry::view);
     }
@@ -203,6 +222,7 @@ class FinanceLedger implements FinanceApi {
      */
     private EntryView append(EntryType type, BigDecimal amount, PaymentMethod method, LocalDate on,
                              String description, SourceRef source, Actor actor) {
+        BusinessDatePolicy.requireAllowed(on, actor.isOwner(), clock);
         // The creation time comes from the injected clock so tests control it.
         var e = FinancialEntry.of(type, normalise(amount), method, on, description, source, actor, clock.instant());
         return entries.save(e).view();
@@ -247,13 +267,4 @@ class FinanceLedger implements FinanceApi {
             throw new RuleViolation("A valid from/to period is required");
     }
 
-    /**
-     * Rejects dates after today in the business time zone, so cash cannot be booked ahead of time.
-     *
-     * @param on the date to check; null is left for the entry itself to reject
-     * @throws RuleViolation if the date is after today
-     */
-    private void requireNotFuture(LocalDate on) {
-        if (on != null && on.isAfter(LocalDate.now(clock))) throw new RuleViolation("Date cannot be in the future");
-    }
 }

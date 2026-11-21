@@ -273,8 +273,14 @@ class ReportExtrasTests {
 
         var forAssistant = api.call("GET", "/api/reports/dashboard", assistant, null);
         assertThat(forAssistant.statusCode()).isEqualTo(200);
-        assertThat((Object) JsonPath.read(forAssistant.body(), "$.today.profit")).isNull();
-        assertThat((Object) JsonPath.read(forAssistant.body(), "$.monthToDate.profit")).isNull();
+        // Cost, cash-flow, stock-value and profit members are omitted, not null; sales and collections remain.
+        for (String period : new String[] {"today", "monthToDate"}) {
+            var figures = (java.util.Map<String, Object>) JsonPath.read(forAssistant.body(), "$." + period);
+            assertThat(figures).containsKeys("netSales", "netCollected")
+                    .doesNotContainKeys("profit", "stockPurchases", "otherExpenses", "cashMovement");
+        }
+        assertThat((java.util.Map<String, Object>) JsonPath.read(forAssistant.body(), "$")).doesNotContainKey("inventoryValue")
+                .containsKeys("lowStockProducts", "retainedOnCancelledDeliveries");
         assertThat(api.call("GET", "/api/reports/dashboard", null, null).statusCode()).isEqualTo(401);
     }
 
@@ -302,7 +308,12 @@ class ReportExtrasTests {
         String owner = api.owner(), assistant = api.assistant();
         String q = "?from=2023-01-01&to=2023-03-31";
 
-        var summary = api.call("GET", "/api/reports/summary.csv" + q, assistant, null);
+        var assistantSummary = api.call("GET", "/api/reports/summary.csv" + q, assistant, null);
+        assertThat(assistantSummary.statusCode()).isEqualTo(200);
+        assertThat(assistantSummary.body()).contains("sales.net,5000.00\r\n")
+                .doesNotContain("stockPurchases", "otherExpenses", "cashMovement");
+
+        var summary = api.call("GET", "/api/reports/summary.csv" + q, owner, null);
         assertThat(summary.statusCode()).isEqualTo(200);
         assertThat(summary.headers().firstValue("Content-Type").orElse("")).startsWith("text/csv");
         assertThat(summary.headers().firstValue("Content-Disposition").orElse("")).contains("attachment").contains("summary-2023-01-01-to-2023-03-31.csv");
@@ -315,7 +326,11 @@ class ReportExtrasTests {
         assertThat(profit.statusCode()).isEqualTo(200);
         assertThat(profit.body()).contains("netSales,5000.00\r\n").contains("costOfGoods.net,240.00\r\n").contains("profit,4610.00\r\n");
 
-        var series = api.call("GET", "/api/reports/series.csv" + q + "&granularity=MONTH", assistant, null);
+        var assistantSeries = api.call("GET", "/api/reports/series.csv" + q + "&granularity=MONTH", assistant, null);
+        assertThat(assistantSeries.body()).startsWith("﻿row,from,to,netSales,netCollected\r\n")
+                .doesNotContain("stockPurchases", "cashMovement");
+
+        var series = api.call("GET", "/api/reports/series.csv" + q + "&granularity=MONTH", owner, null);
         assertThat(series.body()).startsWith("﻿row,from,to,netSales,netCollected,stockPurchases,otherExpenses,cashMovement\r\n")
                 .contains("POINT,2023-02-01,2023-02-28,5000.00,5000.00,1000.00,50.00,3950.00\r\n")
                 .contains("TOTAL,2023-01-01,2023-03-31,5000.00,6500.00,1000.00,150.00,5350.00\r\n");
@@ -323,7 +338,8 @@ class ReportExtrasTests {
         var profitSeries = api.call("GET", "/api/reports/profit-series.csv" + q + "&granularity=MONTH", owner, null);
         assertThat(profitSeries.body()).contains("POINT,2023-02-01,2023-02-28,5000.00,240.00,4760.00,50.00,4710.00\r\n");
 
-        var inventory = api.call("GET", "/api/reports/inventory-value.csv", assistant, null);
+        assertThat(api.call("GET", "/api/reports/inventory-value.csv", assistant, null).statusCode()).isEqualTo(403);
+        var inventory = api.call("GET", "/api/reports/inventory-value.csv", owner, null);
         assertThat(inventory.statusCode()).isEqualTo(200);
         assertThat(inventory.body()).startsWith("﻿branchId,productId,productName,unit,quantity,averageCost,value\r\n").contains(",TOTAL,");
 

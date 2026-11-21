@@ -5,14 +5,17 @@ decimals. A period is **inclusive** (`from` and `to` both count) and uses Manila
 
 | Endpoint | Roles | Content |
 |---|---|---|
-| `GET /api/reports/summary?from=&to=` | OWNER, ASSISTANT | sales, collections, stock purchases, expenses, cash movement (+ by method) |
+| `GET /api/reports/summary?from=&to=` | OWNER, ASSISTANT | sales and collections for both; costs and cash movement for OWNER only |
 | `GET /api/reports/profit?from=&to=` | OWNER only (`403` for assistants) | net sales, cost of goods, gross profit, expenses, profit |
-| `GET /api/reports/inventory-value` | OWNER, ASSISTANT | per branch and product: quantity x weighted average cost, branch and grand totals (as of now) |
+| `GET /api/reports/inventory-value` | OWNER only (`403` for assistants) | per branch and product: quantity x weighted average cost, branch and grand totals (as of now) |
 
 `from` and `to` are required (`yyyy-MM-dd`; `400` if missing or malformed). Periods must satisfy `from <= to` and be at
 most 366 days, otherwise `422` (`RULE_VIOLATION`).
 
 ## `GET /api/reports/summary?from=2026-11-01&to=2026-11-30`
+
+The example below shows the OWNER response. For assistants, `stockPurchases`, `otherExpenses`, and `cashMovement` are
+omitted; sales and collections remain available.
 
 ```json
 { "period": { "from": "2026-11-01", "to": "2026-11-30" },
@@ -36,7 +39,7 @@ most 366 days, otherwise `422` (`RULE_VIOLATION`).
   "profit": 27500.00 }
 ```
 
-## `GET /api/reports/inventory-value`
+## `GET /api/reports/inventory-value` (OWNER)
 
 ```json
 { "branches": [ { "branchId": 1, "total": 38000.00,
@@ -46,6 +49,11 @@ most 366 days, otherwise `422` (`RULE_VIOLATION`).
 ```
 
 `value` is `quantity x averageCost` rounded to centavos. The figure is *as of now*; there is no historical valuation.
+Assistants receive `403` from this endpoint and its CSV download.
+
+The assistant dashboard and summary series keep sales and collection fields. They omit purchase costs, expenses,
+cash-movement totals, inventory valuation, and profit. Owners receive the full response. The summary CSV and series CSV
+use the same field filter as their JSON endpoints.
 
 ## Definitions
 

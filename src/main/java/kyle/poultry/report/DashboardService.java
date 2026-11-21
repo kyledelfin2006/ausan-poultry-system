@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDate;
 import kyle.poultry.stock.StockApi;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,11 +39,12 @@ class DashboardService {
      * @param to             last business date
      * @param netSales       SALE - SALE_REVERSAL
      * @param netCollected   PAYMENT_IN - REFUND
-     * @param stockPurchases cash paid to suppliers
-     * @param otherExpenses  EXPENSE
-     * @param cashMovement   net cash flow
-     * @param profit         the period's profit, or {@code null} for an assistant (profit is owner-only)
+     * @param stockPurchases cash paid to suppliers; {@code null} for an assistant
+     * @param otherExpenses  EXPENSE; {@code null} for an assistant
+     * @param cashMovement   net cash flow; {@code null} for an assistant
+     * @param profit         the period's profit; {@code null} for an assistant
      */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     record Figures(LocalDate from, LocalDate to, BigDecimal netSales, BigDecimal netCollected, BigDecimal stockPurchases,
                    BigDecimal otherExpenses, BigDecimal cashMovement, BigDecimal profit) {}
 
@@ -52,27 +54,28 @@ class DashboardService {
      * @param asOf                          today's business date
      * @param today                         figures for today
      * @param monthToDate                   figures from the first of this month to today
-     * @param inventoryValue                value of all stock on hand now (quantity x average cost)
+     * @param inventoryValue                value of all stock on hand now (quantity x average cost); {@code null} for an assistant
      * @param lowStockProducts              how many products are low (see {@link StockApi#summary(boolean)})
      * @param retainedOnCancelledDeliveries money still held for cancelled deliveries as of today
      */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     record Dashboard(LocalDate asOf, Figures today, Figures monthToDate, BigDecimal inventoryValue, int lowStockProducts,
                      BigDecimal retainedOnCancelledDeliveries) {}
 
     /**
      * Builds the dashboard for the current moment.
      *
-     * @param includeProfit true for the owner; an assistant gets {@code null} profit figures
+     * @param owner true for the owner; an assistant gets no cost, cash flow, inventory value, or profit figures
      * @return the dashboard
      */
-    Dashboard dashboard(boolean includeProfit) {
+    Dashboard dashboard(boolean owner) {
         LocalDate today = LocalDate.now(clock);
         // Month to date always includes today, even on the first of the month (one day).
         LocalDate monthStart = today.withDayOfMonth(1);
         var todaySummary = reports.summary(today, today);
         var monthSummary = reports.summary(monthStart, today);
-        return new Dashboard(today, figures(todaySummary, includeProfit), figures(monthSummary, includeProfit),
-                reports.inventoryValue().grandTotal(), stock.summary(true).size(),
+        return new Dashboard(today, figures(todaySummary, owner), figures(monthSummary, owner),
+                owner ? reports.inventoryValue().grandTotal() : null, stock.summary(true).size(),
                 monthSummary.collections().retainedOnCancelledDeliveries());
     }
 
@@ -80,13 +83,14 @@ class DashboardService {
      * Turns a summary into dashboard figures, adding the profit for the owner.
      *
      * @param s             the period's summary report
-     * @param includeProfit whether to calculate profit (owner only)
+     * @param owner whether to include owner-only financial figures
      * @return the figures
      */
-    private Figures figures(ReportService.Summary s, boolean includeProfit) {
+    private Figures figures(ReportService.Summary s, boolean owner) {
         var p = s.period();
-        BigDecimal profit = includeProfit ? reports.profit(p.from(), p.to()).profit() : null;
-        return new Figures(p.from(), p.to(), s.sales().net(), s.collections().netCollected(), s.stockPurchases(),
-                s.otherExpenses(), s.cashMovement().total(), profit);
+        BigDecimal profit = owner ? reports.profit(p.from(), p.to()).profit() : null;
+        return new Figures(p.from(), p.to(), s.sales().net(), s.collections().netCollected(),
+                owner ? s.stockPurchases() : null, owner ? s.otherExpenses() : null,
+                owner ? s.cashMovement().total() : null, profit);
     }
 }

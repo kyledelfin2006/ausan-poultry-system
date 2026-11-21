@@ -15,6 +15,7 @@ import kyle.poultry.catalog.CatalogApi;
 import kyle.poultry.finance.FinanceApi;
 import kyle.poultry.finance.PaymentMethod;
 import kyle.poultry.identity.Actor;
+import kyle.poultry.shared.BusinessDatePolicy;
 import kyle.poultry.shared.NotFoundException;
 import kyle.poultry.shared.RuleViolation;
 import kyle.poultry.shared.SourceRef;
@@ -203,6 +204,7 @@ class DeliveryService {
         Instant now = clock.instant().truncatedTo(ChronoUnit.MICROS);
         Instant startedAt = r.startedAt() == null ? now : r.startedAt();
         if (startedAt.isAfter(now)) throw new RuleViolation("Start time cannot be in the future");
+        BusinessDatePolicy.requireAllowed(startedAt.atZone(clock.getZone()).toLocalDate(), actor.isOwner(), clock);
 
         var lines = new ArrayList<DeliveryLine>();
         Map<Long, Long> productQuantities = new TreeMap<>();   // product id -> units to take out of the branch
@@ -347,7 +349,13 @@ class DeliveryService {
         var spec = filter.validated().toSpecification(clock.getZone());
         var newestFirst = PageRequest.of(page.getPageNumber(), page.getPageSize(),
                 Sort.by(Sort.Order.desc("startedAt"), Sort.Order.desc("id")));
-        return deliveries.findAll(spec, newestFirst).map(this::view);
+        var result = deliveries.findAll(spec, newestFirst);
+        var cancelledIds = result.getContent().stream()
+                .filter(d -> d.status() == DeliveryStatus.CANCELLED).map(Delivery::id).toList();
+        Map<Long, BigDecimal> retained = cancelledIds.isEmpty()
+                ? Map.of() : finance.retainedPayments(SOURCE_TYPE, cancelledIds);
+        return result.map(d -> view(d, d.status() == DeliveryStatus.CANCELLED
+                ? retained.getOrDefault(d.id(), BigDecimal.ZERO.setScale(2)) : null));
     }
 
     /**
@@ -386,6 +394,11 @@ class DeliveryService {
     private DeliveryView view(Delivery d) {
         BigDecimal retained = d.status() == DeliveryStatus.CANCELLED
                 ? finance.retainedPayment(new SourceRef(SOURCE_TYPE, d.id())) : null;
+        return view(d, retained);
+    }
+
+    /** Maps a delivery with its retained-payment amount already loaded for a page, when present. */
+    private DeliveryView view(Delivery d, BigDecimal retained) {
         return new DeliveryView(d.id(), d.code(), d.status(), d.customerName(), d.driverName(), d.fromBranchId(),
                 d.destination(), d.startedAt(), d.completedAt(), d.total(), d.paymentMethod(), d.cancelReason(),
                 retained, List.copyOf(d.lines()), d.createdBy(), d.createdAt());

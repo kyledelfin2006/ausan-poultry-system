@@ -162,6 +162,18 @@ class StockLedgerUnitTests {
         assertThat(ledger.record(cmd(MovementType.OPENING, 3, null, DAY, null), OWNER).occurredOn()).isEqualTo(DAY);
     }
 
+    /** Assistant stock movements use the same inclusive seven-day limit as finance entries. */
+    @Test
+    void assistantStockMovementsCannotBeBackdatedBeyondSevenDays() {
+        saveAssignsIds();
+        balanceUpdatesSucceed();
+
+        assertThat(ledger.record(cmd(MovementType.USAGE, -1, null, DAY.minusDays(7), null), ASSISTANT).occurredOn())
+                .isEqualTo(DAY.minusDays(7));
+        assertThatThrownBy(() -> ledger.record(cmd(MovementType.USAGE, -1, null, DAY.minusDays(8), null), ASSISTANT))
+                .isInstanceOf(RuleViolation.class).hasMessageContaining("7 days");
+    }
+
     /**
      * "Today" is the Manila date, not the UTC date. At 01:00 on 20 November in Manila it is still 19 November in UTC,
      * and a movement dated the 20th must be accepted: a ledger that used the server's zone would wrongly refuse it.

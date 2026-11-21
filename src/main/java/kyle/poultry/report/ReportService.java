@@ -15,6 +15,7 @@ import kyle.poultry.finance.PaymentMethod;
 import kyle.poultry.shared.RuleViolation;
 import kyle.poultry.stock.StockApi;
 import kyle.poultry.stock.StockApi.BalanceView;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -91,15 +92,16 @@ class ReportService {
     record CashMovement(BigDecimal total, Map<PaymentMethod, BigDecimal> byMethod) {}
 
     /**
-     * The summary report served to both roles.
+     * The summary report. Assistants receive sales and collection figures; cost and cash-movement components are null.
      *
      * @param period         the period covered
      * @param sales          gross, cancelled and net sales
      * @param collections    payments, refunds and retained payments
-     * @param stockPurchases cash paid to suppliers (sum of STOCK_PURCHASE); not a profit figure
-     * @param otherExpenses  sum of EXPENSE entries
-     * @param cashMovement   net cash flow with its per-method breakdown
+     * @param stockPurchases cash paid to suppliers (sum of STOCK_PURCHASE); not a profit figure; null for assistants
+     * @param otherExpenses  sum of EXPENSE entries; null for assistants
+     * @param cashMovement   net cash flow with its per-method breakdown; null for assistants
      */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     record Summary(Period period, Sales sales, Collections collections, BigDecimal stockPurchases,
                    BigDecimal otherExpenses, CashMovement cashMovement) {}
 

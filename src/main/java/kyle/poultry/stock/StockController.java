@@ -88,7 +88,12 @@ class StockController {
      * @return the balances, ordered by branch then product
      */
     @GetMapping("/balances")
-    List<BalanceView> balances(@RequestParam(required = false) Long branchId) { return stock.balances(branchId); }
+    List<BalanceView> balances(@RequestParam(required = false) Long branchId,
+                               @AuthenticationPrincipal Jwt jwt) {
+        boolean owner = Actor.from(jwt).isOwner();
+        return stock.balances(branchId).stream().map(b -> owner ? b
+                : new BalanceView(b.productId(), b.productName(), b.unit(), b.branchId(), b.quantity(), null)).toList();
+    }
 
     /**
      * Pages through the movement history of one product at one branch, newest first.
@@ -99,8 +104,20 @@ class StockController {
      * @return one page of movements
      */
     @GetMapping("/movements")
-    Page<MovementView> history(@RequestParam long productId, @RequestParam long branchId, Pageable page) {
-        return stock.history(productId, branchId, page);
+    Page<MovementView> history(@RequestParam long productId, @RequestParam long branchId, Pageable page,
+                               @AuthenticationPrincipal Jwt jwt) {
+        Actor actor = Actor.from(jwt);
+        return stock.history(productId, branchId, page).map(movement -> {
+            boolean canSeeCost = actor.isOwner() || (movement.type() == MovementType.PURCHASE
+                    && movement.createdBy() == actor.userId());
+            return canSeeCost ? movement : withoutCost(movement);
+        });
+    }
+
+    private static MovementView withoutCost(MovementView movement) {
+        return new MovementView(movement.id(), movement.productId(), movement.branchId(), movement.type(),
+                movement.quantityDelta(), null, movement.reason(), movement.occurredOn(), movement.sourceType(),
+                movement.sourceId(), movement.reversesId(), movement.createdBy(), movement.createdAt());
     }
 
     /**
@@ -117,7 +134,14 @@ class StockController {
      * @return products ordered by name, each with its per-branch quantities
      */
     @GetMapping("/summary")
-    List<ProductStockView> summary(@RequestParam(defaultValue = "false") boolean lowOnly) { return stock.summary(lowOnly); }
+    List<ProductStockView> summary(@RequestParam(defaultValue = "false") boolean lowOnly,
+                                   @AuthenticationPrincipal Jwt jwt) {
+        boolean owner = Actor.from(jwt).isOwner();
+        return stock.summary(lowOnly).stream().map(p -> owner ? p : new ProductStockView(
+                p.productId(), p.productName(), p.unit(), p.totalQuantity(), p.reorderLevel(), p.low(),
+                p.branches().stream().map(b -> new StockApi.BranchStockView(b.branchId(), b.quantity(), null, b.low())).toList()))
+                .toList();
+    }
 
     /**
      * Lists the configured reorder levels (any role).

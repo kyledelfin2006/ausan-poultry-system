@@ -30,12 +30,15 @@ final class ReportCsv {
                 .row("sales.net", s.sales().net())
                 .row("collections.received", s.collections().received()).row("collections.refunds", s.collections().refunds())
                 .row("collections.netCollected", s.collections().netCollected())
-                .row("collections.retainedOnCancelledDeliveries", s.collections().retainedOnCancelledDeliveries())
-                .row("stockPurchases", s.stockPurchases()).row("otherExpenses", s.otherExpenses())
-                .row("cashMovement.total", s.cashMovement().total());
-        // Every payment method is present in the map, so the rows are the same on every export.
-        for (Map.Entry<PaymentMethod, java.math.BigDecimal> e : s.cashMovement().byMethod().entrySet())
-            csv.row("cashMovement." + e.getKey(), e.getValue());
+                .row("collections.retainedOnCancelledDeliveries", s.collections().retainedOnCancelledDeliveries());
+        if (s.stockPurchases() != null) csv.row("stockPurchases", s.stockPurchases());
+        if (s.otherExpenses() != null) csv.row("otherExpenses", s.otherExpenses());
+        if (s.cashMovement() != null) {
+            csv.row("cashMovement.total", s.cashMovement().total());
+            // Every payment method is present in the map, so the rows are the same on every export.
+            for (Map.Entry<PaymentMethod, java.math.BigDecimal> e : s.cashMovement().byMethod().entrySet())
+                csv.row("cashMovement." + e.getKey(), e.getValue());
+        }
         return csv.build();
     }
 
@@ -77,11 +80,19 @@ final class ReportCsv {
      * @return CSV text
      */
     static String series(Series s) {
-        var csv = Csv.builder().row("row", "from", "to", "netSales", "netCollected", "stockPurchases", "otherExpenses", "cashMovement");
-        s.points().forEach(p -> csv.row("POINT", p.from(), p.to(), p.netSales(), p.netCollected(), p.stockPurchases(),
-                p.otherExpenses(), p.cashMovement()));
+        boolean includeCosts = s.totals().stockPurchases() != null;
+        var csv = Csv.builder();
+        if (includeCosts)
+            csv.row("row", "from", "to", "netSales", "netCollected", "stockPurchases", "otherExpenses", "cashMovement");
+        else csv.row("row", "from", "to", "netSales", "netCollected");
+        s.points().forEach(p -> {
+            if (includeCosts) csv.row("POINT", p.from(), p.to(), p.netSales(), p.netCollected(), p.stockPurchases(),
+                    p.otherExpenses(), p.cashMovement());
+            else csv.row("POINT", p.from(), p.to(), p.netSales(), p.netCollected());
+        });
         var t = s.totals();
-        csv.row("TOTAL", t.from(), t.to(), t.netSales(), t.netCollected(), t.stockPurchases(), t.otherExpenses(), t.cashMovement());
+        if (includeCosts) csv.row("TOTAL", t.from(), t.to(), t.netSales(), t.netCollected(), t.stockPurchases(), t.otherExpenses(), t.cashMovement());
+        else csv.row("TOTAL", t.from(), t.to(), t.netSales(), t.netCollected());
         return csv.build();
     }
 

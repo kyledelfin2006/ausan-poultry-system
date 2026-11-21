@@ -47,7 +47,12 @@ class Delivery {
     /** When it was created. */
     private Instant createdAt;
 
-    /** The packages sold, loaded together with the delivery (a delivery has only a handful of lines). */
+    /**
+     * The packages sold, loaded together with the delivery (a delivery has only a handful of lines). Kept EAGER on
+     * purpose: stock writes use {@code clearAutomatically}, which detaches the delivery mid-transaction, so a lazy
+     * collection would fail when the view is built. {@code default_batch_fetch_size} keeps list pages to one extra
+     * query for all lines.
+     */
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "delivery_line", joinColumns = @JoinColumn(name = "delivery_id"))
     private List<DeliveryLine> lines = new ArrayList<>();

@@ -27,7 +27,7 @@ are frozen at sale time, so later package edits never change an old delivery.
 | driverName | string | yes | non-blank, max 120 (free text) |
 | fromBranchId | long | yes | active branch |
 | destination | string | yes | non-blank, max 255 |
-| startedAt | instant | no | default now; not in the future |
+| startedAt | instant | no | default now; not in the future; assistants may backdate at most 7 Manila calendar days, owners may use any past date |
 | paymentMethod | enum | yes | `CASH`, `GCASH`, `BANK_TRANSFER`, `OTHER` |
 | lines | array | yes | non-empty; each `{ packageId (required, active package, once per delivery), quantity (> 0), unitPrice (optional, >= 0.01, 2 decimals) }` |
 

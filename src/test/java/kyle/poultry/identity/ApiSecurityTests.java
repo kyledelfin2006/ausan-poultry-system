@@ -138,16 +138,26 @@ class ApiSecurityTests {
                 "{\"username\":\"assistant-fin\",\"password\":\"assistant-password\",\"displayName\":\"A\",\"role\":\"ASSISTANT\"}");
         String assistant = login("assistant-fin", "assistant-password");
 
+        String today = java.time.LocalDate.now(java.time.ZoneId.of("Asia/Manila")).toString();
         var created = call("POST", "/api/finance/expenses", assistant,
-                "{\"amount\":150.50,\"method\":\"CASH\",\"occurredOn\":\"2026-02-01\",\"description\":\"Fuel for the van\"}");
+                "{\"amount\":150.50,\"method\":\"CASH\",\"occurredOn\":\"" + today + "\",\"description\":\"Fuel for the van\"}");
         assertThat(created.statusCode()).isEqualTo(201);
 
         var bad = call("POST", "/api/finance/expenses", assistant,
-                "{\"amount\":0,\"method\":\"CASH\",\"occurredOn\":\"2026-02-01\",\"description\":\"x\"}");
+                "{\"amount\":0,\"method\":\"CASH\",\"occurredOn\":\"" + today + "\",\"description\":\"x\"}");
         assertThat(bad.statusCode()).isEqualTo(400);
 
-        var list = call("GET", "/api/finance/entries?from=2026-02-01&to=2026-02-01", assistant, null);
-        assertThat(list.statusCode()).isEqualTo(200);
-        assertThat(list.body()).contains("Fuel for the van", "150.50");
+        // Assistants may only backdate seven days; the owner has no such limit.
+        String old = java.time.LocalDate.now(java.time.ZoneId.of("Asia/Manila")).minusDays(30).toString();
+        var tooOld = call("POST", "/api/finance/expenses", assistant,
+                "{\"amount\":1,\"method\":\"CASH\",\"occurredOn\":\"" + old + "\",\"description\":\"late\"}");
+        assertThat(tooOld.statusCode()).isEqualTo(422);
+
+        // Expenses are cost data: the assistant's own ledger read omits them, the owner's shows them.
+        var asAssistant = call("GET", "/api/finance/entries?from=" + today + "&to=" + today, assistant, null);
+        assertThat(asAssistant.statusCode()).isEqualTo(200);
+        assertThat(asAssistant.body()).doesNotContain("Fuel for the van", "EXPENSE");
+        var asOwner = call("GET", "/api/finance/entries?from=" + today + "&to=" + today, owner, null);
+        assertThat(asOwner.body()).contains("Fuel for the van", "150.50");
     }
 }

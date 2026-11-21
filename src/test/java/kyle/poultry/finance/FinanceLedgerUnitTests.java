@@ -136,6 +136,18 @@ class FinanceLedgerUnitTests {
         assertThat(ledger.recordExpense(new BigDecimal("10"), PaymentMethod.CASH, DAY, "fuel", OWNER).occurredOn()).isEqualTo(DAY);
     }
 
+    /** Assistant expense entries accept the inclusive seven-day boundary and reject older dates. */
+    @Test
+    void assistantExpenseBackdatingIsLimitedToSevenDays() {
+        saveAssignsIds();
+
+        assertThat(ledger.recordExpense(new BigDecimal("10"), PaymentMethod.CASH, DAY.minusDays(7), "fuel", ASSISTANT)
+                .occurredOn()).isEqualTo(DAY.minusDays(7));
+        assertThatThrownBy(() -> ledger.recordExpense(new BigDecimal("10"), PaymentMethod.CASH,
+                DAY.minusDays(8), "fuel", ASSISTANT))
+                .isInstanceOf(RuleViolation.class).hasMessageContaining("7 days");
+    }
+
     /** Cash entries must say how the money moved. */
     @Test
     void anExpenseNeedsAPaymentMethod() {
@@ -334,7 +346,8 @@ class FinanceLedgerUnitTests {
         assertThatThrownBy(() -> ledger.totalsByType(DAY, DAY.minusDays(1))).isInstanceOf(RuleViolation.class);
         assertThatThrownBy(() -> ledger.totalsByType(null, DAY)).isInstanceOf(RuleViolation.class);
         assertThatThrownBy(() -> ledger.cashByMethod(DAY, null)).isInstanceOf(RuleViolation.class);
-        assertThatThrownBy(() -> ledger.entries(DAY, DAY.minusDays(1), null, org.springframework.data.domain.Pageable.unpaged()))
+        assertThatThrownBy(() -> ledger.entries(DAY, DAY.minusDays(1), null,
+                org.springframework.data.domain.Pageable.unpaged(), OWNER))
                 .isInstanceOf(RuleViolation.class);
 
         assertThat(ledger.totalsByType(DAY, DAY)).isNotEmpty();

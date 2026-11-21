@@ -11,6 +11,7 @@ import java.util.TreeMap;
 import kyle.poultry.finance.EntryType;
 import kyle.poultry.finance.FinanceApi;
 import kyle.poultry.report.ReportService.Period;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -49,10 +50,11 @@ class SeriesService {
      * @param to            last date the point covers
      * @param netSales      SALE - SALE_REVERSAL
      * @param netCollected  PAYMENT_IN - REFUND
-     * @param stockPurchases sum of STOCK_PURCHASE (cash out, not a profit figure)
-     * @param otherExpenses sum of EXPENSE
-     * @param cashMovement  PAYMENT_IN - REFUND - STOCK_PURCHASE - EXPENSE
+     * @param stockPurchases sum of STOCK_PURCHASE (cash out, not a profit figure); null for assistants
+     * @param otherExpenses sum of EXPENSE; null for assistants
+     * @param cashMovement  PAYMENT_IN - REFUND - STOCK_PURCHASE - EXPENSE; null for assistants
      */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     record SeriesPoint(LocalDate from, LocalDate to, BigDecimal netSales, BigDecimal netCollected,
                        BigDecimal stockPurchases, BigDecimal otherExpenses, BigDecimal cashMovement) {}
 

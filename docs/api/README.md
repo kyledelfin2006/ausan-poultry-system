@@ -48,7 +48,7 @@ need `Authorization: Bearer <token>`. Bodies and responses are JSON (`Content-Ty
 |---|---|
 | Money | PHP, JSON numbers with 2 decimals (`70000.00`). Never send more than 2 decimals. |
 | Unit cost / average cost | Up to 4 decimals in responses (`312.5000`). |
-| Dates | `occurredOn`, `from`, `to`: `yyyy-MM-dd` (business zone Asia/Manila). `occurredOn` must not be in the future. |
+| Dates | `occurredOn`, `from`, `to`: `yyyy-MM-dd` (business zone Asia/Manila). No future business dates. Assistants may backdate through 7 calendar days ago; owners may use any past date. No period-close rule is enforced. |
 | Timestamps | ISO-8601 instants in UTC, e.g. `2026-11-20T02:15:00Z`. |
 | Ids | `long` (JSON integer). |
 | Roles | `OWNER` or `ASSISTANT`, in the token and in the login response. |
@@ -58,7 +58,7 @@ need `Authorization: Bearer <token>`. Bodies and responses are JSON (`Content-Ty
 
 ### Paging
 
-Paged endpoints take `?page=0&size=20&sort=property,desc` (all optional; `page` is zero-based, default size 20) and
+Paged endpoints take `?page=0&size=20&sort=property,desc` (all optional; `page` is zero-based, default size 20, maximum size 100) and
 return:
 
 ```json
@@ -80,13 +80,16 @@ plain JSON array.
 | Create/edit products, branches, packages | yes | no (403) |
 | Stock: PURCHASE, DONATION, USAGE movements | yes | yes |
 | Stock: OPENING, ADJUSTMENT movements | yes | no (403) |
-| Stock balances and history | yes | yes |
-| Record expense, read ledger | yes | yes |
+| Stock balances and history | yes, with costs | quantities; unit cost on own purchase rows only |
+| Supplier unit price | yes | assistant can see the price they entered on their own purchase rows |
+| Record expense | yes | yes |
+| Read finance ledger | yes, all types | yes, sales and collections only |
 | Create delivery, list, filter, status counts, get, mark done | yes | yes |
 | Cancel delivery, refund, delivery receipt (cost and profit) | yes | no (403) |
 | Stock summary, read reorder levels | yes | yes |
 | Set or clear a reorder level | yes | no (403) |
-| Reports: summary, inventory value, dashboard, series | yes | yes |
+| Reports: summary, dashboard, series | yes, all fields | yes, sales and collections only |
+| Inventory value | yes | no (403) |
 | Reports: profit, profit series | yes | no (403) |
 | CSV exports | as the matching JSON endpoint | as the matching JSON endpoint |
 
