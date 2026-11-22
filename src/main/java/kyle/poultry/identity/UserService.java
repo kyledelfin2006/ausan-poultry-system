@@ -40,7 +40,7 @@ class UserService {
     /**
      * Creates an active user with a hashed password.
      *
-     * @param username    unique login name
+     * @param rawUsername login name; stored trimmed and in lower case, and unique ignoring case
      * @param password    plain initial password (hashed here, never stored or logged)
      * @param displayName name shown in the UI
      * @param role        authorization level
@@ -49,9 +49,11 @@ class UserService {
      * @throws RuleViolation     when the password breaks the {@link PasswordPolicy}
      */
     @Transactional
-    UserView create(String username, String password, String displayName, Role role) {
+    UserView create(String rawUsername, String password, String displayName, Role role) {
+        // One canonical form (trimmed, lower case) so "Owner", "owner" and " owner " cannot be three different people.
+        String username = rawUsername.strip().toLowerCase(java.util.Locale.ROOT);
         PasswordPolicy.check(password, username);
-        if (users.findByUsername(username).isPresent()) throw new ConflictException("Username already taken");
+        if (users.existsByUsernameIgnoreCase(username)) throw new ConflictException("Username already taken");
         // Only the BCrypt hash is persisted.
         AppUser u;
         try {
@@ -113,6 +115,8 @@ class UserService {
         }
         changes.field("role", u.role(), newRole).field("active", u.active(), newActive);
         u.changeRole(newRole);
+        // Deactivation ends the user's sessions; otherwise reactivating inside the token lifetime would revive them.
+        if (u.active() && !newActive) u.revokeTokens();
         u.setActive(newActive);
         // A PATCH that changed nothing leaves no trace, so the trail only shows real changes.
         if (!changes.isEmpty()) audit.record(AuditAction.UPDATED, AuditEntity.USER, u.id(), changes.summary());

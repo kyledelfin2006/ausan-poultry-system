@@ -425,4 +425,15 @@ class DeliveryServiceUnitTests {
         verify(finance).recordRefund(new BigDecimal("10.00"), PaymentMethod.GCASH, day, "Refund for DLV-2026-0005", source, OWNER);
         verify(finance).recordRefund(new BigDecimal("20.00"), PaymentMethod.CASH, day, "Goodwill", source, OWNER);
     }
+
+    /** A package whose contents multiply past the range of a long is refused instead of wrapping to a small number. */
+    @Test
+    void refusesALineWhoseExpandedQuantityOverflows() {
+        when(catalog.requireActivePackage(12)).thenReturn(new PackageView(12, "PKG-HUGE", "Huge", new BigDecimal("1.00"), true,
+                List.of(new PackageItemView(5, "X", 1L << 62))));
+
+        assertThatThrownBy(() -> service.create(request(new LineRequest(12, 4, null)), OWNER))
+                .isInstanceOf(RuleViolation.class).hasMessageContaining("too large");
+        verifyNoInteractions(stock);
+    }
 }

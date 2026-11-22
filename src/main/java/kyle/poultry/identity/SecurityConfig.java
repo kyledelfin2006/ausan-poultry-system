@@ -67,6 +67,9 @@ class SecurityConfig {
                         .requestMatchers("/api/auth/login", "/actuator/health/**").permitAll()
                         // Metrics and other operational endpoints can reveal internals, so only the owner may read them.
                         .requestMatchers("/actuator/**").hasRole("OWNER")
+                        // Wholly owner-only areas are also refused here, before the body is read, so an assistant
+                        // gets 403 (not 400) for any request; @PreAuthorize stays as defence in depth.
+                        .requestMatchers("/api/users", "/api/users/**", "/api/audit", "/api/audit/**").hasRole("OWNER")
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(o -> o.jwt(j -> j.jwtAuthenticationConverter(converter)))
                 // Missing, invalid or revoked credentials all answer a plain 401 with no details.

@@ -156,8 +156,8 @@ class UserAdministrationTests {
     }
 
     /**
-     * Deactivating a user makes their still-valid token answer 401 immediately, blocks login, and reactivation
-     * restores access.
+     * Deactivating a user makes their still-valid token answer 401 immediately and blocks login; reactivation lets
+     * them log in again but never revives the old token.
      */
     @Test
     void deactivatedUserCannotLogInAndStillValidTokenIsRejectedAtOnce() throws Exception {
@@ -172,7 +172,9 @@ class UserAdministrationTests {
         assertThat(loginResponse(user.username(), PASSWORD).statusCode()).isEqualTo(401);
 
         assertThat(call("PATCH", "/api/users/" + user.id(), owner, "{\"active\":true}").statusCode()).isEqualTo(200);
-        assertThat(call("GET", "/api/products", token, null).statusCode()).isEqualTo(200);
+        // Deactivation revoked the old token for good: reactivating does not revive it, a fresh login is needed.
+        assertThat(call("GET", "/api/products", token, null).statusCode()).isEqualTo(401);
+        assertThat(call("GET", "/api/products", login(user.username(), PASSWORD), null).statusCode()).isEqualTo(200);
     }
 
     /** A valid token whose user row was deleted answers 401. */
