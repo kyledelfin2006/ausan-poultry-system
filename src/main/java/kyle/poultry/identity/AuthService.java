@@ -49,7 +49,12 @@ class AuthService {
      *                                 (one message for all three, so callers cannot tell them apart)
      */
     LoginResponse login(String username, String password) {
-        var user = users.findFirstByUsernameIgnoreCaseOrderByIdAsc(username.strip()).orElse(null);
+        String name = username.strip();
+        // Exact spelling wins, so each of two legacy accounts that differ only by case can still sign in; otherwise a
+        // single case-insensitive match is accepted, and an ambiguous name matches nobody.
+        var matches = users.findAllByUsernameIgnoreCaseOrderByIdAsc(name);
+        var user = matches.stream().filter(u -> u.username().equals(name)).findFirst()
+                .orElse(matches.size() == 1 ? matches.get(0) : null);
         // Always run one BCrypt comparison, against a dummy hash if the user is missing, to equalise timing.
         boolean ok = encoder.matches(password, user == null ? dummyHash : user.passwordHash());
         if (user == null || !ok || !user.active()) throw new BadCredentialsException("Invalid username or password");

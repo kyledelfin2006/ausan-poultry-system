@@ -2,7 +2,6 @@ package kyle.poultry.identity;
 
 import jakarta.persistence.LockModeType;
 import java.util.List;
-import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
@@ -14,12 +13,12 @@ import org.springframework.data.jpa.repository.Query;
 interface AppUserRepository extends JpaRepository<AppUser, Long> {
 
     /**
-     * Finds a user by login name, ignoring case. If old data holds look-alike names, the lowest id wins.
+     * Finds every user whose login name matches ignoring case. Normally one; old data may hold look-alike names.
      *
      * @param username the login name
-     * @return the user, or empty when none has that name
+     * @return the matching users, lowest id first
      */
-    Optional<AppUser> findFirstByUsernameIgnoreCaseOrderByIdAsc(String username);
+    List<AppUser> findAllByUsernameIgnoreCaseOrderByIdAsc(String username);
 
     /**
      * Tells whether any account already uses this login name, ignoring case.

@@ -129,4 +129,22 @@ class LoginThrottleTests {
         assertThat(throttle.size()).isEqualTo(LoginThrottle.MAX_KEYS);
         assertThat(throttle.blockedFor(blocked)).isNotNull();
     }
+
+    /** When every tracked key is blocked, a new key is refused instead of being evicted and left unlimited. */
+    @Test
+    void aFullTableOfBlockedKeysFailsClosedForNewKeys() {
+        for (int i = 0; i < LoginThrottle.MAX_KEYS; i++) {
+            String key = LoginThrottle.key("u" + i, "a");
+            for (int f = 0; f < LoginThrottle.MAX_FAILURES; f++) throttle.recordFailure(key);
+        }
+        String fresh = LoginThrottle.key("newcomer", "b");
+
+        for (int i = 0; i < 20; i++) assertThat(throttle.acquire(fresh)).as("attempt " + i).isNotNull();
+        assertThat(throttle.size()).isEqualTo(LoginThrottle.MAX_KEYS);
+
+        // Once the blocks expire there is room again and the key is limited normally.
+        clock.advance(LoginThrottle.WINDOW.plusSeconds(1));
+        for (int i = 0; i < LoginThrottle.MAX_FAILURES; i++) assertThat(throttle.acquire(fresh)).isNull();
+        assertThat(throttle.acquire(fresh)).isNotNull();
+    }
 }

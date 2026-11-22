@@ -87,7 +87,14 @@ class LoginThrottle {
     synchronized Duration acquire(String key) {
         Duration wait = blockedFor(key);
         if (wait != null) return wait;
-        recordFailure(key);
+        // Fail closed: when the table is full of blocked keys a new key cannot be tracked, so it must not be let through
+        // unlimited. Wait until the oldest block ends, which frees a slot.
+        if (!track(key)) {
+            Instant now = clock.instant();
+            Instant frees = entries.values().iterator().next().windowStart().plus(WINDOW);
+            Duration wait2 = Duration.between(now, frees);
+            return wait2.isNegative() || wait2.isZero() ? Duration.ofSeconds(1) : wait2;
+        }
         return null;
     }
 
@@ -110,26 +117,35 @@ class LoginThrottle {
      *
      * @param key the key from {@link #key(String, String)}
      */
-    synchronized void recordFailure(String key) {
+    synchronized void recordFailure(String key) { track(key); }
+
+    /**
+     * Counts one failure for the key. At the key cap the oldest key that is not blocked is dropped first, so a flood of
+     * new keys cannot clear active blocks.
+     *
+     * @param key the key from {@link #key(String, String)}
+     * @return false when the key is new, the table is full and every tracked key is blocked, so it could not be stored
+     */
+    private boolean track(String key) {
         Instant now = clock.instant();
         evict(now);
         var a = entries.get(key);
-        if (a == null) {
-            entries.put(key, new Attempts(now, 1));
-            // Hard cap: drop the oldest window that is not blocked, so a flood of new keys cannot clear active blocks;
-            // only when every tracked key is blocked does the oldest one go.
-            while (entries.size() > MAX_KEYS) {
-                String victim = null;
-                for (var e : entries.entrySet()) {
-                    if (e.getValue().failures() < MAX_FAILURES) { victim = e.getKey(); break; }
-                }
-                if (victim == null) victim = entries.keySet().iterator().next();
-                entries.remove(victim);
-            }
-        } else {
+        if (a != null) {
             // Same window: keep its start so the block ends 15 minutes after the FIRST failure.
             entries.put(key, new Attempts(a.windowStart(), a.failures() + 1));
+            return true;
         }
+        if (entries.size() >= MAX_KEYS && !dropOldestUnblocked()) return false;
+        entries.put(key, new Attempts(now, 1));
+        return true;
+    }
+
+    /** {@return true if an unblocked key was removed, false when every tracked key is blocked} */
+    private boolean dropOldestUnblocked() {
+        for (var e : entries.entrySet()) {
+            if (e.getValue().failures() < MAX_FAILURES) { entries.remove(e.getKey()); return true; }
+        }
+        return false;
     }
 
     /**
