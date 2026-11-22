@@ -5,6 +5,7 @@ import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
@@ -80,9 +81,9 @@ class CatalogController {
      * One content line in a package-creation request.
      *
      * @param productId required id of the product
-     * @param quantity  units of that product, must be positive
+     * @param quantity  units of that product, from 1 to 1,000,000
      */
-    record ItemRequest(@NotNull Long productId, @Positive long quantity) {}
+    record ItemRequest(@NotNull Long productId, @Positive @Max(1_000_000) long quantity) {}
 
     /**
      * Request body for creating a package.

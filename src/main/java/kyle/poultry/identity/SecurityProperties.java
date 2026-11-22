@@ -24,4 +24,8 @@ record SecurityProperties(String jwtSecret, Duration tokenTtl) {
             throw new IllegalStateException("app.security.jwt-secret (APP_SECURITY_JWT_SECRET) must be at least 32 bytes");
         if (tokenTtl == null) tokenTtl = Duration.ofHours(8);
     }
+
+    /** {@return a description that never includes the signing secret, so logging this object cannot leak it} */
+    @Override
+    public String toString() { return "SecurityProperties[jwtSecret=<redacted>, tokenTtl=" + tokenTtl + "]"; }
 }

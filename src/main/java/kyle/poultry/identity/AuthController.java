@@ -15,6 +15,7 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.ErrorResponseException;
 import org.springframework.web.server.ResponseStatusException;
 
 /**
@@ -45,10 +46,10 @@ class AuthController {
     /**
      * Body of {@code POST /api/auth/login}.
      *
-     * @param username the login name
-     * @param password the plain password; only ever compared against the stored hash
+     * @param username the login name, up to 50 characters (the length of the column)
+     * @param password the plain password, up to 128 characters; only ever compared against the stored hash
      */
-    record LoginRequest(@NotBlank String username, @NotBlank String password) {}
+    record LoginRequest(@NotBlank @Size(max = 50) String username, @NotBlank @Size(max = 128) String password) {}
 
     /**
      * Body of {@code POST /api/auth/password}.
@@ -71,15 +72,12 @@ class AuthController {
     ResponseEntity<?> login(@Valid @RequestBody LoginRequest r, HttpServletRequest http) {
         // Throttle key is username (case-insensitive) + address, so one attacker cannot lock out everyone's account.
         String key = LoginThrottle.key(r.username(), http.getRemoteAddr());
-        Duration wait = throttle.blockedFor(key);
+        // Check and count in one atomic step, so parallel guesses cannot all slip past the limit.
+        Duration wait = throttle.acquire(key);
         if (wait != null) {
             // Checked before verifying the password, so a blocked client learns nothing about correctness.
-            long seconds = Math.max(1, wait.toSeconds() + (wait.toNanosPart() > 0 ? 1 : 0));   // round up
             metrics.counter("ausan.auth.logins", "outcome", "throttled").increment();
-            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
-                    .header(HttpHeaders.RETRY_AFTER, String.valueOf(seconds))
-                    .body(ProblemDetail.forStatusAndDetail(HttpStatus.TOO_MANY_REQUESTS,
-                            "Too many failed login attempts; try again later"));
+            return tooManyRequests(wait);
         }
         try {
             var response = auth.login(r.username(), r.password());
@@ -88,8 +86,7 @@ class AuthController {
             metrics.counter("ausan.auth.logins", "outcome", "success").increment();
             return ResponseEntity.ok(response);
         } catch (AuthenticationException e) {
-            // Every kind of failure counts, including unknown usernames, so existence is not revealed.
-            throttle.recordFailure(key);
+            // The attempt was already counted by acquire(); every kind of failure stays counted, so existence is not revealed.
             metrics.counter("ausan.auth.logins", "outcome", "failure").increment();
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid username or password");
         }
@@ -130,12 +127,49 @@ class AuthController {
      *
      * @param r   the current and new passwords
      * @param jwt the authenticated principal
+     * @throws org.springframework.web.ErrorResponseException (429, with {@code Retry-After}) after repeated wrong
+     *                                                  current passwords
      * @throws kyle.poultry.shared.RuleViolation (422) when the current password is incorrect, the new one equals the
      *                                                  current one, or it breaks the password policy
      */
     @PostMapping("/password")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     void changePassword(@Valid @RequestBody ChangePasswordRequest r, @AuthenticationPrincipal Jwt jwt) {
-        users.changeOwnPassword(Actor.from(jwt).userId(), r.currentPassword(), r.newPassword());
+        long userId = Actor.from(jwt).userId();
+        // A stolen token must not be a free oracle for guessing the current password: same limit as login.
+        String key = LoginThrottle.key("password-change", userId);
+        Duration wait = throttle.acquire(key);
+        if (wait != null) {
+            var problem = ProblemDetail.forStatusAndDetail(HttpStatus.TOO_MANY_REQUESTS,
+                    "Too many failed attempts; try again later");
+            var blocked = new ErrorResponseException(HttpStatus.TOO_MANY_REQUESTS, problem, null);
+            blocked.getHeaders().set(HttpHeaders.RETRY_AFTER, String.valueOf(retryAfterSeconds(wait)));
+            throw blocked;
+        }
+        users.changeOwnPassword(userId, r.currentPassword(), r.newPassword());
+        throttle.recordSuccess(key);
+    }
+
+    /**
+     * Rounds a wait up to whole seconds for the {@code Retry-After} header.
+     *
+     * @param wait how long the caller must wait
+     * @return at least one second
+     */
+    private static long retryAfterSeconds(Duration wait) {
+        return Math.max(1, wait.toSeconds() + (wait.toNanosPart() > 0 ? 1 : 0));
+    }
+
+    /**
+     * Builds the 429 answer with a {@code Retry-After} header.
+     *
+     * @param wait how long the caller must wait
+     * @return the response
+     */
+    private static ResponseEntity<ProblemDetail> tooManyRequests(Duration wait) {
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .header(HttpHeaders.RETRY_AFTER, String.valueOf(retryAfterSeconds(wait)))
+                .body(ProblemDetail.forStatusAndDetail(HttpStatus.TOO_MANY_REQUESTS,
+                        "Too many failed attempts; try again later"));
     }
 }

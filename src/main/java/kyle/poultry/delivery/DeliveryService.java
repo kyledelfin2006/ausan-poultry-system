@@ -223,7 +223,13 @@ class DeliveryService {
             lines.add(new DeliveryLine(pkg.id(), pkg.name(), l.quantity(), unitPrice,
                     unitPrice.multiply(BigDecimal.valueOf(l.quantity()))));
             // Expand the package into its products; TreeMap keeps stock locking in a stable order.
-            pkg.items().forEach(i -> productQuantities.merge(i.productId(), i.quantity() * l.quantity(), Long::sum));
+            // Exact arithmetic: a wrapped product would deduct the wrong number of units from stock.
+            try {
+                pkg.items().forEach(i -> productQuantities.merge(i.productId(),
+                        Math.multiplyExact(i.quantity(), l.quantity()), Math::addExact));
+            } catch (ArithmeticException e) {
+                throw new RuleViolation("The quantity is too large");
+            }
         }
 
         // Human-readable code from a database sequence, so concurrent deliveries never collide.

@@ -79,4 +79,54 @@ class LoginThrottleTests {
         for (int i = 0; i < LoginThrottle.MAX_KEYS + 500; i++) throttle.recordFailure(LoginThrottle.key("u" + i, "a"));
         assertThat(throttle.size()).isEqualTo(LoginThrottle.MAX_KEYS);
     }
+
+    /** The key is a fixed-size digest, so an oversized username cannot make the tracked key large. */
+    @Test
+    void keyHasAFixedSizeWhateverTheUsernameLength() {
+        assertThat(LoginThrottle.key("x".repeat(5_000_000), "10.0.0.1")).hasSize(64);
+        assertThat(LoginThrottle.key("a", "10.0.0.1")).hasSize(64);
+        assertThat(LoginThrottle.key("password-change", 7)).hasSize(64).isNotEqualTo(LoginThrottle.key("password-change", 8));
+    }
+
+    /** Parallel attempts cannot all pass the check: exactly the allowed number are let through. */
+    @Test
+    void acquireLetsThroughExactlyTheAllowedAttemptsUnderParallelLoad() throws Exception {
+        String key = LoginThrottle.key("maria", "10.0.0.1");
+        int threads = 64;
+        var start = new java.util.concurrent.CountDownLatch(1);
+        var allowed = new java.util.concurrent.atomic.AtomicInteger();
+        try (var pool = java.util.concurrent.Executors.newFixedThreadPool(threads)) {
+            var futures = new java.util.ArrayList<java.util.concurrent.Future<?>>();
+            for (int i = 0; i < threads; i++) futures.add(pool.submit(() -> {
+                start.await();
+                if (throttle.acquire(key) == null) allowed.incrementAndGet();
+                return null;
+            }));
+            start.countDown();
+            for (var f : futures) f.get(10, java.util.concurrent.TimeUnit.SECONDS);
+        }
+        assertThat(allowed.get()).isEqualTo(LoginThrottle.MAX_FAILURES);
+        assertThat(throttle.blockedFor(key)).isNotNull();
+    }
+
+    /** A success after acquire clears the reserved attempt. */
+    @Test
+    void acquireThenSuccessLeavesNoFailureBehind() {
+        String key = LoginThrottle.key("maria", "10.0.0.1");
+        for (int i = 0; i < 4; i++) assertThat(throttle.acquire(key)).isNull();
+        throttle.recordSuccess(key);
+        for (int i = 0; i < 5; i++) assertThat(throttle.acquire(key)).isNull();
+        assertThat(throttle.acquire(key)).isNotNull();
+    }
+
+    /** Flooding the throttle with new keys must not clear a key that is already blocked. */
+    @Test
+    void floodOfNewKeysDoesNotEvictABlockedKey() {
+        String blocked = LoginThrottle.key("victim", "10.0.0.1");
+        for (int i = 0; i < LoginThrottle.MAX_FAILURES; i++) throttle.recordFailure(blocked);
+        for (int i = 0; i < LoginThrottle.MAX_KEYS + 500; i++) throttle.recordFailure(LoginThrottle.key("u" + i, "a"));
+
+        assertThat(throttle.size()).isEqualTo(LoginThrottle.MAX_KEYS);
+        assertThat(throttle.blockedFor(blocked)).isNotNull();
+    }
 }

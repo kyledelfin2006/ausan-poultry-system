@@ -9,7 +9,6 @@ import java.sql.SQLException;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneId;
-import java.util.Optional;
 import kyle.poultry.audit.AuditApi;
 import kyle.poultry.shared.ConflictException;
 import org.hibernate.exception.ConstraintViolationException;
@@ -34,7 +33,7 @@ class UserServiceUnitTests {
 
     @Test
     void uniqueUsernameRaceUsesTheSameConflictAsThePrecheck() {
-        when(users.findByUsername("maria")).thenReturn(Optional.empty());
+        when(users.existsByUsernameIgnoreCase("maria")).thenReturn(false);
         when(encoder.encode("a-long-enough-password")).thenReturn("hash");
         var databaseViolation = new ConstraintViolationException("duplicate username", new SQLException("duplicate"),
                 "app_user_username_key");
@@ -48,7 +47,7 @@ class UserServiceUnitTests {
 
     @Test
     void unrelatedIntegrityErrorsKeepTheirGenericMapping() {
-        when(users.findByUsername("maria")).thenReturn(Optional.empty());
+        when(users.existsByUsernameIgnoreCase("maria")).thenReturn(false);
         when(encoder.encode("a-long-enough-password")).thenReturn("hash");
         var databaseViolation = new ConstraintViolationException("other constraint", new SQLException("duplicate"),
                 "app_user_display_name_check");

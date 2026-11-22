@@ -47,23 +47,23 @@ Machine-readable work register produced from a static audit of this repository. 
 | [x] | SEC-3 | spring-security | Medium | BLOCKING | TEST_ADDED_INTEGRATION_DOCKER_UNAVAILABLE | Login throttle keyed on getRemoteAddr: lock-out DoS behind proxy or spoofable with forwarded headers | AuthController.java; compose.prod.yaml; AuthSessionTests.java; docs/security/README.md | DONE |
 | [x] | PERF-1 | java-performance | Medium | BLOCKING-LITE | TEST_ADDED_INTEGRATION_DOCKER_UNAVAILABLE | N+1 on delivery list; no page-size cap (default 2000) | Delivery.java; DeliveryService.java; application.yaml; DeliveryQueryTests.java | DONE |
 | [x] | DBG-2 | java-debugging | Low | BLOCKING-LITE | PASSING_UNIT_REGRESSION_TESTS | Generic DATA_CONFLICT masks duplicate-username race; error-code inconsistency | UserService.java; UserServiceUnitTests.java; ApiExceptionHandler.java | DONE |
-| [ ] | SEC-2 | spring-security | Medium | NON-BLOCKING | NEEDS_VERIFICATION | Unbounded login username and password retained as throttle keys (pre-auth memory pressure) | AuthController.java:51,73; LoginThrottle.java:26,54-88 | TODO |
+| [x] | SEC-2 | spring-security | Medium | NON-BLOCKING | PASSING_TESTS | Unbounded login username and password retained as throttle keys (pre-auth memory pressure) | AuthController.java:51,73; LoginThrottle.java:26,54-88 | DONE |
 | [ ] | DES-1 | java-design | Medium | NON-BLOCKING | CONFIRMED_FROM_CODE | Authorization policy split across four places; refund rule duplicated | SecurityConfig.java:66-70; DeliveryService.java:279,304; FinanceLedger.java:98; StockLedger.java:71; StockOverviewService.java:157-159 | TODO |
 | [ ] | DES-3 | java-design | Low | DECISION | NEEDS_VERIFICATION | DONE and CANCELLED are terminal; no return or credit path for delivered goods | Delivery.java:100-134; DeliveryService.java:306-307; docs/api/deliveries.md:6 | NEEDS_DECISION |
 | [ ] | CON-3 | java-concurrency | Low-Medium | NON-BLOCKING | NEEDS_VERIFICATION | Advisory-lock waiters hold pooled connections; same-key retry storm can starve Hikari | DeliveryService.java:126-131; application-prod.yaml:9-13; RevocationAuthenticationConverter.java:48 | NEEDS_VERIFICATION |
 | [ ] | PERF-3 | java-performance | Low-Medium | NON-BLOCKING | NEEDS_VERIFICATION | Dashboard fan-out (about 15-20 statements) and unbounded history scan in retainedOnCancelled | DashboardService.java:68-88; FinancialEntryRepository.java:135-143; ReportService.java:179 | NEEDS_VERIFICATION |
-| [ ] | CON-1 | java-concurrency | Low-Medium | NON-BLOCKING | CONFIRMED_FROM_CODE | Throttle check-then-act race allows many parallel guesses | AuthController.java:74,92; LoginThrottle.java:64-77 | TODO |
-| [ ] | SEC-9 | spring-security | Low-Medium | NON-BLOCKING | CONFIRMED_FROM_CODE | compose.prod publishes plain-HTTP port on all interfaces | compose.prod.yaml (ports) | TODO |
-| [ ] | SEC-5 | spring-security | Low | NON-BLOCKING | CONFIRMED_FROM_CODE | Owner-only enforced only at method level: 400 before 403; no URL-level rules | SecurityConfig.java:66-70 | TODO |
-| [ ] | SEC-6 | spring-security | Low | NON-BLOCKING | CONFIRMED_FROM_CODE | Usernames not normalised (case, whitespace); inconsistent with throttle key | UserController.java:39-42; UserService.java:53-55; AuthService.java:52; V1__identity.sql | TODO |
-| [ ] | SEC-4 | spring-security | Low | NON-BLOCKING | CONFIRMED_FROM_CODE | Deactivation does not revoke tokens; reactivation within TTL revives them | UserService.java:107-109 | TODO |
-| [ ] | SEC-7 | spring-security | Low | NON-BLOCKING | CONFIRMED_FROM_CODE | Change-own-password is an unthrottled current-password oracle for a stolen token | AuthController.java:136-140; UserService.java:146-149 | TODO |
-| [ ] | SEC-8 | spring-security | Low | NON-BLOCKING | CONFIRMED_FROM_CODE | Secret-bearing record toString; first-owner password lifecycle; length-only secret check | SecurityProperties.java:15; .env.example; OwnerBootstrap.java:35-42 | TODO |
-| [ ] | CON-2 | java-concurrency | Low | NON-BLOCKING | NEEDS_VERIFICATION | FIFO eviction drops oldest (blocked) keys first; flood clears blocks | LoginThrottle.java:84-88 | NEEDS_VERIFICATION |
+| [x] | CON-1 | java-concurrency | Low-Medium | NON-BLOCKING | PASSING_TESTS | Throttle check-then-act race allows many parallel guesses | AuthController.java:74,92; LoginThrottle.java:64-77 | DONE |
+| [x] | SEC-9 | spring-security | Low-Medium | NON-BLOCKING | PASSING_TESTS | compose.prod publishes plain-HTTP port on all interfaces | compose.prod.yaml (ports) | DONE |
+| [x] | SEC-5 | spring-security | Low | NON-BLOCKING | PASSING_TESTS | Owner-only enforced only at method level: 400 before 403; no URL-level rules | SecurityConfig.java:66-70 | DONE |
+| [x] | SEC-6 | spring-security | Low | NON-BLOCKING | PASSING_TESTS | Usernames not normalised (case, whitespace); inconsistent with throttle key | UserController.java:39-42; UserService.java:53-55; AuthService.java:52; V1__identity.sql | DONE |
+| [x] | SEC-4 | spring-security | Low | NON-BLOCKING | PASSING_TESTS | Deactivation does not revoke tokens; reactivation within TTL revives them | UserService.java:107-109 | DONE |
+| [x] | SEC-7 | spring-security | Low | NON-BLOCKING | PASSING_TESTS | Change-own-password is an unthrottled current-password oracle for a stolen token | AuthController.java:136-140; UserService.java:146-149 | DONE |
+| [ ] | SEC-8 | spring-security | Low | NON-BLOCKING | CONFIRMED_FROM_CODE | Secret-bearing record toString; first-owner password lifecycle; length-only secret check | SecurityProperties.java:15; .env.example; OwnerBootstrap.java:35-42 | PARTIAL |
+| [x] | CON-2 | java-concurrency | Low | NON-BLOCKING | PASSING_TESTS | FIFO eviction drops oldest (blocked) keys first; flood clears blocks | LoginThrottle.java:84-88 | DONE |
 | [ ] | PERF-2 | java-performance | Low | NON-BLOCKING | CONFIRMED_FROM_CODE | Whole-table catalog loads per line inside write transaction | DeliveryService.java:213; CatalogService.java:67-72,227-229; DeliveryReceiptService.java:69-72; StockLedger.java:161 | TODO |
-| [ ] | PERF-4 | java-performance | Low | NON-BLOCKING | NEEDS_VERIFICATION | No index serving default delivery list sort or branch filter | V5__packages_and_delivery.sql; DeliveryService.java:348-349 | NEEDS_VERIFICATION |
+| [ ] | PERF-4 | java-performance | Low | NON-BLOCKING | NEEDS_VERIFICATION | No index serving default delivery list sort or branch filter | V5__packages_and_delivery.sql; DeliveryService.java:348-349 | PARTIAL |
 | [ ] | PERF-5 | java-performance | Low | NON-BLOCKING | CONFIRMED_FROM_CODE | Finance CSV export materialises all entities and several copies in memory | FinanceController.java:105-114 | TODO |
-| [ ] | DBG-1 | java-debugging | Low | NON-BLOCKING | NEEDS_VERIFICATION | Unchecked long multiplication when expanding package contents (related to Q-003) | DeliveryService.java:224; CatalogController.java:85 | NEEDS_VERIFICATION |
+| [x] | DBG-1 | java-debugging | Low | NON-BLOCKING | PASSING_TESTS | Unchecked long multiplication when expanding package contents (related to Q-003) | DeliveryService.java:224; CatalogController.java:85 | DONE |
 | [ ] | DBG-3 | java-debugging | Low | NON-BLOCKING | NEEDS_VERIFICATION | clearAutomatically detaches entities mid-transaction (latent trap) | StockBalanceRepository.java:39,68; DeliveryService.java:278-288 | NEEDS_VERIFICATION |
 
 ## 4. Finding detail tables
@@ -374,6 +374,24 @@ Machine-readable work register produced from a static audit of this repository. 
 | Impact | Mutations to d after a stock call would be silently lost; today the mutation precedes the clear |
 | Fix | Comment plus regression test, or re-load the entity after stock calls |
 | Verification needed | Test that changes an entity after reverseAllFor |
+
+## 4a. Hardening round (second pass): what changed
+
+| ID | Outcome | What was done | Evidence |
+|---|---|---|---|
+| SEC-2 | DONE | `username` max 50, `password` max 128 on login; throttle key is a SHA-256 digest (fixed size) | `LoginThrottleTests.keyHasAFixedSizeWhateverTheUsernameLength`, `AuditHardeningTests.oversizedLoginFieldsAreRejected` |
+| CON-1 | DONE | `LoginThrottle.acquire` checks and counts in one locked step; success resets | `acquireLetsThroughExactlyTheAllowedAttemptsUnderParallelLoad` (64 threads, exactly 5 pass) |
+| CON-2 | DONE | Over the key cap, the oldest unblocked key is evicted first | `floodOfNewKeysDoesNotEvictABlockedKey` |
+| SEC-4 | DONE | Deactivation calls `revokeTokens`; reactivation cannot revive old tokens | `AuditHardeningTests`, `UserAdministrationTests` (assertion reversed) |
+| SEC-5 | DONE for `/api/users/**` and `/api/audit/**` | URL-level `hasRole(OWNER)` rule; method security kept. Other owner-only routes (catalog writes, profit, reorder levels) still answer 400 before 403 for invalid bodies | `assistantIsRefusedBeforeTheBodyIsValidated` |
+| SEC-6 | DONE | Usernames stored trimmed and lower-case; login and duplicate check ignore case; V21 adds a unique index on `lower(username)` unless old data already has look-alikes (then it warns and skips) | `usernamesAreNormalised` |
+| SEC-7 | DONE | Password change uses the same throttle (key per user id); 429 with `Retry-After` | `passwordChangeIsThrottledAfterRepeatedWrongCurrentPasswords` |
+| SEC-8 | PARTIAL | `SecurityProperties.toString` redacts the secret. NOT done: forced password change for the bootstrap owner (needs a first-login UI flow) and secret entropy check | build |
+| SEC-9 | DONE | `APP_BIND` selects the published interface (default unchanged: all interfaces); documented in `docs/security/README.md` and `.env.example` | n/a (deployment config) |
+| DBG-1 | DONE | `Math.multiplyExact` / `addExact` mapped to a 422 "The quantity is too large"; package item quantity capped at 1,000,000 | `DeliveryServiceUnitTests.refusesALineWhoseExpandedQuantityOverflows` |
+| PERF-4 | PARTIAL | V21 adds `(started_at desc, id desc)` and `(from_branch_id, started_at desc)` indexes. NOT done: `EXPLAIN` on 100k rows to prove they are chosen | migration applies in the integration suite |
+
+Left open on purpose: DES-1 (capability policy refactor; larger design change), DES-3 (needs an owner business decision), CON-3 and PERF-3 (need load test and query-plan evidence), PERF-2 and PERF-5 (low value at current data size, measure first), DBG-3 (latent only; no current defect, no change made).
 
 ## 5. Cross-cutting clusters
 

@@ -56,6 +56,12 @@ On `204`: discard the token and go to the login screen. Do not wait for the toke
 | `POST /api/auth/logout` | the caller's |
 | `PATCH /api/users/{id}` with `"active": false` | the target's (already true before this change) |
 
+`POST /api/auth/password` is rate-limited like login: after 5 wrong current passwords it answers `429` with a `Retry-After` header (a correct password is also refused until the wait ends).
+
+Deactivating a user (`PATCH /api/users/{id}` with `active: false`) also ends all of that user's sessions; reactivating does not bring old tokens back.
+
+Login limits: `username` up to 50 and `password` up to 128 characters (`400` beyond that). Usernames are stored trimmed and in lower case, are unique ignoring case, and log in ignoring case; a duplicate answers `409` `CONFLICT`.
+
 After `POST /api/auth/password` returns `204`, the next call with the old token is a `401`. Log in again with the new
 password.
 

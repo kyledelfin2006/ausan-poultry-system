@@ -14,12 +14,20 @@ import org.springframework.data.jpa.repository.Query;
 interface AppUserRepository extends JpaRepository<AppUser, Long> {
 
     /**
-     * Finds a user by exact login name.
+     * Finds a user by login name, ignoring case. If old data holds look-alike names, the lowest id wins.
      *
      * @param username the login name
      * @return the user, or empty when none has that name
      */
-    Optional<AppUser> findByUsername(String username);
+    Optional<AppUser> findFirstByUsernameIgnoreCaseOrderByIdAsc(String username);
+
+    /**
+     * Tells whether any account already uses this login name, ignoring case.
+     *
+     * @param username the login name
+     * @return true when the name is taken
+     */
+    boolean existsByUsernameIgnoreCase(String username);
 
     /**
      * Lists every user, oldest first.

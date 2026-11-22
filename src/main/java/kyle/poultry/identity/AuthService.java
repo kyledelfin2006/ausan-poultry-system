@@ -49,7 +49,7 @@ class AuthService {
      *                                 (one message for all three, so callers cannot tell them apart)
      */
     LoginResponse login(String username, String password) {
-        var user = users.findByUsername(username).orElse(null);
+        var user = users.findFirstByUsernameIgnoreCaseOrderByIdAsc(username.strip()).orElse(null);
         // Always run one BCrypt comparison, against a dummy hash if the user is missing, to equalise timing.
         boolean ok = encoder.matches(password, user == null ? dummyHash : user.passwordHash());
         if (user == null || !ok || !user.active()) throw new BadCredentialsException("Invalid username or password");

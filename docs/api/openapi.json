@@ -635,6 +635,7 @@
           "quantity" : {
             "exclusiveMinimum" : 0,
             "format" : "int64",
+            "maximum" : 1000000,
             "type" : "integer"
           }
         },
@@ -663,11 +664,13 @@
       "LoginRequest" : {
         "properties" : {
           "password" : {
-            "minLength" : 1,
+            "maxLength" : 128,
+            "minLength" : 0,
             "type" : "string"
           },
           "username" : {
-            "minLength" : 1,
+            "maxLength" : 50,
+            "minLength" : 0,
             "type" : "string"
           }
         },
