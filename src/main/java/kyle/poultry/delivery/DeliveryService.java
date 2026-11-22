@@ -255,12 +255,16 @@ class DeliveryService {
      * @return the updated delivery
      * @throws NotFoundException   when the delivery does not exist
      * @throws kyle.poultry.shared.ConflictException when the delivery is no longer ACTIVE
-     * @throws RuleViolation       when the time is missing, in the future, or before the start
+     * @throws RuleViolation       when the time is missing, in the future, before the start, or (for an assistant)
+     *                             more than 7 days in the past
      */
     DeliveryView markDone(long id, Instant completedAt, Actor actor) {
         // Row lock so a concurrent "cancel" on the same delivery is decided strictly before or after this.
         var d = lock(id);
         d.markDone(completedAt, clock.instant());
+        // Runs after the domain checks so a missing or future time keeps its specific message; a rule violation here
+        // rolls the whole transaction back, so the delivery stays ACTIVE.
+        BusinessDatePolicy.requireAllowed(completedAt.atZone(clock.getZone()).toLocalDate(), actor.isOwner(), clock);
         return view(d);
     }
 
