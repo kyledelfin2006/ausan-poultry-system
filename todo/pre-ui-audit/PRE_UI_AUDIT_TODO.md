@@ -4,11 +4,11 @@ Machine-readable work register produced from a static audit of this repository. 
 
 ## 0. Agent instructions
 
-1. Work from the master table (section 3). Status column values: `TODO`, `IN_PROGRESS`, `DONE`, `BLOCKED`, `NEEDS_DECISION`, `NEEDS_VERIFICATION`.
+1. Work from the master table (section 3). Status column values: `TODO`, `IN_PROGRESS`, `PARTIAL`, `DONE`, `BLOCKED`, `NEEDS_DECISION`, `NEEDS_VERIFICATION`.
 2. `Gate` values: `BLOCKING` = must be fixed or decided before UI design and implementation; `BLOCKING-LITE` = contract-shaping, settle before UI forms and lists are built; `NON-BLOCKING` = improvement that may follow UI work; `DECISION` = needs a business or owner decision first.
 3. Do not implement a finding whose `Verification` column says `NEEDS_VERIFICATION` until the named evidence has been gathered. Gather it first, then update the status and record the evidence.
 4. For every fix: add or update a test that would have failed before the fix, then update `SecurityMatrixTests` and `docs/` (see section 8) where a role rule or contract changes.
-5. Rules of evidence used in this audit: `CONFIRMED_FROM_CODE` means the defect is visible in source. `NEEDS_VERIFICATION` means plausible from code but not reproduced. No tests or application runs were executed during the audit. Completion evidence below distinguishes passing unit regressions from integration tests added but not run because Docker is unavailable in this environment.
+5. Rules of evidence used in this audit: `CONFIRMED_FROM_CODE` means the defect is visible in source. `NEEDS_VERIFICATION` means plausible from code but not reproduced. No tests or application runs were executed during the original audit. The follow-up hardening round records its own regression evidence; SEC-8 and PERF-4 integration checks passed against PostgreSQL 17 on 2026-11-23.
 6. Re-verify file and line references before editing; lines were read at audit time (2026-11-22) and may drift.
 
 ## 1. Environment (confirmed)
@@ -20,7 +20,7 @@ Machine-readable work register produced from a static audit of this repository. 
 | Spring Framework | 7.0.x (spring-web 7.0.10) |
 | Java | 25 (enforcer requires [25,); local Temurin 25.0.2) |
 | Build tool | Maven via wrapper (mvnw), min Maven 3.9.0 |
-| Database | PostgreSQL 17, Flyway migrations V1 to V20 |
+| Database | PostgreSQL 17, Flyway migrations V1 to V22 |
 | API docs | springdoc 3.2.0 (api-only starter) |
 | Packages | kyle.poultry: audit, catalog, delivery, finance, identity, report, shared, stock |
 | Deployment | Dockerfile, compose.yaml (dev), compose.prod.yaml (prod); CI in .github/workflows/ci.yml |
@@ -58,11 +58,11 @@ Machine-readable work register produced from a static audit of this repository. 
 | [x] | SEC-6 | spring-security | Low | NON-BLOCKING | PASSING_TESTS | Usernames not normalised (case, whitespace); inconsistent with throttle key | UserController.java:39-42; UserService.java:53-55; AuthService.java:52; V1__identity.sql | DONE |
 | [x] | SEC-4 | spring-security | Low | NON-BLOCKING | PASSING_TESTS | Deactivation does not revoke tokens; reactivation within TTL revives them | UserService.java:107-109 | DONE |
 | [x] | SEC-7 | spring-security | Low | NON-BLOCKING | PASSING_TESTS | Change-own-password is an unthrottled current-password oracle for a stolen token | AuthController.java:136-140; UserService.java:146-149 | DONE |
-| [ ] | SEC-8 | spring-security | Low | NON-BLOCKING | CONFIRMED_FROM_CODE | Secret-bearing record toString; first-owner password lifecycle; length-only secret check | SecurityProperties.java:15; .env.example; OwnerBootstrap.java:35-42 | PARTIAL |
+| [x] | SEC-8 | spring-security | Low | NON-BLOCKING | PASSING_TESTS | Secret-bearing record toString; first-owner password lifecycle; low-diversity secret check | SecurityProperties.java; AppUser.java; OwnerBootstrap.java; SecurityConfig.java | DONE |
 | [x] | CON-2 | java-concurrency | Low | NON-BLOCKING | PASSING_TESTS | FIFO eviction drops oldest (blocked) keys first; flood clears blocks | LoginThrottle.java:84-88 | DONE |
-| [ ] | PERF-2 | java-performance | Low | NON-BLOCKING | CONFIRMED_FROM_CODE | Whole-table catalog loads per line inside write transaction | DeliveryService.java:213; CatalogService.java:67-72,227-229; DeliveryReceiptService.java:69-72; StockLedger.java:161 | TODO |
-| [ ] | PERF-4 | java-performance | Low | NON-BLOCKING | NEEDS_VERIFICATION | No index serving default delivery list sort or branch filter | V5__packages_and_delivery.sql; DeliveryService.java:348-349 | PARTIAL |
-| [ ] | PERF-5 | java-performance | Low | NON-BLOCKING | CONFIRMED_FROM_CODE | Finance CSV export materialises all entities and several copies in memory | FinanceController.java:105-114 | TODO |
+| [x] | PERF-2 | java-performance | Low | NON-BLOCKING | PASSING_INTEGRATION_TEST | Whole-table catalog loads per line inside write transaction | DeliveryService.java:213; CatalogService.java:67-72,227-229; DeliveryReceiptService.java:69-72; StockLedger.java:161 | DONE |
+| [x] | PERF-4 | java-performance | Low | NON-BLOCKING | PASSING_INTEGRATION_TEST | Confirm delivery-list indexes are selected at representative scale | V21__audit_hardening.sql; DeliveryService.java:348-349; DeliveryIndexPlanTests.java | DONE |
+| [x] | PERF-5 | java-performance | Low | NON-BLOCKING | PASSING_INTEGRATION_TEST | Finance CSV export materialises all entities and several copies in memory | FinanceController.java:105-114 | DONE |
 | [x] | DBG-1 | java-debugging | Low | NON-BLOCKING | PASSING_TESTS | Unchecked long multiplication when expanding package contents (related to Q-003) | DeliveryService.java:224; CatalogController.java:85 | DONE |
 | [ ] | DBG-3 | java-debugging | Low | NON-BLOCKING | NEEDS_VERIFICATION | clearAutomatically detaches entities mid-transaction (latent trap) | StockBalanceRepository.java:39,68; DeliveryService.java:278-288 | NEEDS_VERIFICATION |
 
@@ -295,11 +295,11 @@ Machine-readable work register produced from a static audit of this repository. 
 |---|---|
 | Skill | spring-security |
 | Severity | Low |
-| Gate | NON-BLOCKING (forced-change flag affects first-login flow) |
-| Location | SecurityProperties record 15; .env.example bootstrap password; OwnerBootstrap 35-42 |
-| Issue | Record toString includes jwtSecret; first-owner password persists in container env and .env with no forced change; secret check is length-only |
+| Gate | NON-BLOCKING |
+| Location | SecurityProperties; AppUser; OwnerBootstrap; RevocationAuthenticationConverter; SecurityConfig; `.env.example` |
+| Issue | A logged settings record could expose `jwtSecret`; the bootstrap owner password remained usable; the signing key check accepted low-diversity values |
 | Impact | Stray logging leaks the signing key (token forgery); docker inspect shows owner password |
-| Fix | Override toString to redact; add must_change_password flag for bootstrap owner; optionally reject low-entropy secrets |
+| Fix | Redact `toString`; enforce a bootstrap/reset password change before normal API use; require 16 distinct key bytes in addition to the 32-byte minimum and document CSPRNG generation |
 
 ### CON-2 Eviction clears blocks
 
@@ -322,9 +322,10 @@ Machine-readable work register produced from a static audit of this repository. 
 | Severity | Low (tiny tables today) |
 | Gate | NON-BLOCKING |
 | Location | DeliveryService 213 -> CatalogService.requireActivePackage 67-72 and productNames 227-229; DeliveryReceiptService 69-72; StockLedger.balances 161 |
-| Issue | Per-line rebuild of a map of all product names inside the transaction holding stock_balance locks; receipts load all products and packages |
-| Impact | Longer lock hold; O(lines x products) |
-| Fix | findAllById(idsNeeded) and pass the loaded map through |
+| Issue | Per-line rebuild of a map of all product names (`products.findAll()`) inside the delivery-create transaction. Re-verified 2026-11-24: the loop runs BEFORE `stock.deduct`, so stock_balance locks are not yet held; what is held is the pooled connection and, when an Idempotency-Key is sent, the advisory lock. Receipt and `StockLedger.balances` load the catalog once per request (deliberately, to avoid per-row lookups), so they are not O(lines x products) and are out of scope |
+| Impact | Longer advisory-lock and connection hold; O(lines x products) rows read on the write path |
+| Fix | In `requireActivePackage`, load only the products named by the package's items (`findAllById`) |
+| Resolution (DONE 2026-11-24) | `CatalogService.namesFor(package)` reads only the products the package contains; list endpoints still load the catalog once. Evidence: `DeliveryQueryTests.creatingADeliveryDoesNotLoadTheWholeProductCatalog` counts Product rows loaded while creating one delivery with 40 filler products in the catalog: 49 before, 3 after |
 
 ### PERF-4 Delivery indexes
 
@@ -333,10 +334,10 @@ Machine-readable work register produced from a static audit of this repository. 
 | Skill | java-performance |
 | Severity | Low |
 | Gate | NON-BLOCKING |
-| Location | V5 ix_delivery_status_started (status, started_at desc); DeliveryService.list 348-349 |
-| Issue | Index cannot serve order by started_at desc, id desc without a status filter; from_branch_id and customer LIKE unindexed |
-| Fix | Indexes on (started_at desc, id desc) and (from_branch_id, started_at desc); pg_trgm only if customer search is slow |
-| Verification needed | EXPLAIN on at least 100k deliveries |
+| Location | V5 `ix_delivery_status_started`; V21 delivery indexes; `DeliveryService.list` |
+| Issue | The original status-first index cannot serve the default newest-first order or branch filter. V21 adds candidate indexes; confirm PostgreSQL selects them at scale. |
+| Fix | V21 adds `(started_at desc, id desc)` and `(from_branch_id, started_at desc)`; add `pg_trgm` only if customer search is slow |
+| Resolution (DONE) | `DeliveryIndexPlanTests` inserts 100,000 deliveries with a 1% branch distribution, runs `ANALYZE`, and confirms both list queries use the intended indexes with `EXPLAIN (ANALYZE, BUFFERS)`. |
 
 ### PERF-5 CSV materialisation
 
@@ -348,6 +349,7 @@ Machine-readable work register produced from a static audit of this repository. 
 | Location | FinanceController.entriesCsv 105-114 |
 | Issue | Pageable.unpaged loads up to 366 days of entities, then views, StringBuilder, String and byte[] |
 | Fix | StreamingResponseBody with a Stream of entities or a projection; download contract unchanged |
+| Resolution (DONE 2026-11-24) | `entries.csv` now streams: `EntryExporter` (own transaction on the async thread) reads one cursor query, detaches entities every 500 rows, and `Csv.writeRow` writes each row as it is read. Period checks run before the first byte; `spring.mvc.async.request-timeout` is 5m. Measured with a throwaway probe (same drained HTTP client, 600,000 rows, 57 MB file): peak heap over baseline 1,163-1,428 MB before, 126-131 MB after; GC time 268-319 ms before, 12-31 ms after; wall time 5.4-5.9 s before, 6.2-7.7 s after (streaming is slightly slower). Peak figures include uncollected garbage, so they are upper bounds on live memory. `EntriesExportSnapshotTests` now asserts one exporter read and a backwards period refused before streaming |
 
 ### DBG-1 Unchecked long multiplication
 
@@ -386,12 +388,25 @@ Machine-readable work register produced from a static audit of this repository. 
 | SEC-5 | DONE for `/api/users/**` and `/api/audit/**` | URL-level `hasRole(OWNER)` rule; method security kept. Other owner-only routes (catalog writes, profit, reorder levels) still answer 400 before 403 for invalid bodies | `assistantIsRefusedBeforeTheBodyIsValidated` |
 | SEC-6 | DONE | Usernames stored trimmed and lower-case; login and duplicate check ignore case; V21 adds a unique index on `lower(username)` unless old data already has look-alikes (then it warns and skips) | `usernamesAreNormalised` |
 | SEC-7 | DONE | Password change uses the same throttle (key per user id); 429 with `Retry-After` | `passwordChangeIsThrottledAfterRepeatedWrongCurrentPasswords` |
-| SEC-8 | PARTIAL | `SecurityProperties.toString` redacts the secret. NOT done: forced password change for the bootstrap owner (needs a first-login UI flow) and secret entropy check | build |
+| SEC-8 | DONE | Redacted the signing key, reject keys with fewer than 16 distinct byte values, and require the bootstrap owner and reset users to change temporary passwords before normal API use; documented the profile/password flow | `SecurityPropertiesTests`, `OwnerBootstrapTests`, `AuthSessionTests.aResetPasswordMustBeChangedBeforeNormalApiAccess` |
 | SEC-9 | DONE | `APP_BIND` selects the published interface (default unchanged: all interfaces); documented in `docs/security/README.md` and `.env.example` | n/a (deployment config) |
 | DBG-1 | DONE | `Math.multiplyExact` / `addExact` mapped to a 422 "The quantity is too large"; package item quantity capped at 1,000,000 | `DeliveryServiceUnitTests.refusesALineWhoseExpandedQuantityOverflows` |
-| PERF-4 | PARTIAL | V21 adds `(started_at desc, id desc)` and `(from_branch_id, started_at desc)` indexes. NOT done: `EXPLAIN` on 100k rows to prove they are chosen | migration applies in the integration suite |
+| PERF-4 | DONE | `DeliveryIndexPlanTests` inserts 100,000 deliveries with a selective branch distribution; both the default and branch-filtered `EXPLAIN (ANALYZE, BUFFERS)` plans use their V21 indexes | `DeliveryIndexPlanTests` passed against PostgreSQL 17 |
 
 Left open on purpose: DES-1 (capability policy refactor; larger design change), DES-3 (needs an owner business decision), CON-3 and PERF-3 (need load test and query-plan evidence), PERF-2 and PERF-5 (low value at current data size, measure first), DBG-3 (latent only; no current defect, no change made).
+
+## 4b. Open-item plan (2026-11-24)
+
+Rules: DES-3 gets no code until the owner decides. CON-3, PERF-3 and DBG-3 get evidence only. PERF-2 and PERF-5 may be implemented, with the current cost and expected change shown.
+
+| ID | Action now | Evidence or decision needed | "Done" is |
+|---|---|---|---|
+| DES-3 | Decision memo only (recommendation: keep v1 as is, document the process, decide returns after UI v1) | Owner answers: how often goods come back; full or partial; resellable or spoiled; money back or credit; who approves | Written decision with acceptance criteria, then a separate change |
+| CON-3 | Evidence plan; run the baseline on `main` BEFORE PERF-2 merges, then again after | 20 parallel same-key creates at pool size 10: Hikari pending/timeouts, `pg_locks` ungranted advisory locks, thread dump | Fix only if unrelated requests time out; target zero 10 s connection timeouts and p99 of `/api/auth/me` under 1 s during the burst |
+| PERF-3 | Evidence plan | Statement count per `GET /api/dashboard`; `EXPLAIN (ANALYZE, BUFFERS)` of `totalsByType` and `retainedOnCancelled` on about 1M ledger rows | Targets set after the baseline (proposal: p95 under 200 ms at 1M rows) |
+| PERF-2 | DONE | Product rows loaded per create: 49 before, 3 after | Same behaviour; rows read fall from "all products" to "products in the package" |
+| PERF-5 | DONE | 600,000-row export: peak heap 1.2-1.4 GB before, about 130 MB after | Peak heap no longer grows with the client-side buffer; assistant type filter kept (`EntriesExportTests`) |
+| DBG-3 | Evidence plan; finish before any return or cancel-style code (DES-3) | Test that mutates a delivery after `reverseAllFor` and checks `PersistenceUnitUtil.isLoaded` and the database row | A passing test that pins the behaviour, or a reordered call if it loses a write |
 
 ## 5. Cross-cutting clusters
 
@@ -399,7 +414,7 @@ Left open on purpose: DES-1 (capability policy refactor; larger design change), 
 |---|---|---|---|---|
 | X-1 | Role visibility of cost data | SEC-1, DES-1, SEC-5 | Authorization gap caused by policy scattered across layers | Fix the policy once, centrally, then align endpoints and tests |
 | X-2 | Login protection | SEC-2, SEC-3, CON-1, CON-2 | Pre-auth hardening, key choice and an atomicity race; fixing one leaves the throttle bypassable | Fix together: input bounds, atomic acquire, key design, eviction |
-| X-3 | List endpoints and paging | PERF-1, PERF-4, missing size cap | Performance and an API-contract decision are one change | Cap page size, batch fetch, add indexes |
+| X-3 | List endpoints and paging | PERF-1, PERF-4 | Performance and an API-contract decision are one change | Page cap, batch fetching and delivery indexes are implemented; the 100k-row delivery plans pass |
 | X-4 | Backdating | DES-2, SEC-1 | Policy (design) plus who may post and see ledger data (security) | Define period policy together with role visibility |
 | X-5 | Error contract | DBG-2, SEC-5, empty 401/403 bodies | UI must switch on status plus code; 401/403 have no body, owner-only routes return 400 before 403 for bad bodies, same conflict yields two codes | Publish one error-code table and make behaviour consistent |
 
@@ -411,8 +426,8 @@ Left open on purpose: DES-1 (capability policy refactor; larger design change), 
 | 2 | SEC-3 with SEC-9 | Deployment topology the UI depends on |
 | 3 | PERF-1 (page-size cap first), DBG-2, SEC-5 | Contract-shaping quick wins |
 | 4 | X-2 login hardening: SEC-2, CON-1, CON-2 | Fix as one change |
-| 5 | SEC-4, SEC-6, SEC-7, SEC-8 | Low-cost security hygiene; SEC-6 needs a migration check |
-| 6 | PERF-2, PERF-3, PERF-4, PERF-5, CON-3, DBG-1, DBG-3 | After measurement; may follow UI work |
+| 5 | SEC-4, SEC-6, SEC-7 | Low-cost security hygiene; SEC-6 needs a migration check |
+| 6 | PERF-2, PERF-3, PERF-5, CON-3, DBG-3 | After measurement; may follow UI work |
 
 ## 7. Evidence still required before acting
 
@@ -423,7 +438,7 @@ Left open on purpose: DES-1 (capability policy refactor; larger design change), 
 | CON-2 | Eviction reset | 10,001 failed logins then retry a blocked key |
 | CON-3 | Pool starvation | 20 parallel identical Idempotency-Key requests at pool size 10 |
 | PERF-1 | Statement counts | Hibernate statistics or SQL log for GET /api/deliveries?size=50 |
-| PERF-3, PERF-4 | Query plans | EXPLAIN (ANALYZE, BUFFERS) on synthetic data (1M ledger rows, 100k deliveries) |
+| PERF-3 | Query plans | EXPLAIN (ANALYZE, BUFFERS) on a synthetic ledger with about 1M rows |
 | DBG-1, DBG-3 | Reproductions | Crafted package test; entity change after reverseAllFor |
 | DES-3 | Business process | Owner confirmation |
 

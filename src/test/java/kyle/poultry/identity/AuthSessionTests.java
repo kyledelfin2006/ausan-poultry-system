@@ -124,6 +124,36 @@ class AuthSessionTests {
         api.login(target.username(), "reset-by-the-owner-1");
     }
 
+    /** A reset password restricts the user to profile, logout and password change until they choose a new password. */
+    @Test
+    void aResetPasswordMustBeChangedBeforeNormalApiAccess() throws Exception {
+        var api = api();
+        String owner = api.ownerToken();
+        var target = api.createUserWithId(owner, "ASSISTANT");
+        String temporaryPassword = "temporary-reset-password";
+        assertThat(api.call("POST", "/api/users/" + target.id() + "/password", owner,
+                "{\"newPassword\":\"" + temporaryPassword + "\"}").statusCode()).isEqualTo(204);
+
+        String temporaryToken = api.login(target.username(), temporaryPassword);
+        var profile = api.call("GET", "/api/auth/me", temporaryToken, null);
+        assertThat(profile.statusCode()).isEqualTo(200);
+        assertThat(field(profile.body(), "mustChangePassword")).isEqualTo("true");
+        assertThat(api.call("GET", "/api/products", temporaryToken, null).statusCode()).isEqualTo(403);
+        assertThat(api.call("POST", "/api/auth/logout", temporaryToken, null).statusCode()).isEqualTo(204);
+
+        // Use a fresh temporary login after logout, then change it and verify the old token is revoked.
+        temporaryToken = api.login(target.username(), temporaryPassword);
+        assertThat(api.call("POST", "/api/auth/password", temporaryToken,
+                "{\"currentPassword\":\"" + temporaryPassword + "\",\"newPassword\":\"changed-password-2026\"}").statusCode())
+                .isEqualTo(204);
+        assertThat(api.call("GET", "/api/auth/me", temporaryToken, null).statusCode()).isEqualTo(401);
+
+        String currentToken = api.login(target.username(), "changed-password-2026");
+        var currentProfile = api.call("GET", "/api/auth/me", currentToken, null);
+        assertThat(field(currentProfile.body(), "mustChangePassword")).isEqualTo("false");
+        assertThat(api.call("GET", "/api/products", currentToken, null).statusCode()).isEqualTo(200);
+    }
+
     /** The password policy answers 422 on every path that sets a password, and nothing changes when it refuses. */
     @Test
     void passwordPolicyIsEnforcedEverywhereAPasswordIsChosen() throws Exception {

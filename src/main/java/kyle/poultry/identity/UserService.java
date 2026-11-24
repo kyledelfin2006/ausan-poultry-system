@@ -50,6 +50,21 @@ class UserService {
      */
     @Transactional
     UserView create(String rawUsername, String password, String displayName, Role role) {
+        return create(rawUsername, password, displayName, role, false);
+    }
+
+    /**
+     * Creates a user and optionally requires a password change before other API access.
+     *
+     * @param rawUsername login name
+     * @param password    plain initial password
+     * @param displayName name shown in the UI
+     * @param role        authorization level
+     * @param mustChangePassword whether this is a temporary password
+     * @return the created user
+     */
+    @Transactional
+    UserView create(String rawUsername, String password, String displayName, Role role, boolean mustChangePassword) {
         // One canonical form (trimmed, lower case) so "Owner", "owner" and " owner " cannot be three different people.
         String username = rawUsername.strip().toLowerCase(java.util.Locale.ROOT);
         PasswordPolicy.check(password, username);
@@ -57,7 +72,8 @@ class UserService {
         // Only the BCrypt hash is persisted.
         AppUser u;
         try {
-            u = users.saveAndFlush(new AppUser(username, encoder.encode(password), displayName, role, clock.instant()));
+            u = users.saveAndFlush(new AppUser(username, encoder.encode(password), displayName, role, clock.instant(),
+                    mustChangePassword));
         } catch (DataIntegrityViolationException e) {
             if (isUsernameConstraint(e)) throw new ConflictException("Username already taken");
             throw e;
@@ -136,6 +152,7 @@ class UserService {
         var u = users.findById(id).orElseThrow(() -> new NotFoundException("User", id));
         PasswordPolicy.check(newPassword, u.username());
         u.setPasswordHash(encoder.encode(newPassword));
+        u.requirePasswordChange(true);
         // A reset is usually done because the old password may be known to someone else, so end that user's sessions.
         u.revokeTokens();
         audit.record(AuditAction.PASSWORD_RESET, AuditEntity.USER, u.id(), "password reset for " + u.username());
@@ -161,6 +178,7 @@ class UserService {
         if (currentPassword.equals(newPassword)) throw new RuleViolation("The new password must differ from the current one");
         PasswordPolicy.check(newPassword, u.username());
         u.setPasswordHash(encoder.encode(newPassword));
+        u.requirePasswordChange(false);
         // Every existing token (including the one used for this call) stops working: the user logs in again.
         u.revokeTokens();
         audit.record(AuditAction.PASSWORD_CHANGED, AuditEntity.USER, u.id(), "password changed by the user");
@@ -208,6 +226,6 @@ class UserService {
      * @return the safe view
      */
     private static UserView view(AppUser u) {
-        return new UserView(u.id(), u.username(), u.displayName(), u.role(), u.active());
+        return new UserView(u.id(), u.username(), u.displayName(), u.role(), u.active(), u.mustChangePassword());
     }
 }

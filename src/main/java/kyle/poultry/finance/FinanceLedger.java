@@ -28,7 +28,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @Transactional
 class FinanceLedger implements FinanceApi {
-    private static final List<EntryType> ASSISTANT_VISIBLE_TYPES =
+    /** The entry types an assistant may see; shared with {@link EntryExporter} so both read paths apply one rule. */
+    static final List<EntryType> ASSISTANT_VISIBLE_TYPES =
             List.of(EntryType.SALE, EntryType.SALE_REVERSAL, EntryType.PAYMENT_IN, EntryType.REFUND);
 
     private final FinancialEntryRepository entries;
@@ -262,7 +263,7 @@ class FinanceLedger implements FinanceApi {
      * @param to   last date of the period
      * @throws RuleViolation if either date is missing or {@code to} is before {@code from}
      */
-    private static void requirePeriod(LocalDate from, LocalDate to) {
+    static void requirePeriod(LocalDate from, LocalDate to) {
         if (from == null || to == null || to.isBefore(from))
             throw new RuleViolation("A valid from/to period is required");
     }

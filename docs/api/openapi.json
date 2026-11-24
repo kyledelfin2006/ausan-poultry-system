@@ -686,6 +686,9 @@
             "format" : "int64",
             "type" : "integer"
           },
+          "mustChangePassword" : {
+            "type" : "boolean"
+          },
           "role" : {
             "enum" : [ "OWNER", "ASSISTANT" ],
             "type" : "string"
@@ -1418,6 +1421,9 @@
           "id" : {
             "format" : "int64",
             "type" : "integer"
+          },
+          "mustChangePassword" : {
+            "type" : "boolean"
           },
           "role" : {
             "enum" : [ "OWNER", "ASSISTANT" ],

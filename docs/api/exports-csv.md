@@ -42,7 +42,9 @@ const blob = await res.blob();                       // text/csv
 
 **`entries.csv`**: header `id,occurredOn,type,cashDirection,amount,paymentMethod,description,sourceType,sourceId,reversesId,createdBy,createdAt`,
 then one row per entry, newest date first and, within a day, newest id first (the order of the JSON list). With no entries
-the file is just the header.
+the file is just the header. The file is streamed while it is read (one query, so it is a consistent snapshot) and has no
+`Content-Length`; an invalid period is refused with 422 before any byte is sent, but a failure after the download starts
+ends the stream early, so a client should treat a connection error as an incomplete file.
 
 **`summary.csv`, `profit.csv`**: header `metric,value`, then rows such as `from`, `to`, `sales.gross`, `sales.net`,
 `collections.netCollected`, `stockPurchases`, `cashMovement.total` and one `cashMovement.<METHOD>` row per payment method

@@ -18,23 +18,28 @@ page adds to them.
 
 ## `GET /api/auth/me` (any role)
 
-Returns the caller as the **database** sees them now, so a role change or deactivation shows up immediately even though
-the token is older.
+Returns the caller as the **database** sees them now, so a role change or password-change requirement shows up
+immediately even though the token is older. A deactivated account instead answers `401`.
 
 ```json
 { "id": 3, "username": "maria", "displayName": "Maria Santos", "role": "ASSISTANT",
-  "tokenExpiresAt": "2026-11-20T10:15:00Z" }
+  "mustChangePassword": false, "tokenExpiresAt": "2026-11-20T10:15:00Z" }
 ```
 
 | Field | Notes |
 |---|---|
 | `role` | `OWNER` or `ASSISTANT`. Use this, not the login response, to decide what to show: it is always current. |
+| `mustChangePassword` | `true` for a bootstrap or owner-reset password. While true, authenticated business routes are limited to this profile, logout and password change; login and the health check remain public. |
 | `tokenExpiresAt` | When the token used for this call stops working (ISO-8601 instant). Warn the user a few minutes before, or send them to login when it passes. |
 
 Errors: `401` no/invalid/expired/revoked token.
 
 Typical use: call it once on app start (and after a `401`) to restore the signed-in state and decide which screens and
 buttons to show.
+
+For a bootstrap owner or a user whose password was reset, the client should send the user directly to the password
+change form when this flag is `true`. A successful `POST /api/auth/password` invalidates that token; log in again with
+the new password before opening the rest of the application.
 
 ## `POST /api/auth/logout` (any role)
 
@@ -64,6 +69,11 @@ Login limits: `username` up to 50 and `password` up to 128 characters (`400` bey
 
 After `POST /api/auth/password` returns `204`, the next call with the old token is a `401`. Log in again with the new
 password.
+
+The initial owner is required to change the bootstrap password, and an owner reset also marks the target account for a
+password change. Until the user changes it, other authenticated business API routes answer `403`; `GET /api/auth/me`,
+`POST /api/auth/password` and `POST /api/auth/logout` remain available. Login and `/actuator/health` remain public. The
+first-login restriction is enforced by the API, so scripts and future frontends receive the same rule.
 
 ## Password rules
 

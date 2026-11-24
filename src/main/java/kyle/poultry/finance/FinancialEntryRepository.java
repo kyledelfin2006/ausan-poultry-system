@@ -3,6 +3,9 @@ package kyle.poultry.finance;
 import jakarta.persistence.LockModeType;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.stream.Stream;
+import jakarta.persistence.QueryHint;
+import org.springframework.data.jpa.repository.QueryHints;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -109,6 +112,35 @@ interface FinancialEntryRepository extends JpaRepository<FinancialEntry, Long> {
              order by e.occurredOn desc, e.id desc""")
     Page<FinancialEntry> periodByTypes(@Param("from") LocalDate from, @Param("to") LocalDate to,
                                        @Param("types") List<EntryType> types, Pageable page);
+
+    /**
+     * Same rows and order as {@link #period}, delivered as a database cursor for exports. The caller must be inside a
+     * transaction, consume and close the stream there, and detach what it has read.
+     */
+    @QueryHints(@QueryHint(name = "org.hibernate.fetchSize", value = "500"))
+    @Query("""
+            select e from FinancialEntry e
+             where e.occurredOn between :from and :to
+             order by e.occurredOn desc, e.id desc""")
+    Stream<FinancialEntry> streamPeriod(@Param("from") LocalDate from, @Param("to") LocalDate to);
+
+    /** Cursor version of {@link #periodByType}; see {@link #streamPeriod}. */
+    @QueryHints(@QueryHint(name = "org.hibernate.fetchSize", value = "500"))
+    @Query("""
+            select e from FinancialEntry e
+             where e.occurredOn between :from and :to and e.type = :type
+             order by e.occurredOn desc, e.id desc""")
+    Stream<FinancialEntry> streamPeriodByType(@Param("from") LocalDate from, @Param("to") LocalDate to,
+                                              @Param("type") EntryType type);
+
+    /** Cursor version of {@link #periodByTypes}; see {@link #streamPeriod}. */
+    @QueryHints(@QueryHint(name = "org.hibernate.fetchSize", value = "500"))
+    @Query("""
+            select e from FinancialEntry e
+             where e.occurredOn between :from and :to and e.type in :types
+             order by e.occurredOn desc, e.id desc""")
+    Stream<FinancialEntry> streamPeriodByTypes(@Param("from") LocalDate from, @Param("to") LocalDate to,
+                                               @Param("types") List<EntryType> types);
 
     /**
      * Adds up the amounts of all entries dated inside the inclusive period, one row per entry type that has entries.

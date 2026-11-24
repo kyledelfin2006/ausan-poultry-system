@@ -16,8 +16,8 @@ Copy-Item .env.example .env
 Edit `.env` and replace every placeholder:
 
 - `POSTGRES_PASSWORD` and `SPRING_DATASOURCE_PASSWORD`: the same long random value.
-- `APP_SECURITY_JWT_SECRET`: at least 32 bytes. Generate: `openssl rand -base64 48`, or in PowerShell `[Convert]::ToBase64String([Security.Cryptography.RandomNumberGenerator]::GetBytes(48))`.
-- `APP_BOOTSTRAP_OWNER_USERNAME` / `APP_BOOTSTRAP_OWNER_PASSWORD`: the first owner account.
+- `APP_SECURITY_JWT_SECRET`: at least 32 bytes with 16 or more distinct byte values. Generate: `openssl rand -base64 48`, or in PowerShell `[Convert]::ToBase64String([Security.Cryptography.RandomNumberGenerator]::GetBytes(48))`.
+- `APP_BOOTSTRAP_OWNER_USERNAME` / `APP_BOOTSTRAP_OWNER_PASSWORD`: the first owner account. The owner must replace this password before using other API routes.
 
 Start:
 
@@ -27,11 +27,11 @@ docker compose -f compose.prod.yaml --env-file .env ps       # wait for app to b
 curl.exe http://localhost:8080/actuator/health
 ```
 
-Flyway creates the schema and seeds the products, two placeholder branches and the three packages on first start.
+Flyway creates the schema and seeds the products, two placeholder branches and the three packages on first start. The bootstrap owner must change the configured password before using other API routes; `GET /api/auth/me`, `POST /api/auth/password` and `POST /api/auth/logout` remain available for that flow.
 
 ### Remove the bootstrap variables
 
-The owner is created only when the user table is empty, but do not leave the password lying around. After you have logged in once:
+The owner is created only when the user table is empty, but do not leave the password lying around. After logging in and changing the bootstrap password:
 
 1. Delete `APP_BOOTSTRAP_OWNER_USERNAME` and `APP_BOOTSTRAP_OWNER_PASSWORD` from `.env`.
 2. Recreate the app: `docker compose -f compose.prod.yaml --env-file .env up -d app`.

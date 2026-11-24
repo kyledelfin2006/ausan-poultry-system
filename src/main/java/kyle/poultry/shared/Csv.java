@@ -1,11 +1,14 @@
 package kyle.poultry.shared;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
 /**
  * Builds CSV downloads (RFC 4180 quoting) for the export endpoints of every module. Pure functions, no state.
@@ -40,18 +43,37 @@ public final class Csv {
          * @return this builder
          */
         public Builder row(Object... cells) {
-            // One separator between cells, none after the last.
-            for (int i = 0; i < cells.length; i++) {
-                if (i > 0) out.append(',');
-                out.append(cell(cells[i]));
+            try {
+                writeRow(out, cells);
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);   // a StringBuilder never throws; this only satisfies the signature
             }
-            out.append(EOL);
             return this;
         }
 
         /** {@return the whole document so far} */
         public String build() { return out.toString(); }
     }
+
+    /**
+     * Writes one row (cells separated by commas, ending with CRLF) to any sink, so large exports can be written as
+     * they are produced instead of being built in memory first. Cells are formatted exactly as in {@link Builder#row}.
+     *
+     * @param out   where to write
+     * @param cells the cell values
+     * @throws IOException when the sink fails (for example the client disconnected)
+     */
+    public static void writeRow(Appendable out, Object... cells) throws IOException {
+        // One separator between cells, none after the last.
+        for (int i = 0; i < cells.length; i++) {
+            if (i > 0) out.append(',');
+            out.append(cell(cells[i]));
+        }
+        out.append(EOL);
+    }
+
+    /** {@return the UTF-8 byte-order mark a document must start with so Excel reads it correctly} */
+    public static String byteOrderMark() { return BOM; }
 
     /** {@return a new, empty CSV document (it already contains the byte-order mark)} */
     public static Builder builder() { return new Builder(); }
@@ -87,5 +109,21 @@ public final class Csv {
                 .contentType(new MediaType("text", "csv", StandardCharsets.UTF_8))
                 .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment().filename(filename).build().toString())
                 .body(csv.getBytes(StandardCharsets.UTF_8));
+    }
+
+    /**
+     * Wraps a CSV document that is written while the response is sent. The body must start with
+     * {@link #byteOrderMark()}. Once the first byte is out the status can no longer change, so validate the request
+     * before calling this.
+     *
+     * @param filename the suggested file name
+     * @param body     writes the document to the response stream
+     * @return a 200 response with {@code text/csv; charset=UTF-8} and an attachment disposition
+     */
+    public static ResponseEntity<StreamingResponseBody> download(String filename, StreamingResponseBody body) {
+        return ResponseEntity.ok()
+                .contentType(new MediaType("text", "csv", StandardCharsets.UTF_8))
+                .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment().filename(filename).build().toString())
+                .body(body);
     }
 }

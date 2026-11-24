@@ -131,7 +131,8 @@ class UserAdministrationTests {
         var list = call("GET", "/api/users", owner, null);
         assertThat(list.statusCode()).isEqualTo(200);
         assertThat(list.body()).contains(assistant.username(), "\"role\":\"ASSISTANT\"", "\"active\":true")
-                .doesNotContainIgnoringCase("password").doesNotContain("$2a$");
+                // "mustChangePassword" is a legitimate flag; the secret-bearing fields are the hash and the raw password.
+                .doesNotContainIgnoringCase("passwordHash").doesNotContain("\"password\"").doesNotContain("$2a$");
 
         assertThat(call("GET", "/api/users", login(assistant.username(), PASSWORD), null).statusCode()).isEqualTo(403);
         assertThat(call("PATCH", "/api/users/" + assistant.id(), login(assistant.username(), PASSWORD), "{\"active\":false}").statusCode())

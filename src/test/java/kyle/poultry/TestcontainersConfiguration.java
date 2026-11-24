@@ -49,6 +49,8 @@ public class TestcontainersConfiguration {
             // The bootstrap owner is created on first start, giving tests a user to attach movements to.
             registry.add("app.bootstrap.owner-username", () -> OWNER_USERNAME);
             registry.add("app.bootstrap.owner-password", () -> OWNER_PASSWORD);
+            // Keep the shared owner fixture stable; password-change enforcement is exercised through owner resets.
+            registry.add("app.bootstrap.require-password-change", () -> false);
         };
     }
 }

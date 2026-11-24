@@ -31,7 +31,7 @@ The code is a **modular monolith** ([ADR-0001](decisions/0001-modular-monolith.m
 |---|---|---|
 | `shared` | Error handling, the shared exceptions, the clock, the loose `SourceRef` pointer, CSV writing, the request-id filter (`shared.web`) | `RuleViolation`, `ConflictException`, `NotFoundException`, `SourceRef`, `Csv`, `RequestIdFilter` |
 | `audit` | Append-only trail of who changed users, products, packages and branches; the owner-only audit query | `AuditApi`, `AuditAction`, `AuditEntity`, `AuditChanges` |
-| `identity` | Users, roles, login, sign-out, password change, JWT, bootstrap owner, immediate revocation, CORS | `Actor`, `Role` |
+| `identity` | Users, roles, login, sign-out, password change, JWT, bootstrap owner, forced temporary-password change, immediate revocation, CORS | `Actor`, `Role` |
 | `catalog` | Products, branches, sales packages (every change is recorded in the audit trail) | `CatalogApi` |
 | `stock` | Append-only stock movements, balances, weighted average cost, the all-branch summary and reorder levels | `StockApi` |
 | `finance` | Append-only financial ledger, refunds, period aggregates | `FinanceApi` |
@@ -135,6 +135,7 @@ flowchart LR
 ```
 
 - Configuration comes from the environment (`.env`); there are no secrets in the repository. The JWT signing secret has no default,
+  must be at least 32 bytes and contain 16 distinct byte values,
   so the application refuses to start without one.
 - Flyway runs on start-up and brings the schema to the current version; Hibernate validates it (`ddl-auto: validate`).
 - The first owner is created from `APP_BOOTSTRAP_OWNER_*` only when the user table is empty.

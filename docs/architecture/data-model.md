@@ -38,6 +38,7 @@ erDiagram
         varchar password_hash
         varchar role "OWNER or ASSISTANT"
         boolean active
+        boolean must_change_password "temporary password must be replaced"
         integer token_version "bumped by sign-out and password change"
     }
     audit_log {
@@ -204,6 +205,8 @@ surrounding spaces.
 | V7 | `delivery_idempotency` |
 | V10 | `stock_reorder_level` (reorder levels for low-stock flags) |
 | V20 | `app_user.token_version` (sign-out and password-change revocation); `audit_log` with its append-only triggers |
+| V21 | Delivery list indexes; case-insensitive username uniqueness when existing names permit it |
+| V22 | `app_user.must_change_password` for bootstrap and owner-reset passwords |
 
 `V6`, `V8`, `V9` and `V11`-`V19` are absent from the repository (V10-V19 and V20-V29 were reserved for parallel work, and
 not every number was used). Flyway accepts gaps in version numbers; it does not accept a *lower* number appearing after a

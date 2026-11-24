@@ -12,12 +12,13 @@ would keep working until it expires.
 ## Decision
 
 - Authentication: `POST /api/auth/login` checks the BCrypt password hash and returns an **HS256 JWT** (subject = user id, role claim, 8 hour
-  expiry). Only HS256 is accepted; the signing secret comes from configuration and must be at least 32 bytes.
+  expiry). Only HS256 is accepted; the signing secret comes from configuration and must be at least 32 bytes with 16 or more distinct byte values.
 - The application is a stateless resource server (no session, no cookie, CSRF disabled, because no ambient credentials are used).
 - **Every request** passes through `RevocationAuthenticationConverter`, which loads the user by id: a missing or inactive user is
   rejected with 401, and the role used for `@PreAuthorize` is the **database role**, not the one in the token.
 - **Sign-out and password change** raise `app_user.token_version`; the token carries it (claim `ver`) and a mismatch is a 401, so
   they end every session of that user on every device. Tokens issued before the claim existed count as version 0.
+- The bootstrap owner and users with owner-reset passwords must change the temporary password before using other API routes. This state is read from the database on each request, alongside the role and token version.
 - Brute-force protection: `LoginThrottle`, 5 failures per 15 minutes per (username, address), then 429.
 - Authorization is done with method security (`@PreAuthorize`) and in the services that carry an `Actor` (owner-only rules are
   checked again there, so they hold when a service is called from somewhere other than a controller).

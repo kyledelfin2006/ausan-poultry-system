@@ -6,7 +6,12 @@ import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import java.io.BufferedWriter;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.io.UncheckedIOException;
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import kyle.poultry.finance.FinanceApi.EntryView;
 import kyle.poultry.identity.Actor;
@@ -20,6 +25,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
 /**
  * HTTP face of the finance module under {@code /api/finance}: record expenses and browse ledger entries. It is
@@ -33,13 +39,15 @@ class FinanceController {
     private static final int MAX_EXPORT_DAYS = 366;
 
     private final FinanceApi finance;
+    private final EntryExporter exporter;
 
     /**
      * Creates the controller.
      *
-     * @param finance the ledger used for every operation
+     * @param finance  the ledger used for every operation
+     * @param exporter reads entries one at a time for the CSV download
      */
-    FinanceController(FinanceApi finance) { this.finance = finance; }
+    FinanceController(FinanceApi finance, EntryExporter exporter) { this.finance = finance; this.exporter = exporter; }
 
     /**
      * Request body for recording an expense.
@@ -98,20 +106,32 @@ class FinanceController {
      * @throws kyle.poultry.shared.RuleViolation if from is after to or the period exceeds 366 days (HTTP 422)
      */
     @GetMapping("/entries.csv")
-    ResponseEntity<byte[]> entriesCsv(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+    ResponseEntity<StreamingResponseBody> entriesCsv(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
                                       @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
                                       @RequestParam(required = false) EntryType type,
                                       @AuthenticationPrincipal Jwt jwt) {
-        // A from/to that is missing or backwards is rejected by the ledger; only the length limit is added here.
+        // Everything that can be refused is checked here, before the first byte: once streaming starts the status is fixed.
+        FinanceLedger.requirePeriod(from, to);
         if (from.isBefore(to.minusDays(MAX_EXPORT_DAYS - 1L)))
             throw new RuleViolation("An export period cannot exceed " + MAX_EXPORT_DAYS + " days");
-        var csv = Csv.builder().row("id", "occurredOn", "type", "cashDirection", "amount", "paymentMethod", "description",
-                "sourceType", "sourceId", "reversesId", "createdBy", "createdAt");
+        Actor actor = Actor.from(jwt);   // read now: the body is written later, on another thread
         // One query = one consistent snapshot. Paging with offsets would repeat or skip rows if an entry were recorded
-        // while the file is being written; the 366-day limit keeps the single result bounded.
-        for (EntryView e : finance.entries(from, to, type, Pageable.unpaged(), Actor.from(jwt)))
-            csv.row(e.id(), e.occurredOn(), e.type(), e.cashDirection(), e.amount(), e.method(), e.description(),
-                    e.sourceType(), e.sourceId(), e.reversesId(), e.createdBy(), e.createdAt());
-        return Csv.download("ledger-entries-" + from + "-to-" + to + ".csv", csv.build());
+        // while the file is being written. Rows are written as they are read, so memory does not grow with the period.
+        StreamingResponseBody body = out -> {
+            try (var w = new BufferedWriter(new OutputStreamWriter(out, StandardCharsets.UTF_8), 32 * 1024)) {
+                w.write(Csv.byteOrderMark());
+                Csv.writeRow(w, "id", "occurredOn", "type", "cashDirection", "amount", "paymentMethod", "description",
+                        "sourceType", "sourceId", "reversesId", "createdBy", "createdAt");
+                exporter.forEach(from, to, type, actor, e -> {
+                    try {
+                        Csv.writeRow(w, e.id(), e.occurredOn(), e.type(), e.cashDirection(), e.amount(), e.method(),
+                                e.description(), e.sourceType(), e.sourceId(), e.reversesId(), e.createdBy(), e.createdAt());
+                    } catch (IOException ex) {
+                        throw new UncheckedIOException(ex);
+                    }
+                });
+            }
+        };
+        return Csv.download("ledger-entries-" + from + "-to-" + to + ".csv", body);
     }
 }
