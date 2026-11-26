@@ -31,6 +31,7 @@ class EntriesExportTests {
     @LocalServerPort int port;
     @Autowired FinanceApi finance;
     @Autowired JdbcTemplate jdbc;
+    @Autowired ExportLimiter limiter;
 
     ApiTestClient api;
     Actor owner;
@@ -113,5 +114,33 @@ class EntriesExportTests {
         assertThat(api.call("GET", "/api/finance/entries.csv?from=2016-01-01&to=2017-01-01", api.owner(), null).statusCode()).isEqualTo(422);
         assertThat(api.call("GET", "/api/finance/entries.csv?to=2015-05-31", api.owner(), null).statusCode()).isEqualTo(400);
         assertThat(api.call("GET", "/api/finance/entries.csv?from=2015-05-01&to=2015-05-31&type=NOPE", api.owner(), null).statusCode()).isEqualTo(400);
+    }
+
+    /** With every export slot taken the next download is refused with 429 and Retry-After, and works once a slot is free. */
+    @Test
+    void aDownloadIsRefusedWhileAllExportSlotsAreTaken() {
+        var held = new java.util.ArrayList<ExportLimiter.Permit>();
+        try {
+            while (true) held.add(limiter.acquire());
+        } catch (kyle.poultry.shared.TooManyRequestsException full) {
+            // every slot is now held, as by slow downloads
+        }
+        String path = "/api/finance/entries.csv?from=2015-05-01&to=2015-05-31";
+        try {
+            var refused = api.call("GET", path, api.owner(), null);
+            assertThat(refused.statusCode()).isEqualTo(429);
+            assertThat(refused.headers().firstValue("Retry-After")).contains(String.valueOf(ExportLimiter.RETRY_AFTER_SECONDS));
+            assertThat(refused.body()).contains("TOO_MANY_REQUESTS").doesNotContain("id,occurredOn");
+        } finally {
+            held.forEach(ExportLimiter.Permit::release);
+        }
+        assertThat(api.call("GET", path, api.owner(), null).statusCode()).isEqualTo(200);
+        // The finished download gave its slot back: all slots can be taken again.
+        var again = new java.util.ArrayList<ExportLimiter.Permit>();
+        try {
+            for (int i = 0; i < held.size(); i++) again.add(limiter.acquire());
+        } finally {
+            again.forEach(ExportLimiter.Permit::release);
+        }
     }
 }

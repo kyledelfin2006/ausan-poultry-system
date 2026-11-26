@@ -99,6 +99,19 @@ class ApiExceptionHandler extends ResponseEntityExceptionHandler {
     }
 
     /**
+     * Maps a refusal because too much of this work is already running to HTTP 429 with {@code Retry-After}.
+     *
+     * @param e the exception carrying the wait
+     * @return a 429 problem detail with code {@code TOO_MANY_REQUESTS} and a {@code Retry-After} header
+     */
+    @ExceptionHandler(TooManyRequestsException.class)
+    ResponseEntity<ProblemDetail> tooManyRequests(TooManyRequestsException e) {
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .header(HttpHeaders.RETRY_AFTER, String.valueOf(e.retryAfterSeconds()))
+                .body(problem(HttpStatus.TOO_MANY_REQUESTS, e.getMessage(), ErrorCodes.TOO_MANY_REQUESTS));
+    }
+
+    /**
      * Maps a database constraint failure (duplicate name, foreign key, check constraint) to HTTP 409.
      * A fixed message is returned so no SQL or table detail leaks to the client.
      *

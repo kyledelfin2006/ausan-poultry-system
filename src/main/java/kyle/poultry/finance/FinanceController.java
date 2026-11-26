@@ -40,14 +40,20 @@ class FinanceController {
 
     private final FinanceApi finance;
     private final EntryExporter exporter;
+    private final ExportLimiter exportLimiter;
 
     /**
      * Creates the controller.
      *
-     * @param finance  the ledger used for every operation
-     * @param exporter reads entries one at a time for the CSV download
+     * @param finance       the ledger used for every operation
+     * @param exporter      reads entries one at a time for the CSV download
+     * @param exportLimiter caps how many downloads run at once
      */
-    FinanceController(FinanceApi finance, EntryExporter exporter) { this.finance = finance; this.exporter = exporter; }
+    FinanceController(FinanceApi finance, EntryExporter exporter, ExportLimiter exportLimiter) {
+        this.finance = finance;
+        this.exporter = exporter;
+        this.exportLimiter = exportLimiter;
+    }
 
     /**
      * Request body for recording an expense.
@@ -104,6 +110,8 @@ class FinanceController {
      * @param type optional filter on one entry type
      * @return a {@code text/csv} attachment with one header row and one row per entry
      * @throws kyle.poultry.shared.RuleViolation if from is after to or the period exceeds 366 days (HTTP 422)
+     * @throws kyle.poultry.shared.TooManyRequestsException when too many exports are already running (HTTP 429 with
+     *         {@code Retry-After})
      */
     @GetMapping("/entries.csv")
     ResponseEntity<StreamingResponseBody> entriesCsv(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
@@ -115,6 +123,28 @@ class FinanceController {
         if (from.isBefore(to.minusDays(MAX_EXPORT_DAYS - 1L)))
             throw new RuleViolation("An export period cannot exceed " + MAX_EXPORT_DAYS + " days");
         Actor actor = Actor.from(jwt);   // read now: the body is written later, on another thread
+        // The permit is taken here, while a 429 can still be sent, and given back when the stream ends or fails.
+        var permit = exportLimiter.acquire();
+        try {
+            return csvDownload(from, to, type, actor, permit);
+        } catch (RuntimeException | Error e) {
+            permit.release();   // the body will never run, so it cannot release
+            throw e;
+        }
+    }
+
+    /**
+     * Builds the streaming response; the body releases the permit when it ends.
+     *
+     * @param from   first business date included
+     * @param to     last business date included
+     * @param type   optional filter on one entry type
+     * @param actor  the caller
+     * @param permit the export permit, released by the body
+     * @return the download
+     */
+    private ResponseEntity<StreamingResponseBody> csvDownload(LocalDate from, LocalDate to, EntryType type, Actor actor,
+                                                              ExportLimiter.Permit permit) {
         // One query = one consistent snapshot. Paging with offsets would repeat or skip rows if an entry were recorded
         // while the file is being written. Rows are written as they are read, so memory does not grow with the period.
         StreamingResponseBody body = out -> {
@@ -130,6 +160,8 @@ class FinanceController {
                         throw new UncheckedIOException(ex);
                     }
                 });
+            } finally {
+                permit.release();
             }
         };
         return Csv.download("ledger-entries-" + from + "-to-" + to + ".csv", body);

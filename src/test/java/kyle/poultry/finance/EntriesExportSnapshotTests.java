@@ -48,7 +48,7 @@ class EntriesExportSnapshotTests {
             entries.forEach(sink);
             return null;
         }).when(exporter).forEach(any(), any(), any(), any(Actor.class), any());
-        var controller = new FinanceController(mock(FinanceApi.class), exporter);
+        var controller = new FinanceController(mock(FinanceApi.class), exporter, new ExportLimiter(3));
 
         var response = controller.entriesCsv(LocalDate.parse("2026-01-01"), LocalDate.parse("2026-01-31"), null, OWNER);
         var out = new ByteArrayOutputStream();
@@ -68,7 +68,7 @@ class EntriesExportSnapshotTests {
     @Test
     void refusesABackwardsPeriodBeforeAnyByteIsWritten() {
         var exporter = mock(EntryExporter.class);
-        var controller = new FinanceController(mock(FinanceApi.class), exporter);
+        var controller = new FinanceController(mock(FinanceApi.class), exporter, new ExportLimiter(3));
 
         assertThatThrownBy(() -> controller.entriesCsv(LocalDate.parse("2026-02-01"), LocalDate.parse("2026-01-01"), null, OWNER))
                 .isInstanceOf(kyle.poultry.shared.RuleViolation.class);
