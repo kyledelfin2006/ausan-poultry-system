@@ -49,6 +49,7 @@ submission:
 | First request with this key | `201` and the new delivery |
 | Same key again, same user, same request | `200` and the **original** delivery; nothing new is created or deducted |
 | Same key, same user, but a different request body | `422` (`RULE_VIOLATION`, `Idempotency-Key was already used with a different request`) |
+| Same key again while the first request is still running for more than about 2.5 s | `409` (`CONFLICT`) with `Retry-After: 1`; repeat the identical request with the same key after the delay |
 | Same key used by a different user | Independent: keys are per user |
 | First attempt failed (400, 404, 409, 422) | The key is **not** used up; you may retry it with a corrected request |
 | Key empty or longer than 100 characters | `400` |

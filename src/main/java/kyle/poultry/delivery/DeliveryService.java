@@ -17,15 +17,18 @@ import kyle.poultry.finance.PaymentMethod;
 import kyle.poultry.identity.Actor;
 import kyle.poultry.shared.BusinessDatePolicy;
 import kyle.poultry.shared.NotFoundException;
+import kyle.poultry.shared.RequestInProgressException;
 import kyle.poultry.shared.RuleViolation;
 import kyle.poultry.shared.SourceRef;
 import kyle.poultry.stock.StockApi;
 import kyle.poultry.stock.StockApi.MovementView;
 import kyle.poultry.stock.StockApi.StockLine;
+import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.jdbc.UncategorizedSQLException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
@@ -41,6 +44,9 @@ import org.springframework.transaction.annotation.Transactional;
 class DeliveryService {
     /** Marks stock and finance entries as belonging to a delivery, so they can be found and reversed later. */
     private static final String SOURCE_TYPE = "DELIVERY";
+
+    /** How long a repeated request waits for the first one before being told to retry (CON-3). */
+    private static final int LOCK_WAIT_MS = 2_500;
 
     private final DeliveryRepository deliveries;
     private final CatalogApi catalog;
@@ -125,9 +131,7 @@ class DeliveryService {
      */
     CreateResult create(CreateRequest r, Actor actor, String idempotencyKey) {
         if (idempotencyKey != null) {
-            // Serialise same-key requests: the lock is released automatically when this transaction ends.
-            jdbc.queryForList("select pg_advisory_xact_lock(hashtextextended(?, 0))",
-                    actor.userId() + ":" + idempotencyKey);
+            lockKey(actor.userId() + ":" + idempotencyKey);
             var existing = jdbc.query("select delivery_id from delivery_idempotency where idempotency_key = ? and user_id = ?",
                     (rs, i) -> rs.getLong(1), idempotencyKey, actor.userId());
             if (!existing.isEmpty()) {
@@ -145,6 +149,32 @@ class DeliveryService {
                     idempotencyKey, actor.userId(), view.id(), java.sql.Timestamp.from(clock.instant()));
         }
         return new CreateResult(view, true);
+    }
+
+    /**
+     * Serialises same-key requests with a transaction-scoped advisory lock (released when the transaction ends), but waits
+     * only {@link #LOCK_WAIT_MS}. A waiter holds a pooled connection, so an unbounded wait lets a stuck first request use
+     * up the pool; after the short wait the repeat is refused with a retry hint instead.
+     *
+     * <p>The timeout is set for this one statement and cleared straight after, so the stock-row locks taken later in the
+     * same transaction keep their normal behaviour.
+     *
+     * @param key the lock key, "userId:idempotencyKey"
+     * @throws RequestInProgressException when the lock stayed taken for the whole wait
+     */
+    private void lockKey(String key) {
+        jdbc.queryForObject("select set_config('lock_timeout', ?, true)", String.class, LOCK_WAIT_MS + "ms");
+        try {
+            jdbc.queryForList("select pg_advisory_xact_lock(hashtextextended(?, 0))", key);
+        } catch (PessimisticLockingFailureException e) {
+            throw new RequestInProgressException();
+        } catch (UncategorizedSQLException e) {
+            // The PostgreSQL driver's lock timeout (SQLSTATE 55P03) is not categorised by Spring; anything else is a real error.
+            if (!"55P03".equals(e.getSQLException().getSQLState())) throw e;
+            // The transaction is rolled back as the exception leaves create.
+            throw new RequestInProgressException();
+        }
+        jdbc.queryForObject("select set_config('lock_timeout', '0', true)", String.class);
     }
 
     /**

@@ -86,6 +86,19 @@ class ApiExceptionHandler extends ResponseEntityExceptionHandler {
     }
 
     /**
+     * Maps a repeat that arrived while the first identical request is still running to HTTP 409 with {@code Retry-After}.
+     *
+     * @param e the in-progress exception
+     * @return a 409 problem detail with code {@code CONFLICT} and a {@code Retry-After} header
+     */
+    @ExceptionHandler(RequestInProgressException.class)
+    ResponseEntity<ProblemDetail> inProgress(RequestInProgressException e) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .header(HttpHeaders.RETRY_AFTER, String.valueOf(RequestInProgressException.RETRY_AFTER_SECONDS))
+                .body(problem(HttpStatus.CONFLICT, e.getMessage(), ErrorCodes.CONFLICT));
+    }
+
+    /**
      * Maps a database constraint failure (duplicate name, foreign key, check constraint) to HTTP 409.
      * A fixed message is returned so no SQL or table detail leaks to the client.
      *
