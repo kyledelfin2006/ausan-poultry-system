@@ -64,7 +64,7 @@ Machine-readable work register produced from a static audit of this repository. 
 | [x] | PERF-4 | java-performance | Low | NON-BLOCKING | PASSING_INTEGRATION_TEST | Confirm delivery-list indexes are selected at representative scale | V21__audit_hardening.sql; DeliveryService.java:348-349; DeliveryIndexPlanTests.java | DONE |
 | [x] | PERF-5 | java-performance | Low | NON-BLOCKING | PASSING_INTEGRATION_TEST | Finance CSV export materialises all entities and several copies in memory | FinanceController.java:105-114 | DONE |
 | [x] | DBG-1 | java-debugging | Low | NON-BLOCKING | PASSING_TESTS | Unchecked long multiplication when expanding package contents (related to Q-003) | DeliveryService.java:224; CatalogController.java:85 | DONE |
-| [ ] | DBG-3 | java-debugging | Low | NON-BLOCKING | NEEDS_VERIFICATION | clearAutomatically detaches entities mid-transaction (latent trap) | StockBalanceRepository.java:39,68; DeliveryService.java:278-288 | NEEDS_VERIFICATION |
+| [x] | DBG-3 | java-debugging | Low | NON-BLOCKING | NEEDS_VERIFICATION | clearAutomatically detaches entities mid-transaction (latent trap) | StockBalanceRepository.java:39,68; DeliveryService.java:278-288 | NEEDS_VERIFICATION |
 
 ## 4. Finding detail tables
 
@@ -386,7 +386,8 @@ Machine-readable work register produced from a static audit of this repository. 
 | Verification needed | Test that changes an entity after reverseAllFor |
 | Evidence (2026-11-24) | `DeliveryPersistenceContextTests` (3 tests, real PostgreSQL, each reads the row back with SQL). **Trap CONFIRMED:** after `stock.reverseAllFor` the delivery is detached (`EntityManager.contains` is false); a status change made afterwards changes only the in-memory copy, raises no error and never reaches the database (row stays ACTIVE). **Current order is safe:** a change made BEFORE the stock call is flushed first and persisted (row becomes DONE), which is how `cancel` is written. **Lines are safe:** they are loaded EAGERLY on purpose (see `Delivery.java`), so the view built after the clear still has them (`PersistenceUnitUtil.isLoaded` is true). **Call sites:** only two production callers pass an entity through a stock write: `DeliveryService.create` (after `stock.deduct` it only reads the delivery and writes new finance rows) and `DeliveryService.cancel` (mutates first). `StockLedger.apply` creates the movement as a new entity and saves it last, so nothing it holds is detached early |
 | Assessment | No defect today; a latent trap with a pinned behaviour. The tests fail if someone makes the entity lazy, reorders `cancel`, or removes the flush, and document the rule for new code (including a future return flow, DES-3): change the delivery, then call stock, then only read |
-| Candidate fix (not needed now) | Keep as is. Optional hardening if more stock callers appear: have stock calls not clear the whole context (flush only), or re-read the delivery after them |
+| Resolution (2026-11-26) | DONE as the register's original "comment plus regression test": the three tests above, plus the rule written at the two places that matter (`DeliveryService.cancel` and the javadoc of both `StockBalanceRepository` write methods). No behaviour change: making stock calls flush-only was not done because it would let stale entities survive in the context, which needs its own review |
+| Candidate fix (kept as is; hardening not needed now) | Keep as is. Optional hardening if more stock callers appear: have stock calls not clear the whole context (flush only), or re-read the delivery after them |
 
 ## 4a. Hardening round (second pass): what changed
 

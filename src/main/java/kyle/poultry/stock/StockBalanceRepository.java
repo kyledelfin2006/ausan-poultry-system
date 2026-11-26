@@ -32,6 +32,10 @@ interface StockBalanceRepository extends JpaRepository<StockBalance, StockBalanc
      * one inserts, the other silently skips. The average cost column takes its default of zero. Pending
      * changes are flushed first and the persistence context is cleared afterwards so no stale balance
      * is read later in the same transaction.
+     * <p>
+     * <strong>Caution for callers:</strong> {@code clearAutomatically} detaches every entity the current transaction
+     * has loaded, not only stock rows. Change your own entities before calling stock, and only read them afterwards;
+     * a change made after the call is not written and raises no error. Pinned by {@code DeliveryPersistenceContextTests}.
      *
      * @param productId the product
      * @param branchId  the branch
@@ -57,6 +61,10 @@ interface StockBalanceRepository extends JpaRepository<StockBalance, StockBalanc
      * lock that is held until the transaction ends, so concurrent movements queue behind each other and the
      * second one sees the first one's result. If the condition fails no row matches and the count is 0.
      * The cost is cast to numeric so a {@code null} parameter has a known type in the {@code is not null} test.
+     * <p>
+     * <strong>Caution for callers:</strong> {@code clearAutomatically} detaches every entity the current transaction
+     * has loaded, not only stock rows. Change your own entities before calling stock, and only read them afterwards;
+     * a change made after the call is not written and raises no error. Pinned by {@code DeliveryPersistenceContextTests}.
      *
      * @param productId        the product
      * @param branchId         the branch

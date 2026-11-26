@@ -320,6 +320,8 @@ class DeliveryService {
     DeliveryView cancel(long id, String reason, Actor actor) {
         if (!actor.isOwner()) throw new AccessDeniedException("Only the owner can cancel a delivery");
         var d = lock(id);
+        // Change the delivery BEFORE any stock call: stock writes flush pending changes and then detach every entity in
+        // the transaction (DBG-3), so a change made to d after stock.* would be silently lost.
         d.cancel(reason, clock.instant());
         var source = new SourceRef(SOURCE_TYPE, d.id());
         LocalDate on = LocalDate.now(clock);
