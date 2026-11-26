@@ -110,6 +110,7 @@ class SecurityMatrixTests {
             new Row("GET", "/api/deliveries/{id}", Access.ANY_ROLE, "/api/deliveries/999999", null),
             new Row("POST", "/api/deliveries/{id}/done", Access.ANY_ROLE, "/api/deliveries/999999/done", "{\"completedAt\":\"2026-01-01T00:00:00Z\"}"),
             new Row("POST", "/api/deliveries/{id}/cancel", Access.OWNER_ONLY, "/api/deliveries/999999/cancel", "{\"reason\":\"matrix\"}"),
+            new Row("POST", "/api/deliveries/{id}/return", Access.OWNER_ONLY, "/api/deliveries/999999/return", "{\"reason\":\"matrix\"}"),
             new Row("POST", "/api/deliveries/{id}/refund", Access.OWNER_ONLY, "/api/deliveries/999999/refund", "{\"amount\":1.00,\"method\":\"CASH\"}"),
             // reports
             new Row("GET", "/api/reports/summary", Access.ANY_ROLE, "/api/reports/summary?from=2026-01-01&to=2026-01-02", null),

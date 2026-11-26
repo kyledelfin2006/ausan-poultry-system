@@ -418,12 +418,15 @@
           "retainedPayment" : {
             "type" : "number"
           },
+          "returnReason" : {
+            "type" : "string"
+          },
           "startedAt" : {
             "format" : "date-time",
             "type" : "string"
           },
           "status" : {
-            "enum" : [ "ACTIVE", "DONE", "CANCELLED" ],
+            "enum" : [ "ACTIVE", "DONE", "CANCELLED", "RETURNED" ],
             "type" : "string"
           },
           "total" : {
@@ -482,12 +485,15 @@
           "retainedPayment" : {
             "type" : "number"
           },
+          "returnReason" : {
+            "type" : "string"
+          },
           "startedAt" : {
             "format" : "date-time",
             "type" : "string"
           },
           "status" : {
-            "enum" : [ "ACTIVE", "DONE", "CANCELLED" ],
+            "enum" : [ "ACTIVE", "DONE", "CANCELLED", "RETURNED" ],
             "type" : "string"
           },
           "total" : {
@@ -681,7 +687,7 @@
         "properties" : {
           "capabilities" : {
             "items" : {
-              "enum" : [ "CANCEL_DELIVERY", "RECORD_REFUND", "ADJUST_STOCK", "SET_REORDER_LEVELS", "BACKDATE_FREELY", "VIEW_COST_AND_PROFIT", "MANAGE_CATALOG", "MANAGE_USERS", "VIEW_AUDIT_LOG" ],
+              "enum" : [ "CANCEL_DELIVERY", "RETURN_DELIVERY", "RECORD_REFUND", "ADJUST_STOCK", "SET_REORDER_LEVELS", "BACKDATE_FREELY", "VIEW_COST_AND_PROFIT", "MANAGE_CATALOG", "MANAGE_USERS", "VIEW_AUDIT_LOG" ],
               "type" : "string"
             },
             "type" : "array"
@@ -1241,6 +1247,17 @@
         "required" : [ "newPassword" ],
         "type" : "object"
       },
+      "ReturnBody" : {
+        "properties" : {
+          "reason" : {
+            "maxLength" : 255,
+            "minLength" : 0,
+            "type" : "string"
+          }
+        },
+        "required" : [ "reason" ],
+        "type" : "object"
+      },
       "Sales" : {
         "properties" : {
           "cancelled" : {
@@ -1315,6 +1332,10 @@
             "type" : "integer"
           },
           "done" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "returned" : {
             "format" : "int64",
             "type" : "integer"
           },
@@ -1888,7 +1909,7 @@
           "name" : "status",
           "required" : false,
           "schema" : {
-            "enum" : [ "ACTIVE", "DONE", "CANCELLED" ],
+            "enum" : [ "ACTIVE", "DONE", "CANCELLED", "RETURNED" ],
             "type" : "string"
           }
         }, {
@@ -2499,6 +2520,70 @@
         },
         "tags" : [ "Deliveries" ],
         "x-roles" : [ "OWNER" ]
+      }
+    },
+    "/api/deliveries/{id}/return" : {
+      "post" : {
+        "operationId" : "returnDelivery",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ReturnBody"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/DeliveryView"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Invalid input: `VALIDATION_FAILED` (body fields) or `BAD_REQUEST` (unreadable body, bad parameter)."
+          },
+          "401" : {
+            "description" : "Missing, invalid, expired or revoked token. Empty body."
+          },
+          "403" : {
+            "description" : "Authenticated, but the role may not do this. Empty body."
+          },
+          "404" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "A referenced record does not exist (`NOT_FOUND`)."
+          }
+        },
+        "tags" : [ "Deliveries" ],
+        "x-roles" : [ "OWNER", "ASSISTANT" ]
       }
     },
     "/api/finance/entries" : {

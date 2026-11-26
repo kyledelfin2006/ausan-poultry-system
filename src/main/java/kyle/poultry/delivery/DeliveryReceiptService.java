@@ -99,9 +99,9 @@ class DeliveryReceiptService {
         BigDecimal profit = d.total().subtract(cost);
         // Margin is "profit out of every 100 pesos of sale"; the total is always positive (a database rule).
         BigDecimal margin = profit.multiply(BigDecimal.valueOf(100)).divide(d.total(), 2, RoundingMode.HALF_UP);
-        boolean cancelled = d.status() == DeliveryStatus.CANCELLED;
+        boolean cancelled = d.isReversed();
         return new DeliveryReceipt(d.id(), d.code(), d.status(), d.customerName(), d.driverName(), d.fromBranchId(),
-                d.destination(), d.startedAt(), d.completedAt(), d.paymentMethod(), d.cancelReason(),
+                d.destination(), d.startedAt(), d.completedAt(), d.paymentMethod(), d.cancelReason(), d.returnReason(),
                 cancelled ? finance.retainedPayment(source) : null, !cancelled, d.total(), cost, profit, margin,
                 List.copyOf(lines), List.copyOf(productRows));
     }

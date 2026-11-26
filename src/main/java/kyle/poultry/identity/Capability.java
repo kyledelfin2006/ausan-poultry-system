@@ -19,6 +19,8 @@ import java.util.Set;
 public enum Capability {
     /** Cancel a delivery and reverse its stock and money. */
     CANCEL_DELIVERY,
+    /** Record that a delivered delivery came back, undoing its sale and stock-out. */
+    RETURN_DELIVERY,
     /** Record a refund of money held for a cancelled delivery. */
     RECORD_REFUND,
     /** Enter opening stock or a stock adjustment (quantities with no physical event). */

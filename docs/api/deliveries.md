@@ -3,20 +3,21 @@
 A delivery sells one or more [packages](catalog.md#packages) to a customer from one branch. It is paid in full when it
 is created.
 
-Status flow: `ACTIVE -> DONE` or `ACTIVE -> CANCELLED`. `DONE` and `CANCELLED` are final: **a Done delivery cannot be
-cancelled.** Saved deliveries are never edited or deleted.
+Status flow: `ACTIVE -> DONE`, `ACTIVE -> CANCELLED`, or `DONE -> RETURNED`. `CANCELLED` and `RETURNED` are final.
+**A Done delivery cannot be cancelled; if the goods come back, return it** (the whole delivery, see
+[`/return`](#post-apideliveriesidreturn-owner)). Saved deliveries are never edited or deleted.
 
 `DeliveryView`, returned by every delivery endpoint:
 
 ```json
 { "id": 7, "code": "DLV-2026-0007", "status": "ACTIVE", "customerName": "Juan dela Cruz", "driverName": "Pedro Reyes",
   "fromBranchId": 1, "destination": "Brgy. San Isidro, Tarlac", "startedAt": "2026-11-20T03:00:00Z", "completedAt": null,
-  "total": 70000.00, "paymentMethod": "GCASH", "cancelReason": null, "retainedPayment": null,
+  "total": 70000.00, "paymentMethod": "GCASH", "cancelReason": null, "returnReason": null, "retainedPayment": null,
   "lines": [ { "packageId": 1, "packageName": "Package Small", "quantity": 1, "unitPrice": 70000.00, "lineTotal": 70000.00 } ],
   "createdBy": 2, "createdAt": "2026-11-20T03:00:01Z" }
 ```
 
-`retainedPayment` is only set for `CANCELLED` deliveries: the money received and not yet refunded. Line names and prices
+`retainedPayment` is only set for `CANCELLED` and `RETURNED` deliveries: the money received and not yet refunded. Line names and prices
 are frozen at sale time, so later package edits never change an old delivery.
 
 ## `POST /api/deliveries` (any role)
@@ -60,7 +61,7 @@ delivery.
 
 ## `GET /api/deliveries?status=&page=&size=` (any role)
 
-`status` is optional (`ACTIVE`, `DONE`, `CANCELLED`). A [paged](README.md#paging) list of `DeliveryView`, newest
+`status` is optional (`ACTIVE`, `DONE`, `CANCELLED`, `RETURNED`). A [paged](README.md#paging) list of `DeliveryView`, newest
 `startedAt` first.
 
 ## `GET /api/deliveries/{id}` (any role)
@@ -79,6 +80,14 @@ appends `SALE_REVERSAL` and `COGS_REVERSAL`. The payment is **kept**: money only
 the delivery with `status: CANCELLED` and `retainedPayment` equal to what was paid. Errors: `400`, `403`, `404`, `409`
 (already cancelled, or Done).
 
+## `POST /api/deliveries/{id}/return` (OWNER)
+
+Body `{ "reason": "Customer rejected the goods" }` (required, max 255). For a **Done** delivery whose goods came back as a
+whole: the stock goes back to sellable stock at its original cost and `SALE_REVERSAL` and `COGS_REVERSAL` are appended,
+exactly as for a cancellation. The payment is **kept**; hand money back with the refund endpoint. `200` returns the
+delivery with `status: RETURNED`, `returnReason` and `retainedPayment` equal to what was paid. Errors: `400`, `403`, `404`,
+`409` (not Done: active, cancelled or already returned). Part-returns are not supported.
+
 ## `POST /api/deliveries/{id}/refund` (OWNER)
 
 | Field | Type | Required | Limits |
@@ -88,5 +97,5 @@ the delivery with `status: CANCELLED` and `retainedPayment` equal to what was pa
 | description | string | no | max 255; default `Refund for DLV-...` |
 
 Partial refunds are allowed; repeat until `retainedPayment` is 0. `200` returns the delivery with the reduced
-`retainedPayment`. Errors: `400`, `403`, `404`, `422` (delivery is not CANCELLED, or amount exceeds the payment still
+`retainedPayment`. Errors: `400`, `403`, `404`, `422` (delivery is not CANCELLED or RETURNED, or amount exceeds the payment still
 held).

@@ -333,7 +333,31 @@ class DeliveryService {
     }
 
     /**
-     * Owner only. Money actually handed back for a cancelled delivery, never more than was paid.
+     * Owner only. Records that the whole delivery came back after arrival (DONE -> RETURNED): the goods go back to sellable stock and the sale and its cost are reversed, exactly as for a cancellation. Money is handed back separately with {@link #refund}.
+     *
+     * @param id     the delivery
+     * @param reason why it came back
+     * @param actor  must be allowed to return deliveries
+     * @return the returned delivery with the money still held
+     * @throws AccessDeniedException when the actor may not return deliveries
+     * @throws NotFoundException     when the delivery does not exist
+     * @throws kyle.poultry.shared.ConflictException when the delivery is not DONE
+     * @throws RuleViolation         when no reason is given
+     */
+    DeliveryView returnDelivery(long id, String reason, Actor actor) {
+        actor.require(Capability.RETURN_DELIVERY);
+        var d = lock(id);
+        // Change the delivery BEFORE any stock call: stock writes detach every entity in the transaction (DBG-3).
+        d.markReturned(reason, clock.instant());
+        var source = new SourceRef(SOURCE_TYPE, d.id());
+        LocalDate on = LocalDate.now(clock);
+        stock.reverseAllFor(source, "Delivery " + d.code() + " returned", on, actor);
+        finance.reverseSaleAndCost(source, on, actor);
+        return view(d);
+    }
+
+    /**
+     * Owner only. Money actually handed back for a cancelled or returned delivery, never more than was paid.
      *
      * @param id          the delivery
      * @param amount      amount refunded
@@ -343,13 +367,13 @@ class DeliveryService {
      * @return the delivery with its remaining retained payment
      * @throws AccessDeniedException when the actor is not an owner
      * @throws NotFoundException     when the delivery does not exist
-     * @throws RuleViolation         when the delivery is not CANCELLED or the amount exceeds what is still retained
+     * @throws RuleViolation         when the delivery is not CANCELLED or RETURNED or the amount exceeds what is still retained
      */
     DeliveryView refund(long id, BigDecimal amount, PaymentMethod method, String description, Actor actor) {
         actor.require(Capability.RECORD_REFUND);
         var d = lock(id);
-        if (d.status() != DeliveryStatus.CANCELLED)
-            throw new RuleViolation("Only a cancelled delivery can be refunded; " + d.code() + " is " + d.status());
+        if (!d.isReversed())
+            throw new RuleViolation("Only a cancelled or returned delivery can be refunded; " + d.code() + " is " + d.status());
         finance.recordRefund(amount, method, LocalDate.now(clock),
                 description == null || description.isBlank() ? "Refund for " + d.code() : description,
                 new SourceRef(SOURCE_TYPE, d.id()), actor);
@@ -374,9 +398,10 @@ class DeliveryService {
      * @param active    deliveries still on the road
      * @param done      deliveries that arrived
      * @param cancelled deliveries that were cancelled
-     * @param total     the three added together
+     * @param returned  deliveries that arrived and then came back
+     * @param total     the four added together
      */
-    record StatusCounts(long active, long done, long cancelled, long total) {}
+    record StatusCounts(long active, long done, long cancelled, long returned, long total) {}
 
     /**
      * Lists deliveries, newest first (by start time, then id). The caller's sort parameter is ignored so the order is
@@ -394,10 +419,10 @@ class DeliveryService {
                 Sort.by(Sort.Order.desc("startedAt"), Sort.Order.desc("id")));
         var result = deliveries.findAll(spec, newestFirst);
         var cancelledIds = result.getContent().stream()
-                .filter(d -> d.status() == DeliveryStatus.CANCELLED).map(Delivery::id).toList();
+                .filter(Delivery::isReversed).map(Delivery::id).toList();
         Map<Long, BigDecimal> retained = cancelledIds.isEmpty()
                 ? Map.of() : finance.retainedPayments(SOURCE_TYPE, cancelledIds);
-        return result.map(d -> view(d, d.status() == DeliveryStatus.CANCELLED
+        return result.map(d -> view(d, d.isReversed()
                 ? retained.getOrDefault(d.id(), BigDecimal.ZERO.setScale(2)) : null));
     }
 
@@ -414,7 +439,8 @@ class DeliveryService {
         long active = deliveries.count(base.withStatus(DeliveryStatus.ACTIVE).toSpecification(clock.getZone()));
         long done = deliveries.count(base.withStatus(DeliveryStatus.DONE).toSpecification(clock.getZone()));
         long cancelled = deliveries.count(base.withStatus(DeliveryStatus.CANCELLED).toSpecification(clock.getZone()));
-        return new StatusCounts(active, done, cancelled, active + done + cancelled);
+        long returned = deliveries.count(base.withStatus(DeliveryStatus.RETURNED).toSpecification(clock.getZone()));
+        return new StatusCounts(active, done, cancelled, returned, active + done + cancelled + returned);
     }
 
     /**
@@ -435,7 +461,7 @@ class DeliveryService {
      * @return the view
      */
     private DeliveryView view(Delivery d) {
-        BigDecimal retained = d.status() == DeliveryStatus.CANCELLED
+        BigDecimal retained = d.isReversed()
                 ? finance.retainedPayment(new SourceRef(SOURCE_TYPE, d.id())) : null;
         return view(d, retained);
     }
@@ -444,7 +470,7 @@ class DeliveryService {
     private DeliveryView view(Delivery d, BigDecimal retained) {
         return new DeliveryView(d.id(), d.code(), d.status(), d.customerName(), d.driverName(), d.fromBranchId(),
                 d.destination(), d.startedAt(), d.completedAt(), d.total(), d.paymentMethod(), d.cancelReason(),
-                retained, List.copyOf(d.lines()), d.createdBy(), d.createdAt());
+                d.returnReason(), retained, List.copyOf(d.lines()), d.createdBy(), d.createdAt());
     }
 
     /**
