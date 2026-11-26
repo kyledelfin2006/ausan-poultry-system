@@ -121,7 +121,7 @@ Machine-readable work register produced from a static audit of this repository. 
 
 ### PERF-1 Delivery list N+1 and page-size cap
 
-**Resolution (DONE):** Delivery lines now use lazy loading with Hibernate batch fetching; cancelled-delivery retained payments are fetched in one grouped query for the page; pageable requests are capped at 100. `DeliveryQueryTests` now checks the cap and statement counts across a cancelled-delivery page, but the database-backed execution requires Docker and could not run here. All test sources compile.
+**Resolution (DONE):** Delivery lines are loaded eagerly (deliberately, see DBG-3) with Hibernate batch fetching (`default_batch_fetch_size` 50); cancelled-delivery retained payments are fetched in one grouped query for the page; pageable requests are capped at 100. `DeliveryQueryTests` now checks the cap and statement counts across a cancelled-delivery page, but the database-backed execution requires Docker and could not run here. All test sources compile.
 
 | Field | Value |
 |---|---|
@@ -382,6 +382,9 @@ Machine-readable work register produced from a static audit of this repository. 
 | Impact | Mutations to d after a stock call would be silently lost; today the mutation precedes the clear |
 | Fix | Comment plus regression test, or re-load the entity after stock calls |
 | Verification needed | Test that changes an entity after reverseAllFor |
+| Evidence (2026-11-24) | `DeliveryPersistenceContextTests` (3 tests, real PostgreSQL, each reads the row back with SQL). **Trap CONFIRMED:** after `stock.reverseAllFor` the delivery is detached (`EntityManager.contains` is false); a status change made afterwards changes only the in-memory copy, raises no error and never reaches the database (row stays ACTIVE). **Current order is safe:** a change made BEFORE the stock call is flushed first and persisted (row becomes DONE), which is how `cancel` is written. **Lines are safe:** they are loaded EAGERLY on purpose (see `Delivery.java`), so the view built after the clear still has them (`PersistenceUnitUtil.isLoaded` is true). **Call sites:** only two production callers pass an entity through a stock write: `DeliveryService.create` (after `stock.deduct` it only reads the delivery and writes new finance rows) and `DeliveryService.cancel` (mutates first). `StockLedger.apply` creates the movement as a new entity and saves it last, so nothing it holds is detached early |
+| Assessment | No defect today; a latent trap with a pinned behaviour. The tests fail if someone makes the entity lazy, reorders `cancel`, or removes the flush, and document the rule for new code (including a future return flow, DES-3): change the delivery, then call stock, then only read |
+| Candidate fix (not needed now) | Keep as is. Optional hardening if more stock callers appear: have stock calls not clear the whole context (flush only), or re-read the delivery after them |
 
 ## 4a. Hardening round (second pass): what changed
 
