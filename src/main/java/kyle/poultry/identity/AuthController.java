@@ -103,7 +103,7 @@ class AuthController {
     MeView me(@AuthenticationPrincipal Jwt jwt) {
         UserView u = users.get(Actor.from(jwt).userId());
         Instant expires = jwt.getExpiresAt();
-        return new MeView(u.id(), u.username(), u.displayName(), u.role(), u.mustChangePassword(), expires);
+        return new MeView(u.id(), u.username(), u.displayName(), u.role(), Capability.listFor(u.role()), u.mustChangePassword(), expires);
     }
 
     /**

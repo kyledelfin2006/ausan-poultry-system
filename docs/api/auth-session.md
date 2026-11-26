@@ -23,12 +23,14 @@ immediately even though the token is older. A deactivated account instead answer
 
 ```json
 { "id": 3, "username": "maria", "displayName": "Maria Santos", "role": "ASSISTANT",
+  "capabilities": [],
   "mustChangePassword": false, "tokenExpiresAt": "2026-11-20T10:15:00Z" }
 ```
 
 | Field | Notes |
 |---|---|
 | `role` | `OWNER` or `ASSISTANT`. Use this, not the login response, to decide what to show: it is always current. |
+| `capabilities` | What this user may do: any of `CANCEL_DELIVERY`, `RECORD_REFUND`, `ADJUST_STOCK`, `SET_REORDER_LEVELS`, `BACKDATE_FREELY`, `VIEW_COST_AND_PROFIT`, `MANAGE_CATALOG`, `MANAGE_USERS`, `VIEW_AUDIT_LOG`. Show or hide buttons and screens with this list, not by comparing `role`. Today an owner has all of them and an assistant has none; the server enforces the same list. |
 | `mustChangePassword` | `true` for a bootstrap or owner-reset password. While true, authenticated business routes are limited to this profile, logout and password change; login and the health check remain public. |
 | `tokenExpiresAt` | When the token used for this call stops working (ISO-8601 instant). Warn the user a few minutes before, or send them to login when it passes. |
 

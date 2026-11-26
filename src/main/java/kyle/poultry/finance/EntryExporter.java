@@ -7,6 +7,7 @@ import java.util.function.Consumer;
 import java.util.stream.Stream;
 import kyle.poultry.finance.FinanceApi.EntryView;
 import kyle.poultry.identity.Actor;
+import kyle.poultry.identity.Capability;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -45,8 +46,8 @@ class EntryExporter {
      */
     @Transactional(readOnly = true)
     void forEach(LocalDate from, LocalDate to, EntryType type, Actor actor, Consumer<EntryView> sink) {
-        if (!actor.isOwner() && type != null && !FinanceLedger.ASSISTANT_VISIBLE_TYPES.contains(type)) return;
-        try (Stream<FinancialEntry> rows = actor.isOwner()
+        if (!actor.can(Capability.VIEW_COST_AND_PROFIT) && type != null && !FinanceLedger.ASSISTANT_VISIBLE_TYPES.contains(type)) return;
+        try (Stream<FinancialEntry> rows = actor.can(Capability.VIEW_COST_AND_PROFIT)
                 ? type == null ? entries.streamPeriod(from, to) : entries.streamPeriodByType(from, to, type)
                 : type == null ? entries.streamPeriodByTypes(from, to, FinanceLedger.ASSISTANT_VISIBLE_TYPES)
                 : entries.streamPeriodByType(from, to, type)) {

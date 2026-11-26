@@ -14,12 +14,12 @@ import kyle.poultry.catalog.CatalogApi;
 import kyle.poultry.catalog.CatalogApi.ProductView;
 import kyle.poultry.finance.FinanceApi;
 import kyle.poultry.identity.Actor;
+import kyle.poultry.identity.Capability;
 import kyle.poultry.shared.BusinessDatePolicy;
 import kyle.poultry.shared.RuleViolation;
 import kyle.poultry.shared.SourceRef;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -69,9 +69,8 @@ class StockLedger implements StockApi {
         if (cmd.type() == null || !MovementType.MANUAL.contains(cmd.type()))
             throw new RuleViolation("Movement type " + cmd.type() + " cannot be entered manually");
         // Opening stock and adjustments create quantities without a physical event, so only the owner may.
-        if (MovementType.OWNER_ONLY.contains(cmd.type()) && !actor.isOwner())
-            throw new AccessDeniedException(cmd.type() + " movements are restricted to the owner");
-        BusinessDatePolicy.requireAllowed(cmd.occurredOn(), actor.isOwner(), clock);
+        if (MovementType.OWNER_ONLY.contains(cmd.type())) actor.require(Capability.ADJUST_STOCK);
+        BusinessDatePolicy.requireAllowed(cmd.occurredOn(), actor.can(Capability.BACKDATE_FREELY), clock);
         // Checked before applying so a purchase never changes stock without a way to record its payment.
         if (cmd.type() == MovementType.PURCHASE && cmd.paymentMethod() == null)
             throw new RuleViolation("A purchase requires the payment method");
@@ -97,7 +96,7 @@ class StockLedger implements StockApi {
      */
     @Override
     public List<MovementView> deduct(List<StockLine> lines, long branchId, SourceRef source, LocalDate on, Actor actor) {
-        BusinessDatePolicy.requireAllowed(on, actor.isOwner(), clock);
+        BusinessDatePolicy.requireAllowed(on, actor.can(Capability.BACKDATE_FREELY), clock);
         // Fixed lock order (ascending product id) so two concurrent deliveries cannot deadlock each other.
         return lines.stream()
                 .sorted(comparingLong(StockLine::productId))
@@ -120,7 +119,7 @@ class StockLedger implements StockApi {
      */
     @Override
     public List<MovementView> reverseAllFor(SourceRef source, String reason, LocalDate on, Actor actor) {
-        BusinessDatePolicy.requireAllowed(on, actor.isOwner(), clock);
+        BusinessDatePolicy.requireAllowed(on, actor.can(Capability.BACKDATE_FREELY), clock);
         return movements.findBySourceTypeAndSourceIdAndType(source.type(), source.id(), MovementType.DELIVERY_OUT).stream()
                 // Skip stock-outs that already have a reversal: this is what makes a second call a no-op.
                 .filter(m -> !movements.existsByReversesId(m.id()))

@@ -125,6 +125,20 @@ class AuthSessionTests {
         api.login(target.username(), "reset-by-the-owner-1");
     }
 
+    /** /me lists what the caller may do, from the central policy, so a UI need not guess from the role. */
+    @Test
+    @SuppressWarnings("unchecked")
+    void meListsTheCapabilitiesOfTheRole() throws Exception {
+        var api = api();
+        var owner = api.call("GET", "/api/auth/me", api.ownerToken(), null);
+        assertThat((java.util.List<String>) com.jayway.jsonpath.JsonPath.read(owner.body(), "$.capabilities"))
+                .containsExactlyElementsOf(java.util.Arrays.stream(Capability.values()).map(Enum::name).toList());
+
+        String assistantToken = api.login(api.createUserWithId(api.ownerToken(), "ASSISTANT").username(), PASSWORD);
+        var assistant = api.call("GET", "/api/auth/me", assistantToken, null);
+        assertThat((java.util.List<?>) com.jayway.jsonpath.JsonPath.read(assistant.body(), "$.capabilities")).isEmpty();
+    }
+
     /** A reset password restricts the user to profile, logout and password change until they choose a new password. */
     @Test
     void aResetPasswordMustBeChangedBeforeNormalApiAccess() throws Exception {

@@ -15,6 +15,7 @@ import kyle.poultry.catalog.CatalogApi;
 import kyle.poultry.finance.FinanceApi;
 import kyle.poultry.finance.PaymentMethod;
 import kyle.poultry.identity.Actor;
+import kyle.poultry.identity.Capability;
 import kyle.poultry.shared.BusinessDatePolicy;
 import kyle.poultry.shared.NotFoundException;
 import kyle.poultry.shared.RequestInProgressException;
@@ -234,7 +235,7 @@ class DeliveryService {
         Instant now = clock.instant().truncatedTo(ChronoUnit.MICROS);
         Instant startedAt = r.startedAt() == null ? now : r.startedAt();
         if (startedAt.isAfter(now)) throw new RuleViolation("Start time cannot be in the future");
-        BusinessDatePolicy.requireAllowed(startedAt.atZone(clock.getZone()).toLocalDate(), actor.isOwner(), clock);
+        BusinessDatePolicy.requireAllowed(startedAt.atZone(clock.getZone()).toLocalDate(), actor.can(Capability.BACKDATE_FREELY), clock);
 
         var lines = new ArrayList<DeliveryLine>();
         Map<Long, Long> productQuantities = new TreeMap<>();   // product id -> units to take out of the branch
@@ -300,7 +301,7 @@ class DeliveryService {
         d.markDone(completedAt, clock.instant());
         // Runs after the domain checks so a missing or future time keeps its specific message; a rule violation here
         // rolls the whole transaction back, so the delivery stays ACTIVE.
-        BusinessDatePolicy.requireAllowed(completedAt.atZone(clock.getZone()).toLocalDate(), actor.isOwner(), clock);
+        BusinessDatePolicy.requireAllowed(completedAt.atZone(clock.getZone()).toLocalDate(), actor.can(Capability.BACKDATE_FREELY), clock);
         return view(d);
     }
 
@@ -318,7 +319,7 @@ class DeliveryService {
      * @throws RuleViolation         when no reason is given
      */
     DeliveryView cancel(long id, String reason, Actor actor) {
-        if (!actor.isOwner()) throw new AccessDeniedException("Only the owner can cancel a delivery");
+        actor.require(Capability.CANCEL_DELIVERY);
         var d = lock(id);
         // Change the delivery BEFORE any stock call: stock writes flush pending changes and then detach every entity in
         // the transaction (DBG-3), so a change made to d after stock.* would be silently lost.
@@ -345,7 +346,7 @@ class DeliveryService {
      * @throws RuleViolation         when the delivery is not CANCELLED or the amount exceeds what is still retained
      */
     DeliveryView refund(long id, BigDecimal amount, PaymentMethod method, String description, Actor actor) {
-        if (!actor.isOwner()) throw new AccessDeniedException("Only the owner can record a refund");
+        actor.require(Capability.RECORD_REFUND);
         var d = lock(id);
         if (d.status() != DeliveryStatus.CANCELLED)
             throw new RuleViolation("Only a cancelled delivery can be refunded; " + d.code() + " is " + d.status());

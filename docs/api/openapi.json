@@ -679,6 +679,13 @@
       },
       "MeView" : {
         "properties" : {
+          "capabilities" : {
+            "items" : {
+              "enum" : [ "CANCEL_DELIVERY", "RECORD_REFUND", "ADJUST_STOCK", "SET_REORDER_LEVELS", "BACKDATE_FREELY", "VIEW_COST_AND_PROFIT", "MANAGE_CATALOG", "MANAGE_USERS", "VIEW_AUDIT_LOG" ],
+              "type" : "string"
+            },
+            "type" : "array"
+          },
           "displayName" : {
             "type" : "string"
           },

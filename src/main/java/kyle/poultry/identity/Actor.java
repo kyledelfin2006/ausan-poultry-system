@@ -26,6 +26,25 @@ public record Actor(long userId, Role role) {
         return new Actor(Long.parseLong(jwt.getSubject()), Role.valueOf(jwt.getClaimAsString("role")));
     }
 
-    /** {@return true when this actor has the OWNER role} */
+    /** {@return true when this actor has the OWNER role; for permissions prefer {@link #can(Capability)}} */
     public boolean isOwner() { return role == Role.OWNER; }
+
+    /**
+     * Asks the central policy whether this actor may do something.
+     *
+     * @param capability the action
+     * @return true when the actor's role has the capability
+     */
+    public boolean can(Capability capability) { return Capability.grantedTo(role).contains(capability); }
+
+    /**
+     * Refuses the action unless the actor may do it.
+     *
+     * @param capability the action
+     * @throws org.springframework.security.access.AccessDeniedException (HTTP 403) when the role lacks the capability
+     */
+    public void require(Capability capability) {
+        if (!can(capability))
+            throw new org.springframework.security.access.AccessDeniedException("Requires capability " + capability);
+    }
 }
