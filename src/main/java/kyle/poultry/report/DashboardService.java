@@ -3,6 +3,8 @@ package kyle.poultry.report;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDate;
+import java.util.Map;
+import kyle.poultry.finance.EntryType;
 import kyle.poultry.stock.StockApi;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import org.springframework.stereotype.Service;
@@ -72,23 +74,28 @@ class DashboardService {
         LocalDate today = LocalDate.now(clock);
         // Month to date always includes today, even on the first of the month (one day).
         LocalDate monthStart = today.withDayOfMonth(1);
-        var todaySummary = reports.summary(today, today);
-        var monthSummary = reports.summary(monthStart, today);
-        return new Dashboard(today, figures(todaySummary, owner), figures(monthSummary, owner),
-                owner ? reports.inventoryValue().grandTotal() : null, stock.summary(true).size(),
-                monthSummary.collections().retainedOnCancelledDeliveries());
+        // PERF-3: one totals query per period (shared by summary and profit) and one retained-money scan, because both
+        // periods end today and so measure the same amount. Only the month figure is shown.
+        var todayTotals = reports.totals(today, today);
+        var monthTotals = reports.totals(monthStart, today);
+        BigDecimal retained = reports.retainedOnCancelled(today);
+        var todaySummary = reports.summary(today, today, todayTotals, retained);
+        var monthSummary = reports.summary(monthStart, today, monthTotals, retained);
+        return new Dashboard(today, figures(todaySummary, todayTotals, owner), figures(monthSummary, monthTotals, owner),
+                owner ? reports.inventoryValue().grandTotal() : null, stock.summary(true).size(), retained);
     }
 
     /**
      * Turns a summary into dashboard figures, adding the profit for the owner.
      *
      * @param s             the period's summary report
+     * @param totals        the period's per-type totals, already read for the summary
      * @param owner whether to include owner-only financial figures
      * @return the figures
      */
-    private Figures figures(ReportService.Summary s, boolean owner) {
+    private Figures figures(ReportService.Summary s, Map<EntryType, BigDecimal> totals, boolean owner) {
         var p = s.period();
-        BigDecimal profit = owner ? reports.profit(p.from(), p.to()).profit() : null;
+        BigDecimal profit = owner ? reports.profit(p.from(), p.to(), totals).profit() : null;
         return new Figures(p.from(), p.to(), s.sales().net(), s.collections().netCollected(),
                 owner ? s.stockPurchases() : null, owner ? s.otherExpenses() : null,
                 owner ? s.cashMovement().total() : null, profit);

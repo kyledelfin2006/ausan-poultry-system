@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -114,5 +115,15 @@ class DashboardServiceTests {
         // The retained amount is measured as of today.
         verify(finance, atLeastOnce()).retainedOnCancelledSources(LocalDate.of(2026, 6, 10));
         verify(finance, never()).totalsByType(LocalDate.of(2026, 6, 11), LocalDate.of(2026, 6, 11));
+    }
+
+    /** PERF-3: the owner dashboard reads each period's totals once and scans for retained money once. */
+    @Test
+    void ledgerIsQueriedOncePerPeriodAndRetainedMoneyOnce() {
+        serviceAt("2026-06-10T04:00:00Z").dashboard(true);
+
+        verify(finance, times(1)).totalsByType(LocalDate.of(2026, 6, 10), LocalDate.of(2026, 6, 10));
+        verify(finance, times(1)).totalsByType(LocalDate.of(2026, 6, 1), LocalDate.of(2026, 6, 10));
+        verify(finance, times(1)).retainedOnCancelledSources(LocalDate.of(2026, 6, 10));
     }
 }
