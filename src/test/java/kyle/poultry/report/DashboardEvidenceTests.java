@@ -87,6 +87,25 @@ class DashboardEvidenceTests {
                                 where r.type = 'SALE_REVERSAL' and r.occurred_on <= current_date
                                   and r.source_type = e.source_type and r.source_id = e.source_id)""");
 
+        // PERF-3 fix 3: the rewritten query must give exactly the old query's figure, and use the partial index.
+        String newRetained = """
+                select coalesce(sum(case when e.type = 'PAYMENT_IN' then e.amount else -e.amount end), 0)
+                  from (select distinct source_type, source_id from financial_entry
+                         where type = 'SALE_REVERSAL' and occurred_on <= current_date) r
+                  join financial_entry e on e.source_type = r.source_type and e.source_id = r.source_id
+                 where e.type in ('PAYMENT_IN', 'REFUND') and e.occurred_on <= current_date""";
+        explain("retainedOnCancelled rewritten", newRetained);
+        var oldValue = jdbc.queryForObject("""
+                select coalesce(sum(case when e.type = 'PAYMENT_IN' then e.amount else -e.amount end), 0)
+                  from financial_entry e
+                 where e.type in ('PAYMENT_IN', 'REFUND') and e.occurred_on <= current_date
+                   and exists (select 1 from financial_entry r
+                                where r.type = 'SALE_REVERSAL' and r.occurred_on <= current_date
+                                  and r.source_type = e.source_type and r.source_id = e.source_id)""", java.math.BigDecimal.class);
+        var newValue = jdbc.queryForObject(newRetained, java.math.BigDecimal.class);
+        System.out.println("EVIDENCE3 retained old=" + oldValue + " new=" + newValue);
+        assertThat(newValue).isEqualByComparingTo(oldValue);
+
         // Sanity only: the endpoint answers for both roles.
         assertThat(api.call("GET", DASHBOARD, owner, null).statusCode()).isEqualTo(200);
         assertThat(api.call("GET", DASHBOARD, assistant, null).statusCode()).isEqualTo(200);
@@ -106,8 +125,8 @@ class DashboardEvidenceTests {
             jdbc.update("""
                     insert into financial_entry (type, cash_direction, amount, method, occurred_on, source_type, source_id, reverses_id, created_by, created_at)
                     select '%s', 'NONE', amount, null, occurred_on, source_type, source_id, id, ?, now()
-                      from financial_entry where type = '%s' and source_id > %d and source_id %% 10 = 0"""
-                    .formatted(pair[1], pair[0], base), userId);
+                      from financial_entry where type = '%s' and source_id > %d and source_id %% %d = 0"""
+                    .formatted(pair[1], pair[0], base, Integer.getInteger("evidence.cancelEvery", 10)), userId);
         }
         jdbc.update("""
                 insert into financial_entry (type, cash_direction, amount, method, occurred_on, created_by, created_at)
@@ -157,7 +176,7 @@ class DashboardEvidenceTests {
     private void explain(String label, String sql) {
         List<String> plan = jdbc.queryForList("explain (analyze, buffers) " + sql, String.class);
         System.out.println("EVIDENCE3 explain [" + label + "]");
-        plan.stream().limit(18).forEach(l -> System.out.println("EVIDENCE3   | " + l));
+        plan.stream().limit(Integer.getInteger("evidence.planLines", 18)).forEach(l -> System.out.println("EVIDENCE3   | " + l));
         plan.stream().filter(l -> l.startsWith("Execution Time") || l.startsWith("Planning Time"))
                 .forEach(l -> System.out.println("EVIDENCE3   > " + l));
     }
