@@ -34,6 +34,7 @@ class AuthSessionTests {
     @LocalServerPort int port;
     @Autowired JwtEncoder jwtEncoder;
     @Autowired Clock clock;
+    @Autowired org.springframework.jdbc.core.JdbcTemplate jdbc;
     @Autowired MeterRegistry metrics;
 
     /** {@return a client for the running application} */
@@ -152,6 +153,28 @@ class AuthSessionTests {
         var currentProfile = api.call("GET", "/api/auth/me", currentToken, null);
         assertThat(field(currentProfile.body(), "mustChangePassword")).isEqualTo("false");
         assertThat(api.call("GET", "/api/products", currentToken, null).statusCode()).isEqualTo(200);
+    }
+
+    /**
+     * The restriction holds for a write, for the streamed CSV export (answered on an async thread) and for owner-only
+     * routes, and the protected effect does not happen: no delivery is created.
+     */
+    @Test
+    void aUserWhoMustChangeThePasswordCannotWriteStreamOrAdminister() throws Exception {
+        var api = api();
+        String owner = api.ownerToken();
+        var target = api.createUserWithId(owner, "ASSISTANT");
+        assertThat(api.call("POST", "/api/users/" + target.id() + "/password", owner,
+                "{\"newPassword\":\"temporary-reset-password\"}").statusCode()).isEqualTo(204);
+        String temporaryToken = api.login(target.username(), "temporary-reset-password");
+        int deliveriesBefore = jdbc.queryForObject("select count(*) from delivery", Integer.class);
+
+        assertThat(api.call("POST", "/api/deliveries", temporaryToken, "{}").statusCode()).isEqualTo(403);
+        assertThat(api.call("GET", "/api/finance/entries.csv?from=2026-01-01&to=2026-01-02", temporaryToken, null)
+                .statusCode()).isEqualTo(403);
+        assertThat(api.call("GET", "/api/users", temporaryToken, null).statusCode()).isEqualTo(403);
+
+        assertThat(jdbc.queryForObject("select count(*) from delivery", Integer.class)).isEqualTo(deliveriesBefore);
     }
 
     /** The password policy answers 422 on every path that sets a password, and nothing changes when it refuses. */
