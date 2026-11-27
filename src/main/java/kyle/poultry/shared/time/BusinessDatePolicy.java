@@ -1,5 +1,6 @@
-package kyle.poultry.shared;
+package kyle.poultry.shared.time;
 
+import kyle.poultry.shared.error.RuleViolation;
 import java.time.Clock;
 import java.time.LocalDate;
 

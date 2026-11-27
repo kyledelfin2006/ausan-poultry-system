@@ -97,7 +97,7 @@ class AuthController {
      *
      * @param jwt the authenticated principal
      * @return the caller's profile and when their token expires
-     * @throws kyle.poultry.shared.NotFoundException (404) if the user was removed since the token check (not expected)
+     * @throws kyle.poultry.shared.error.NotFoundException (404) if the user was removed since the token check (not expected)
      */
     @GetMapping("/me")
     MeView me(@AuthenticationPrincipal Jwt jwt) {
@@ -129,7 +129,7 @@ class AuthController {
      * @param jwt the authenticated principal
      * @throws org.springframework.web.ErrorResponseException (429, with {@code Retry-After}) after repeated wrong
      *                                                  current passwords
-     * @throws kyle.poultry.shared.RuleViolation (422) when the current password is incorrect, the new one equals the
+     * @throws kyle.poultry.shared.error.RuleViolation (422) when the current password is incorrect, the new one equals the
      *                                                  current one, or it breaks the password policy
      */
     @PostMapping("/password")

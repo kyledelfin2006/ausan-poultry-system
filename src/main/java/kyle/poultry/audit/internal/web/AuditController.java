@@ -7,7 +7,7 @@ import java.time.LocalDate;
 import kyle.poultry.audit.api.model.AuditEntity;
 import kyle.poultry.audit.internal.model.AuditView;
 import kyle.poultry.audit.internal.service.AuditService;
-import kyle.poultry.shared.RuleViolation;
+import kyle.poultry.shared.error.RuleViolation;
 import org.springframework.data.domain.Page;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.GetMapping;

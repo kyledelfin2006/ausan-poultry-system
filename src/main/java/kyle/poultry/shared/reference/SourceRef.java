@@ -1,4 +1,4 @@
-package kyle.poultry.shared;
+package kyle.poultry.shared.reference;
 
 /**
  * A loose pointer to the business record that caused a ledger row (e.g. DELIVERY #42).

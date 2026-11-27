@@ -122,7 +122,7 @@ class EntriesExportTests {
         var held = new java.util.ArrayList<ExportLimiter.Permit>();
         try {
             while (true) held.add(limiter.acquire());
-        } catch (kyle.poultry.shared.TooManyRequestsException full) {
+        } catch (kyle.poultry.shared.error.TooManyRequestsException full) {
             // every slot is now held, as by slow downloads
         }
         String path = "/api/finance/entries.csv?from=2015-05-01&to=2015-05-31";

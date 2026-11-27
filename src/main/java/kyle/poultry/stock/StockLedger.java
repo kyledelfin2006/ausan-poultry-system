@@ -15,9 +15,9 @@ import kyle.poultry.catalog.CatalogApi.ProductView;
 import kyle.poultry.finance.FinanceApi;
 import kyle.poultry.identity.Actor;
 import kyle.poultry.identity.Capability;
-import kyle.poultry.shared.BusinessDatePolicy;
-import kyle.poultry.shared.RuleViolation;
-import kyle.poultry.shared.SourceRef;
+import kyle.poultry.shared.time.BusinessDatePolicy;
+import kyle.poultry.shared.error.RuleViolation;
+import kyle.poultry.shared.reference.SourceRef;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -211,7 +211,7 @@ class StockLedger implements StockApi {
      * @param source the record that caused it, or {@code null} for manual movements
      * @param actor  the user recording it
      * @return the saved movement
-     * @throws kyle.poultry.shared.NotFoundException if the product or branch does not exist
+     * @throws kyle.poultry.shared.error.NotFoundException if the product or branch does not exist
      * @throws RuleViolation if the product or branch is inactive, or a movement rule is broken
      * @throws InsufficientStockException if the delta would take the balance below zero
      */

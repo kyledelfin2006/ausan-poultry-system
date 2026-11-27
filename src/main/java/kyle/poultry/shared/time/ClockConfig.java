@@ -1,4 +1,4 @@
-package kyle.poultry.shared;
+package kyle.poultry.shared.time;
 
 import java.time.Clock;
 import java.time.ZoneId;

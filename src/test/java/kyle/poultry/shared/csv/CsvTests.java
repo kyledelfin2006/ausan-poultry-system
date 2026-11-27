@@ -1,4 +1,4 @@
-package kyle.poultry.shared;
+package kyle.poultry.shared.csv;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

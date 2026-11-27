@@ -138,7 +138,7 @@ class CatalogController {
      * @param id the product id from the URL
      * @param r  the validated request body; null fields are left unchanged
      * @return the updated product
-     * @throws kyle.poultry.shared.NotFoundException if no product has that id (HTTP 404)
+     * @throws kyle.poultry.shared.error.NotFoundException if no product has that id (HTTP 404)
      */
     @PatchMapping("/products/{id}")
     @RequiresCapability(Capability.MANAGE_CATALOG)
@@ -171,7 +171,7 @@ class CatalogController {
      * @param id the branch id from the URL
      * @param r  the validated request body; null fields are left unchanged
      * @return the updated branch
-     * @throws kyle.poultry.shared.NotFoundException if no branch has that id (HTTP 404)
+     * @throws kyle.poultry.shared.error.NotFoundException if no branch has that id (HTTP 404)
      */
     @PatchMapping("/branches/{id}")
     @RequiresCapability(Capability.MANAGE_CATALOG)
@@ -192,8 +192,8 @@ class CatalogController {
      *
      * @param r the validated request body
      * @return the created package with product names, with HTTP 201
-     * @throws kyle.poultry.shared.RuleViolation if an item is repeated or refers to an inactive product (HTTP 422)
-     * @throws kyle.poultry.shared.NotFoundException if an item refers to an unknown product (HTTP 404)
+     * @throws kyle.poultry.shared.error.RuleViolation if an item is repeated or refers to an inactive product (HTTP 422)
+     * @throws kyle.poultry.shared.error.NotFoundException if an item refers to an unknown product (HTTP 404)
      */
     @PostMapping("/packages")
     @ResponseStatus(HttpStatus.CREATED)
@@ -210,7 +210,7 @@ class CatalogController {
      * @param id the package id from the URL
      * @param r  the validated request body; null fields are left unchanged
      * @return the updated package
-     * @throws kyle.poultry.shared.NotFoundException if no package has that id (HTTP 404)
+     * @throws kyle.poultry.shared.error.NotFoundException if no package has that id (HTTP 404)
      */
     @PatchMapping("/packages/{id}")
     @RequiresCapability(Capability.MANAGE_CATALOG)

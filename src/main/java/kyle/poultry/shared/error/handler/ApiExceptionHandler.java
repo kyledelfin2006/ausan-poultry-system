@@ -1,5 +1,11 @@
-package kyle.poultry.shared;
+package kyle.poultry.shared.error.handler;
 
+import kyle.poultry.shared.error.ConflictException;
+import kyle.poultry.shared.error.ErrorCodes;
+import kyle.poultry.shared.error.NotFoundException;
+import kyle.poultry.shared.error.RequestInProgressException;
+import kyle.poultry.shared.error.RuleViolation;
+import kyle.poultry.shared.error.TooManyRequestsException;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

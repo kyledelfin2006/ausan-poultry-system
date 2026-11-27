@@ -108,7 +108,7 @@ class SeriesService {
      * @param to          last business date included
      * @param granularity day or month
      * @return the series
-     * @throws kyle.poultry.shared.RuleViolation if a date is missing, {@code from} is after {@code to}, the period
+     * @throws kyle.poultry.shared.error.RuleViolation if a date is missing, {@code from} is after {@code to}, the period
      *                                           exceeds 366 days, or the granularity is missing
      */
     Series series(LocalDate from, LocalDate to, Granularity granularity) {
@@ -125,7 +125,7 @@ class SeriesService {
      * @param to          last business date included
      * @param granularity day or month
      * @return the series
-     * @throws kyle.poultry.shared.RuleViolation if a date is missing, {@code from} is after {@code to}, the period
+     * @throws kyle.poultry.shared.error.RuleViolation if a date is missing, {@code from} is after {@code to}, the period
      *                                           exceeds 366 days, or the granularity is missing
      */
     ProfitSeries profitSeries(LocalDate from, LocalDate to, Granularity granularity) {
@@ -144,7 +144,7 @@ class SeriesService {
      */
     private List<Bucket> buckets(LocalDate from, LocalDate to, Granularity granularity) {
         ReportService.requirePeriod(from, to);
-        if (granularity == null) throw new kyle.poultry.shared.RuleViolation("granularity must be DAY or MONTH");
+        if (granularity == null) throw new kyle.poultry.shared.error.RuleViolation("granularity must be DAY or MONTH");
 
         // Stretch boundaries first; the empty totals are filled below.
         var ends = new ArrayList<LocalDate[]>();

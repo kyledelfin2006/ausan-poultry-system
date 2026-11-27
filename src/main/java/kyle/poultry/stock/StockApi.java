@@ -7,7 +7,7 @@ import java.time.LocalDate;
 import java.util.List;
 import kyle.poultry.finance.PaymentMethod;
 import kyle.poultry.identity.Actor;
-import kyle.poultry.shared.SourceRef;
+import kyle.poultry.shared.reference.SourceRef;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -26,8 +26,8 @@ import org.springframework.data.domain.Pageable;
  *   <li><b>Ordering and locking:</b> a movement locks its balance row until the transaction ends, so
  *       concurrent movements on the same product and branch are applied one after another. Multi-line calls
  *       process lines in ascending product id so concurrent callers cannot deadlock.</li>
- *   <li><b>Failures:</b> {@link kyle.poultry.shared.NotFoundException} (404) for unknown products or branches,
- *       {@link kyle.poultry.shared.RuleViolation} (422) for inactive ones or broken input rules,
+ *   <li><b>Failures:</b> {@link kyle.poultry.shared.error.NotFoundException} (404) for unknown products or branches,
+ *       {@link kyle.poultry.shared.error.RuleViolation} (422) for inactive ones or broken input rules,
  *       {@link InsufficientStockException} (409) for shortages.</li>
  * </ul>
  * Callers: the web controller and the delivery module. The query methods are read-only.
@@ -47,13 +47,13 @@ public interface StockApi {
      * @param cmd   the movement to record
      * @param actor the signed-in user, stored as the creator and checked for owner-only types
      * @return the saved movement, including the cost stamped on it
-     * @throws kyle.poultry.shared.RuleViolation if the type is not manual, the date is missing or outside the
+     * @throws kyle.poultry.shared.error.RuleViolation if the type is not manual, the date is missing or outside the
      *         actor's allowed range, the sign or cost is wrong for the type, a reason or payment method is missing,
      *         or the product or branch is inactive
      * @throws org.springframework.security.access.AccessDeniedException if a non-owner records opening
      *         stock or an adjustment
      * @throws InsufficientStockException if a negative quantity exceeds what the branch holds
-     * @throws kyle.poultry.shared.NotFoundException if the product or branch does not exist
+     * @throws kyle.poultry.shared.error.NotFoundException if the product or branch does not exist
      */
     MovementView record(StockCommand cmd, Actor actor);
 
@@ -72,8 +72,8 @@ public interface StockApi {
      * @param actor    the signed-in user, stored as the creator
      * @return one movement per line, in ascending product id order
      * @throws InsufficientStockException if any line exceeds the branch balance
-     * @throws kyle.poultry.shared.RuleViolation if a quantity is not positive or a product or branch is inactive
-     * @throws kyle.poultry.shared.NotFoundException if a product or branch does not exist
+     * @throws kyle.poultry.shared.error.RuleViolation if a quantity is not positive or a product or branch is inactive
+     * @throws kyle.poultry.shared.error.NotFoundException if a product or branch does not exist
      */
     List<MovementView> deduct(List<StockLine> lines, long branchId, SourceRef source, LocalDate on, Actor actor);
 
@@ -162,8 +162,8 @@ public interface StockApi {
      * @param actor     who sets it; must be the owner
      * @return the stored level
      * @throws org.springframework.security.access.AccessDeniedException if the actor is not the owner
-     * @throws kyle.poultry.shared.RuleViolation                         if the level is negative or the product is inactive
-     * @throws kyle.poultry.shared.NotFoundException                     if the product does not exist
+     * @throws kyle.poultry.shared.error.RuleViolation                         if the level is negative or the product is inactive
+     * @throws kyle.poultry.shared.error.NotFoundException                     if the product does not exist
      */
     ReorderLevelView setReorderLevel(long productId, long level, Actor actor);
 
@@ -173,7 +173,7 @@ public interface StockApi {
      * @param productId the product
      * @param actor     who removes it; must be the owner
      * @throws org.springframework.security.access.AccessDeniedException if the actor is not the owner
-     * @throws kyle.poultry.shared.NotFoundException                     if the product has no level
+     * @throws kyle.poultry.shared.error.NotFoundException                     if the product has no level
      */
     void clearReorderLevel(long productId, Actor actor);
 

@@ -1,4 +1,4 @@
-package kyle.poultry.shared;
+package kyle.poultry.shared.error;
 
 import java.util.List;
 import org.springframework.http.HttpStatusCode;

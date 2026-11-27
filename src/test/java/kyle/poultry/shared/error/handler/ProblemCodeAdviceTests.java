@@ -1,5 +1,6 @@
-package kyle.poultry.shared;
+package kyle.poultry.shared.error.handler;
 
+import kyle.poultry.shared.error.ErrorCodes;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Map;

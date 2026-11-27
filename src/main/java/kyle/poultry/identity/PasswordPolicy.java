@@ -3,7 +3,7 @@ package kyle.poultry.identity;
 import java.nio.charset.StandardCharsets;
 import java.util.Locale;
 import java.util.Set;
-import kyle.poultry.shared.RuleViolation;
+import kyle.poultry.shared.error.RuleViolation;
 
 /**
  * The rules a NEW password must satisfy, applied whenever a password is chosen (first owner, new user, owner reset,

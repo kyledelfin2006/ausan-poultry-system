@@ -1,4 +1,4 @@
-package kyle.poultry.shared;
+package kyle.poultry.support;
 
 import java.net.URI;
 import java.net.http.HttpClient;

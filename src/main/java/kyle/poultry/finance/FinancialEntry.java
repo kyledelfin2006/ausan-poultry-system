@@ -6,8 +6,8 @@ import java.time.Instant;
 import java.time.LocalDate;
 import kyle.poultry.finance.FinanceApi.EntryView;
 import kyle.poultry.identity.Actor;
-import kyle.poultry.shared.RuleViolation;
-import kyle.poultry.shared.SourceRef;
+import kyle.poultry.shared.error.RuleViolation;
+import kyle.poultry.shared.reference.SourceRef;
 
 /**
  * One immutable financial fact: a sale, a cost, a payment, a refund, a purchase or an expense, stored as a row of

@@ -1,4 +1,4 @@
-package kyle.poultry.shared;
+package kyle.poultry.shared.csv;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;

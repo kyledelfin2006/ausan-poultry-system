@@ -3,7 +3,7 @@ package kyle.poultry.identity;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import kyle.poultry.shared.RuleViolation;
+import kyle.poultry.shared.error.RuleViolation;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;

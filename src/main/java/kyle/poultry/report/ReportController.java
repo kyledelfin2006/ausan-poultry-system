@@ -13,7 +13,7 @@ import kyle.poultry.report.SeriesService.Granularity;
 import kyle.poultry.report.SeriesService.ProfitSeries;
 import kyle.poultry.report.SeriesService.Series;
 import kyle.poultry.report.SeriesService.SeriesPoint;
-import kyle.poultry.shared.Csv;
+import kyle.poultry.shared.csv.Csv;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -52,7 +52,7 @@ class ReportController {
      * @param from first business date included (ISO yyyy-MM-dd)
      * @param to   last business date included (ISO yyyy-MM-dd)
      * @return the summary report
-     * @throws kyle.poultry.shared.RuleViolation if from is after to or the period exceeds 366 days (HTTP 422)
+     * @throws kyle.poultry.shared.error.RuleViolation if from is after to or the period exceeds 366 days (HTTP 422)
      */
     @GetMapping("/summary")
     Summary summary(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
@@ -67,7 +67,7 @@ class ReportController {
      * @param from first business date included (ISO yyyy-MM-dd)
      * @param to   last business date included (ISO yyyy-MM-dd)
      * @return the profit report
-     * @throws kyle.poultry.shared.RuleViolation if from is after to or the period exceeds 366 days (HTTP 422)
+     * @throws kyle.poultry.shared.error.RuleViolation if from is after to or the period exceeds 366 days (HTTP 422)
      */
     @GetMapping("/profit")
     @RequiresCapability(Capability.VIEW_COST_AND_PROFIT)
@@ -92,7 +92,7 @@ class ReportController {
      * @param to          last business date included (ISO yyyy-MM-dd)
      * @param granularity DAY (default) or MONTH
      * @return the points and their total, which equals the summary report
-     * @throws kyle.poultry.shared.RuleViolation if from is after to or the period exceeds 366 days (HTTP 422)
+     * @throws kyle.poultry.shared.error.RuleViolation if from is after to or the period exceeds 366 days (HTTP 422)
      */
     @GetMapping("/series")
     Series series(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
@@ -109,7 +109,7 @@ class ReportController {
      * @param to          last business date included (ISO yyyy-MM-dd)
      * @param granularity DAY (default) or MONTH
      * @return the points and their total, which equals the profit report
-     * @throws kyle.poultry.shared.RuleViolation if from is after to or the period exceeds 366 days (HTTP 422)
+     * @throws kyle.poultry.shared.error.RuleViolation if from is after to or the period exceeds 366 days (HTTP 422)
      */
     @GetMapping("/profit-series")
     @RequiresCapability(Capability.VIEW_COST_AND_PROFIT)

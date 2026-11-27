@@ -152,7 +152,7 @@ class ExportBurstEvidenceTests {
             try {
                 taken.add(limiter.acquire());
                 recovered++;
-            } catch (kyle.poultry.shared.TooManyRequestsException busy) {
+            } catch (kyle.poultry.shared.error.TooManyRequestsException busy) {
                 Thread.sleep(100);
             }
         }

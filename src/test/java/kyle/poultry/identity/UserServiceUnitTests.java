@@ -10,7 +10,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneId;
 import kyle.poultry.audit.api.AuditApi;
-import kyle.poultry.shared.ConflictException;
+import kyle.poultry.shared.error.ConflictException;
 import org.hibernate.exception.ConstraintViolationException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

@@ -1,5 +1,9 @@
-package kyle.poultry.shared;
+package kyle.poultry.shared.error.handler;
 
+import kyle.poultry.shared.error.ConflictException;
+import kyle.poultry.shared.error.ErrorCodes;
+import kyle.poultry.shared.error.NotFoundException;
+import kyle.poultry.shared.error.RuleViolation;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 

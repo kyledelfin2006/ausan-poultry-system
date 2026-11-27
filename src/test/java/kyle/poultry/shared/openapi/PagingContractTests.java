@@ -1,5 +1,6 @@
-package kyle.poultry.shared;
+package kyle.poultry.shared.openapi;
 
+import kyle.poultry.support.ApiTestClient;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import kyle.poultry.TestcontainersConfiguration;

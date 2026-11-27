@@ -21,7 +21,7 @@ import java.util.function.Consumer;
 import kyle.poultry.finance.EntryType.CashDirection;
 import kyle.poultry.finance.FinanceApi.EntryView;
 import kyle.poultry.identity.Actor;
-import kyle.poultry.shared.Csv;
+import kyle.poultry.shared.csv.Csv;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.oauth2.jwt.Jwt;
 
@@ -71,7 +71,7 @@ class EntriesExportSnapshotTests {
         var controller = new FinanceController(mock(FinanceApi.class), exporter, new ExportLimiter(3));
 
         assertThatThrownBy(() -> controller.entriesCsv(LocalDate.parse("2026-02-01"), LocalDate.parse("2026-01-01"), null, OWNER))
-                .isInstanceOf(kyle.poultry.shared.RuleViolation.class);
+                .isInstanceOf(kyle.poultry.shared.error.RuleViolation.class);
         verifyNoInteractions(exporter);
     }
 }

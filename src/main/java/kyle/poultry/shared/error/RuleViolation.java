@@ -1,4 +1,4 @@
-package kyle.poultry.shared;
+package kyle.poultry.shared.error;
 
 /**
  * A business rule was broken by the request (maps to HTTP 422).

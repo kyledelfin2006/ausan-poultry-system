@@ -5,7 +5,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
-import kyle.poultry.shared.RuleViolation;
+import kyle.poultry.shared.error.RuleViolation;
 import org.springframework.data.jpa.domain.Specification;
 
 /**

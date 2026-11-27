@@ -15,8 +15,8 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import kyle.poultry.finance.FinanceApi.EntryView;
 import kyle.poultry.identity.Actor;
-import kyle.poultry.shared.Csv;
-import kyle.poultry.shared.RuleViolation;
+import kyle.poultry.shared.csv.Csv;
+import kyle.poultry.shared.error.RuleViolation;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -74,7 +74,7 @@ class FinanceController {
      * @param r   the validated request body
      * @param jwt the caller's token, from which the acting user and role are read
      * @return the stored entry (HTTP 201)
-     * @throws kyle.poultry.shared.RuleViolation if the date is in the future or the amount is invalid (HTTP 422)
+     * @throws kyle.poultry.shared.error.RuleViolation if the date is in the future or the amount is invalid (HTTP 422)
      */
     @PostMapping("/expenses")
     @ResponseStatus(HttpStatus.CREATED)
@@ -90,7 +90,7 @@ class FinanceController {
      * @param type optional filter on one entry type
      * @param page paging parameters from the query string
      * @return a page of entries
-     * @throws kyle.poultry.shared.RuleViolation if from is after to (HTTP 422)
+     * @throws kyle.poultry.shared.error.RuleViolation if from is after to (HTTP 422)
      */
     @GetMapping("/entries")
     Page<EntryView> entries(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
@@ -109,8 +109,8 @@ class FinanceController {
      * @param to   last business date included (ISO yyyy-MM-dd)
      * @param type optional filter on one entry type
      * @return a {@code text/csv} attachment with one header row and one row per entry
-     * @throws kyle.poultry.shared.RuleViolation if from is after to or the period exceeds 366 days (HTTP 422)
-     * @throws kyle.poultry.shared.TooManyRequestsException when too many exports are already running (HTTP 429 with
+     * @throws kyle.poultry.shared.error.RuleViolation if from is after to or the period exceeds 366 days (HTTP 422)
+     * @throws kyle.poultry.shared.error.TooManyRequestsException when too many exports are already running (HTTP 429 with
      *         {@code Retry-After})
      */
     @GetMapping("/entries.csv")

@@ -1,6 +1,6 @@
 package kyle.poultry.stock;
 
-import kyle.poultry.shared.ConflictException;
+import kyle.poultry.shared.error.ConflictException;
 
 /**
  * A stock-out was refused because the branch holds fewer units than requested (maps to HTTP 409).

@@ -12,7 +12,7 @@ import java.util.TreeMap;
 import kyle.poultry.finance.EntryType;
 import kyle.poultry.finance.FinanceApi;
 import kyle.poultry.finance.PaymentMethod;
-import kyle.poultry.shared.RuleViolation;
+import kyle.poultry.shared.error.RuleViolation;
 import kyle.poultry.stock.StockApi;
 import kyle.poultry.stock.StockApi.BalanceView;
 import com.fasterxml.jackson.annotation.JsonInclude;

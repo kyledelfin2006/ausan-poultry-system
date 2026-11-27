@@ -1,4 +1,4 @@
-package kyle.poultry.shared;
+package kyle.poultry.shared.error;
 
 /**
  * The request is valid but clashes with current state (maps to HTTP 409).

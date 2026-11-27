@@ -1,5 +1,6 @@
-package kyle.poultry.shared;
+package kyle.poultry.shared.error.handler;
 
+import kyle.poultry.shared.error.ErrorCodes;
 import org.springframework.core.MethodParameter;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;

@@ -153,7 +153,7 @@ class DeliveryController {
      * @param to       optional last business date (ISO yyyy-MM-dd) of the start time, inclusive
      * @param page     paging parameters (the sort parameter is ignored)
      * @return one page of deliveries
-     * @throws kyle.poultry.shared.RuleViolation if from is after to (HTTP 422)
+     * @throws kyle.poultry.shared.error.RuleViolation if from is after to (HTTP 422)
      */
     @GetMapping
     Page<DeliveryView> list(@RequestParam(required = false) DeliveryStatus status,
@@ -173,7 +173,7 @@ class DeliveryController {
      * @param from     optional first business date, inclusive
      * @param to       optional last business date, inclusive
      * @return the active, done, cancelled and returned counts and their total
-     * @throws kyle.poultry.shared.RuleViolation if from is after to (HTTP 422)
+     * @throws kyle.poultry.shared.error.RuleViolation if from is after to (HTTP 422)
      */
     @GetMapping("/summary")
     StatusCounts summary(@RequestParam(required = false) Long branchId,

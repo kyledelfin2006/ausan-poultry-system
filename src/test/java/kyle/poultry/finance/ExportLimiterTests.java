@@ -3,7 +3,7 @@ package kyle.poultry.finance;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import kyle.poultry.shared.TooManyRequestsException;
+import kyle.poultry.shared.error.TooManyRequestsException;
 import org.junit.jupiter.api.Test;
 
 /** The export cap: refuses at once when full, frees a slot when a permit is released, and ignores a second release. */

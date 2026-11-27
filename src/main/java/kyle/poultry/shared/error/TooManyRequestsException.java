@@ -1,4 +1,4 @@
-package kyle.poultry.shared;
+package kyle.poultry.shared.error;
 
 /**
  * The server is already doing as much of this kind of work as it allows, so the request is refused for now (maps to

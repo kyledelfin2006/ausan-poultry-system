@@ -1,4 +1,4 @@
-package kyle.poultry.shared;
+package kyle.poultry.shared.error;
 
 /**
  * The same request (same Idempotency-Key and user) is still being processed by an earlier call (maps to HTTP 409 with a

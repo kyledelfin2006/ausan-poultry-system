@@ -6,8 +6,8 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import kyle.poultry.finance.PaymentMethod;
-import kyle.poultry.shared.ConflictException;
-import kyle.poultry.shared.RuleViolation;
+import kyle.poultry.shared.error.ConflictException;
+import kyle.poultry.shared.error.RuleViolation;
 
 /**
  * A paid delivery. Owns its status transitions; stock and money effects are orchestrated by {@link DeliveryService}.

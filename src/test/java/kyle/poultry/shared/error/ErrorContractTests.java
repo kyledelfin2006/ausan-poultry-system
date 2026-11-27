@@ -1,5 +1,6 @@
-package kyle.poultry.shared;
+package kyle.poultry.shared.error;
 
+import kyle.poultry.support.ApiTestClient;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.net.http.HttpResponse;

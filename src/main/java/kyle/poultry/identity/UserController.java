@@ -45,7 +45,7 @@ class UserController {
      *
      * @param r the new user's details
      * @return the created user (201)
-     * @throws kyle.poultry.shared.ConflictException (409) when the username is already taken
+     * @throws kyle.poultry.shared.error.ConflictException (409) when the username is already taken
      */
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
@@ -84,8 +84,8 @@ class UserController {
      * @param r   the fields to change
      * @param jwt the authenticated owner making the change
      * @return the updated user
-     * @throws kyle.poultry.shared.NotFoundException (404) when the user does not exist
-     * @throws kyle.poultry.shared.RuleViolation (422) when it would deactivate oneself, remove the last active owner,
+     * @throws kyle.poultry.shared.error.NotFoundException (404) when the user does not exist
+     * @throws kyle.poultry.shared.error.RuleViolation (422) when it would deactivate oneself, remove the last active owner,
      *                                                  or blank the display name
      */
     @PatchMapping("/{id}")
@@ -98,7 +98,7 @@ class UserController {
      *
      * @param id the user whose password is replaced
      * @param r  the new password
-     * @throws kyle.poultry.shared.NotFoundException (404) when the user does not exist
+     * @throws kyle.poultry.shared.error.NotFoundException (404) when the user does not exist
      */
     @PostMapping("/{id}/password")
     @ResponseStatus(HttpStatus.NO_CONTENT)

@@ -7,7 +7,7 @@ import kyle.poultry.report.ReportService.Profit;
 import kyle.poultry.report.ReportService.Summary;
 import kyle.poultry.report.SeriesService.ProfitSeries;
 import kyle.poultry.report.SeriesService.Series;
-import kyle.poultry.shared.Csv;
+import kyle.poultry.shared.csv.Csv;
 
 /**
  * Renders the report results as CSV text, with exactly the figures of the JSON reports: flat reports become

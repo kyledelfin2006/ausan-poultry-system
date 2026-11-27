@@ -1,4 +1,4 @@
-package kyle.poultry.shared;
+package kyle.poultry.shared.web;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

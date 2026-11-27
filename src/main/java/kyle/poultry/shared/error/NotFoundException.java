@@ -1,4 +1,4 @@
-package kyle.poultry.shared;
+package kyle.poultry.shared.error;
 
 /**
  * A record that was asked for by id does not exist (maps to HTTP 404).

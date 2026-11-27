@@ -14,7 +14,7 @@ import kyle.poultry.TestcontainersConfiguration;
 import kyle.poultry.finance.PaymentMethod;
 import kyle.poultry.identity.Actor;
 import kyle.poultry.identity.Role;
-import kyle.poultry.shared.SourceRef;
+import kyle.poultry.shared.reference.SourceRef;
 import kyle.poultry.stock.StockApi.StockCommand;
 import kyle.poultry.stock.StockApi.StockLine;
 import org.junit.jupiter.api.Tag;

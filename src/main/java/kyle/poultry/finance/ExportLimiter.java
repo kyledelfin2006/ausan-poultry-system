@@ -2,7 +2,7 @@ package kyle.poultry.finance;
 
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicBoolean;
-import kyle.poultry.shared.TooManyRequestsException;
+import kyle.poultry.shared.error.TooManyRequestsException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 

@@ -6,8 +6,8 @@ import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.LocalDate;
 import kyle.poultry.identity.Actor;
-import kyle.poultry.shared.RuleViolation;
-import kyle.poultry.shared.SourceRef;
+import kyle.poultry.shared.error.RuleViolation;
+import kyle.poultry.shared.reference.SourceRef;
 import kyle.poultry.stock.StockApi.MovementView;
 import kyle.poultry.stock.StockApi.StockCommand;
 

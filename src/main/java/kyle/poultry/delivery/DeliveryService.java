@@ -16,11 +16,11 @@ import kyle.poultry.finance.FinanceApi;
 import kyle.poultry.finance.PaymentMethod;
 import kyle.poultry.identity.Actor;
 import kyle.poultry.identity.Capability;
-import kyle.poultry.shared.BusinessDatePolicy;
-import kyle.poultry.shared.NotFoundException;
-import kyle.poultry.shared.RequestInProgressException;
-import kyle.poultry.shared.RuleViolation;
-import kyle.poultry.shared.SourceRef;
+import kyle.poultry.shared.time.BusinessDatePolicy;
+import kyle.poultry.shared.error.NotFoundException;
+import kyle.poultry.shared.error.RequestInProgressException;
+import kyle.poultry.shared.error.RuleViolation;
+import kyle.poultry.shared.reference.SourceRef;
 import kyle.poultry.stock.StockApi;
 import kyle.poultry.stock.StockApi.MovementView;
 import kyle.poultry.stock.StockApi.StockLine;
@@ -291,7 +291,7 @@ class DeliveryService {
      * @param actor       who records it
      * @return the updated delivery
      * @throws NotFoundException   when the delivery does not exist
-     * @throws kyle.poultry.shared.ConflictException when the delivery is no longer ACTIVE
+     * @throws kyle.poultry.shared.error.ConflictException when the delivery is no longer ACTIVE
      * @throws RuleViolation       when the time is missing, in the future, before the start, or (for an assistant)
      *                             more than 7 days in the past
      */
@@ -315,7 +315,7 @@ class DeliveryService {
      * @return the cancelled delivery
      * @throws AccessDeniedException when the actor is not an owner
      * @throws NotFoundException     when the delivery does not exist
-     * @throws kyle.poultry.shared.ConflictException when the delivery is no longer ACTIVE
+     * @throws kyle.poultry.shared.error.ConflictException when the delivery is no longer ACTIVE
      * @throws RuleViolation         when no reason is given
      */
     DeliveryView cancel(long id, String reason, Actor actor) {
@@ -341,7 +341,7 @@ class DeliveryService {
      * @return the returned delivery with the money still held
      * @throws AccessDeniedException when the actor may not return deliveries
      * @throws NotFoundException     when the delivery does not exist
-     * @throws kyle.poultry.shared.ConflictException when the delivery is not DONE
+     * @throws kyle.poultry.shared.error.ConflictException when the delivery is not DONE
      * @throws RuleViolation         when no reason is given
      */
     DeliveryView returnDelivery(long id, String reason, Actor actor) {

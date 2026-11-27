@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.Map;
 import kyle.poultry.finance.EntryType.CashDirection;
 import kyle.poultry.identity.Actor;
-import kyle.poultry.shared.SourceRef;
+import kyle.poultry.shared.reference.SourceRef;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -30,7 +30,7 @@ public interface FinanceApi {
      * @param source      the record that caused it (e.g. the stock movement)
      * @param actor       who is recording it
      * @return the stored entry
-     * @throws kyle.poultry.shared.RuleViolation if the amount is not a positive peso value, the method is missing,
+     * @throws kyle.poultry.shared.error.RuleViolation if the amount is not a positive peso value, the method is missing,
      *         or the business date is outside the actor's allowed range
      */
     EntryView recordStockPurchase(BigDecimal amount, PaymentMethod method, LocalDate on, String description,
@@ -45,7 +45,7 @@ public interface FinanceApi {
      * @param description what the money was for; required
      * @param actor       who is recording it
      * @return the stored entry
-     * @throws kyle.poultry.shared.RuleViolation if the description is blank, the date is outside the actor's allowed
+     * @throws kyle.poultry.shared.error.RuleViolation if the description is blank, the date is outside the actor's allowed
      *                                           range, or the amount is invalid
      */
     EntryView recordExpense(BigDecimal amount, PaymentMethod method, LocalDate on, String description, Actor actor);
@@ -58,7 +58,7 @@ public interface FinanceApi {
      * @param source the record that was sold (e.g. the delivery); required
      * @param actor  who is recording it
      * @return the stored entry
-     * @throws kyle.poultry.shared.RuleViolation if the source is missing or the amount is invalid
+     * @throws kyle.poultry.shared.error.RuleViolation if the source is missing or the amount is invalid
      */
     EntryView recordSale(BigDecimal amount, LocalDate on, SourceRef source, Actor actor);
 
@@ -69,7 +69,7 @@ public interface FinanceApi {
      * @param on     business date of the delivery
      * @param source the record that consumed the stock; required
      * @param actor  who is recording it
-     * @throws kyle.poultry.shared.RuleViolation if the source is missing or the amount is negative or invalid
+     * @throws kyle.poultry.shared.error.RuleViolation if the source is missing or the amount is negative or invalid
      */
     void recordCostOfGoods(BigDecimal amount, LocalDate on, SourceRef source, Actor actor);
 
@@ -82,7 +82,7 @@ public interface FinanceApi {
      * @param source the record it pays for (e.g. the delivery); required
      * @param actor  who is recording it
      * @return the stored entry
-     * @throws kyle.poultry.shared.RuleViolation if the source or method is missing, the date is outside the actor's
+     * @throws kyle.poultry.shared.error.RuleViolation if the source or method is missing, the date is outside the actor's
      *         allowed range, or the amount is invalid
      */
     EntryView recordPayment(BigDecimal amount, PaymentMethod method, LocalDate on, SourceRef source, Actor actor);
@@ -107,7 +107,7 @@ public interface FinanceApi {
      * @param source      the record being refunded; required
      * @param actor       who is refunding; must be the owner
      * @return the stored entry
-     * @throws kyle.poultry.shared.RuleViolation if the amount exceeds the payment still held, the source is missing,
+     * @throws kyle.poultry.shared.error.RuleViolation if the amount exceeds the payment still held, the source is missing,
      *                                           or the date is outside the actor's allowed range
      * @throws org.springframework.security.access.AccessDeniedException if the actor is not the owner
      */
@@ -138,7 +138,7 @@ public interface FinanceApi {
      * @param from first business date included
      * @param to   last business date included
      * @return totals keyed by type, scale 2
-     * @throws kyle.poultry.shared.RuleViolation if a date is missing or {@code to} is before {@code from}
+     * @throws kyle.poultry.shared.error.RuleViolation if a date is missing or {@code to} is before {@code from}
      */
     Map<EntryType, BigDecimal> totalsByType(LocalDate from, LocalDate to);
 
@@ -150,7 +150,7 @@ public interface FinanceApi {
      * @param from first business date included
      * @param to   last business date included
      * @return per-date totals keyed by type, scale 2, ordered by date ascending
-     * @throws kyle.poultry.shared.RuleViolation if a date is missing or {@code to} is before {@code from}
+     * @throws kyle.poultry.shared.error.RuleViolation if a date is missing or {@code to} is before {@code from}
      */
     Map<LocalDate, Map<EntryType, BigDecimal>> dailyTotalsByType(LocalDate from, LocalDate to);
 
@@ -161,7 +161,7 @@ public interface FinanceApi {
      * @param from first business date included
      * @param to   last business date included
      * @return net cash keyed by method, scale 2
-     * @throws kyle.poultry.shared.RuleViolation if a date is missing or {@code to} is before {@code from}
+     * @throws kyle.poultry.shared.error.RuleViolation if a date is missing or {@code to} is before {@code from}
      */
     Map<PaymentMethod, BigDecimal> cashByMethod(LocalDate from, LocalDate to);
 
@@ -172,7 +172,7 @@ public interface FinanceApi {
      *
      * @param asOf the date to measure at
      * @return the total retained amount, scale 2
-     * @throws kyle.poultry.shared.RuleViolation if {@code asOf} is missing
+     * @throws kyle.poultry.shared.error.RuleViolation if {@code asOf} is missing
      */
     BigDecimal retainedOnCancelledSources(LocalDate asOf);
 
@@ -187,7 +187,7 @@ public interface FinanceApi {
      * @param page paging and size
      * @param actor the caller; assistants see sales, sale reversals, payments, and refunds only
      * @return a page of entries
-     * @throws kyle.poultry.shared.RuleViolation if a date is missing or {@code to} is before {@code from}
+     * @throws kyle.poultry.shared.error.RuleViolation if a date is missing or {@code to} is before {@code from}
      */
     Page<EntryView> entries(LocalDate from, LocalDate to, EntryType type, Pageable page, Actor actor);
 

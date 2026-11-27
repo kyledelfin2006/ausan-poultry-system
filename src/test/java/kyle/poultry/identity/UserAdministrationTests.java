@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.regex.Pattern;
 import kyle.poultry.TestcontainersConfiguration;
-import kyle.poultry.shared.RuleViolation;
+import kyle.poultry.shared.error.RuleViolation;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

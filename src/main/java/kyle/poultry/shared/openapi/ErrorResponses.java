@@ -14,7 +14,7 @@ import io.swagger.v3.oas.models.responses.ApiResponse;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import kyle.poultry.shared.ErrorCodes;
+import kyle.poultry.shared.error.ErrorCodes;
 
 /**
  * Publishes the error side of the contract: the shared {@code Problem} schema and, for every operation, the error

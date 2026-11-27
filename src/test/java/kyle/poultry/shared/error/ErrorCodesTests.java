@@ -1,4 +1,4 @@
-package kyle.poultry.shared;
+package kyle.poultry.shared.error;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
