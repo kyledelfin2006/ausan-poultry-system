@@ -6,18 +6,17 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.util.List;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
 /**
- * HTTP endpoints under {@code /api/users} for user administration. Every endpoint is restricted to the OWNER role.
+ * HTTP endpoints under {@code /api/users} for user administration. Every endpoint requires {@link Capability#MANAGE_USERS}.
  * Package-private; reached only over HTTP.
  */
 @RestController
 @RequestMapping("/api/users")
-@PreAuthorize("hasRole('OWNER')")
+@RequiresCapability(Capability.MANAGE_USERS)
 class UserController {
     private final UserService users;
 

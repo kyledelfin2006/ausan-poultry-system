@@ -1,5 +1,7 @@
 package kyle.poultry.catalog;
 
+import kyle.poultry.identity.Capability;
+import kyle.poultry.identity.RequiresCapability;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
@@ -15,14 +17,13 @@ import kyle.poultry.catalog.CatalogApi.BranchView;
 import kyle.poultry.catalog.CatalogApi.PackageView;
 import kyle.poultry.catalog.CatalogApi.ProductView;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 /**
  * REST endpoints for the catalog: products, branches and sales packages under {@code /api}.
  * <p>
  * Listing is a plain {@code GET} with no method-level role check; creating and changing reference data is
- * restricted to the owner role with {@code @PreAuthorize}. Request bodies are validated with Bean Validation
+ * restricted with {@code @RequiresCapability(MANAGE_CATALOG)}. Request bodies are validated with Bean Validation
  * ({@code @Valid}); failures become HTTP 400 through the shared exception handler. The controller only
  * translates HTTP to {@link CatalogService} calls and holds no business logic.
  */
@@ -126,7 +127,7 @@ class CatalogController {
      */
     @PostMapping("/products")
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasRole('OWNER')")
+    @RequiresCapability(Capability.MANAGE_CATALOG)
     ProductView createProduct(@Valid @RequestBody CreateProduct r) {
         return catalog.createProduct(r.name(), r.unit(), r.defaultPrice());
     }
@@ -140,7 +141,7 @@ class CatalogController {
      * @throws kyle.poultry.shared.NotFoundException if no product has that id (HTTP 404)
      */
     @PatchMapping("/products/{id}")
-    @PreAuthorize("hasRole('OWNER')")
+    @RequiresCapability(Capability.MANAGE_CATALOG)
     ProductView updateProduct(@PathVariable long id, @Valid @RequestBody UpdateProduct r) {
         return catalog.updateProduct(id, r.name(), r.unit(), r.defaultPrice(), r.active());
     }
@@ -161,7 +162,7 @@ class CatalogController {
      */
     @PostMapping("/branches")
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasRole('OWNER')")
+    @RequiresCapability(Capability.MANAGE_CATALOG)
     BranchView createBranch(@Valid @RequestBody CreateBranch r) { return catalog.createBranch(r.name()); }
 
     /**
@@ -173,7 +174,7 @@ class CatalogController {
      * @throws kyle.poultry.shared.NotFoundException if no branch has that id (HTTP 404)
      */
     @PatchMapping("/branches/{id}")
-    @PreAuthorize("hasRole('OWNER')")
+    @RequiresCapability(Capability.MANAGE_CATALOG)
     BranchView updateBranch(@PathVariable long id, @Valid @RequestBody UpdateBranch r) {
         return catalog.updateBranch(id, r.name(), r.active());
     }
@@ -196,7 +197,7 @@ class CatalogController {
      */
     @PostMapping("/packages")
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasRole('OWNER')")
+    @RequiresCapability(Capability.MANAGE_CATALOG)
     PackageView createPackage(@Valid @RequestBody CreatePackage r) {
         // Convert the request lines into the module's internal item type before calling the service.
         return catalog.createPackage(r.sku(), r.name(), r.price(),
@@ -212,7 +213,7 @@ class CatalogController {
      * @throws kyle.poultry.shared.NotFoundException if no package has that id (HTTP 404)
      */
     @PatchMapping("/packages/{id}")
-    @PreAuthorize("hasRole('OWNER')")
+    @RequiresCapability(Capability.MANAGE_CATALOG)
     PackageView updatePackage(@PathVariable long id, @Valid @RequestBody UpdatePackage r) {
         return catalog.updatePackage(id, r.name(), r.price(), r.active());
     }

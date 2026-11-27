@@ -33,7 +33,7 @@ class ModuleBoundaryTests {
             "shared", Set.of(),
             "audit", Set.of("shared"),
             "identity", Set.of("audit", "shared"),
-            "catalog", Set.of("audit", "shared"),
+            "catalog", Set.of("audit", "identity", "shared"),
             "finance", Set.of("identity", "shared"),
             "stock", Set.of("catalog", "finance", "identity", "shared"),
             "delivery", Set.of("catalog", "stock", "finance", "identity", "shared"),

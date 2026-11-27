@@ -55,13 +55,14 @@ class OpenApiConfig {
     }
 
     /**
-     * Reads {@code @PreAuthorize} owner rules from the controller method behind each operation.
+     * Publishes who may call each operation, as decided by the route policies (see {@link RoutePolicy}).
      *
+     * @param policies the route-rule sources supplied by other modules
      * @return the per-operation customizer springdoc runs while scanning
      */
     @Bean
-    OperationCustomizer ownerOnlyFromAnnotations() {
-        return RoleExtensions::fromAnnotation;
+    OperationCustomizer rolesFromRoutePolicies(List<RoutePolicy> policies) {
+        return (operation, handler) -> RoleExtensions.fromPolicies(operation, handler, policies);
     }
 
     /**

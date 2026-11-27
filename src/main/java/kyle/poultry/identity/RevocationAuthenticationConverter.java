@@ -63,6 +63,7 @@ final class RevocationAuthenticationConverter implements Converter<Jwt, Abstract
         var current = new Jwt(jwt.getTokenValue(), jwt.getIssuedAt(), jwt.getExpiresAt(), jwt.getHeaders(), claims);
         var authorities = new java.util.ArrayList<SimpleGrantedAuthority>();
         authorities.add(new SimpleGrantedAuthority("ROLE_" + role.name()));
+        for (Capability capability : Capability.listFor(role)) authorities.add(new SimpleGrantedAuthority(capability.authority()));
         if (user.mustChangePassword()) authorities.add(new SimpleGrantedAuthority(MUST_CHANGE_PASSWORD));
         return new JwtAuthenticationToken(current, authorities, String.valueOf(id));
     }

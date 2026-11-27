@@ -1,12 +1,12 @@
 package kyle.poultry.audit;
 
+import org.springframework.security.access.prepost.PreAuthorize;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import java.time.LocalDate;
 import kyle.poultry.shared.RuleViolation;
 import org.springframework.data.domain.Page;
 import org.springframework.format.annotation.DateTimeFormat;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -17,7 +17,9 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/api/audit")
-@PreAuthorize("hasRole('OWNER')")
+// The audit module cannot depend on identity (identity depends on audit), so this is the string form of
+// @RequiresCapability(VIEW_AUDIT_LOG); CapabilityRoutePolicy reads both and SecurityMatrixTests checks the result.
+@PreAuthorize("hasAuthority('CAPABILITY_VIEW_AUDIT_LOG')")
 class AuditController {
     private final AuditService audit;
 

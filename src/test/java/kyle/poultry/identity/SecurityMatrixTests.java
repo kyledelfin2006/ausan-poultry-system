@@ -321,4 +321,32 @@ class SecurityMatrixTests {
         assertThat(missing).as("endpoints with no row in SecurityMatrixTests.MATRIX (decide who may call them, then add one)").isEmpty();
         assertThat(stale).as("rows for endpoints that no longer exist").isEmpty();
     }
+
+    /**
+     * A route's {@code @RequiresCapability} and its matrix row cannot disagree: the row must say OWNER_ONLY exactly when
+     * an assistant lacks that capability. Granting an assistant a capability in {@link Capability#grantedTo} therefore
+     * fails this test until the matrix row is changed on purpose, and the matrix then proves the new behaviour over HTTP.
+     */
+    @Test
+    void everyCapabilityRouteMatchesItsMatrixRow() {
+        java.util.Map<String, Access> declared = new java.util.HashMap<>();
+        for (Row row : MATRIX) declared.put(row.key(), row.access());
+        List<String> problems = new ArrayList<>();
+        int checked = 0;
+        for (var entry : mappings.getHandlerMethods().entrySet()) {
+            var required = CapabilityRoutePolicy.requiredBy(entry.getValue());
+            if (required.isEmpty()) continue;
+            Capability rule = required.get();
+            Access expected = Capability.grantedTo(Role.ASSISTANT).contains(rule) ? Access.ANY_ROLE : Access.OWNER_ONLY;
+            for (String pattern : entry.getKey().getPathPatternsCondition().getPatternValues()) {
+                for (RequestMethod method : entry.getKey().getMethodsCondition().getMethods()) {
+                    checked++;
+                    Access actual = declared.get(method + " " + pattern);
+                    if (actual != expected) problems.add(method + " " + pattern + " requires " + rule + ": matrix says " + actual + ", policy says " + expected);
+                }
+            }
+        }
+        assertThat(checked).as("capability-protected routes found").isGreaterThanOrEqualTo(18);
+        assertThat(problems).isEmpty();
+    }
 }

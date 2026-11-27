@@ -1,5 +1,7 @@
 package kyle.poultry.delivery;
 
+import kyle.poultry.identity.Capability;
+import kyle.poultry.identity.RequiresCapability;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
@@ -24,7 +26,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
@@ -190,7 +191,7 @@ class DeliveryController {
      * @return the receipt (404 when the delivery does not exist)
      */
     @GetMapping("/{id}/receipt")
-    @PreAuthorize("hasRole('OWNER')")
+    @RequiresCapability(Capability.VIEW_COST_AND_PROFIT)
     DeliveryReceipt receipt(@PathVariable long id) { return receipts.receipt(id); }
 
     /**

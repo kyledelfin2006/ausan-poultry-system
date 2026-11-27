@@ -12,6 +12,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.core.annotation.AnnotationTemplateExpressionDefaults;
 import org.springframework.security.authorization.AuthorizationDecision;
 import org.springframework.security.authorization.AuthorizationManager;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -74,8 +75,8 @@ class SecurityConfig {
                         .requestMatchers("/actuator/**").access(ownerWithoutPasswordChange())
                         // Wholly owner-only areas are also refused here, before the body is read, so an assistant
                         // gets 403 (not 400) for any request; @PreAuthorize stays as defence in depth.
-                        .requestMatchers("/api/users", "/api/users/**", "/api/audit", "/api/audit/**")
-                        .access(ownerWithoutPasswordChange())
+                        .requestMatchers("/api/users", "/api/users/**").access(requiring(Capability.MANAGE_USERS))
+                        .requestMatchers("/api/audit", "/api/audit/**").access(requiring(Capability.VIEW_AUDIT_LOG))
                         .anyRequest().access(authenticatedUnlessPasswordChangeRequired()))
                 .oauth2ResourceServer(o -> o.jwt(j -> j.jwtAuthenticationConverter(converter)))
                 // Missing, invalid or revoked credentials all answer a plain 401 with no details.
@@ -99,14 +100,29 @@ class SecurityConfig {
         };
     }
 
-    /** Applies the same temporary-password restriction before the owner-only URL rules. */
+    /** Applies the same temporary-password restriction before the operational (actuator) owner rule. */
     private static AuthorizationManager<RequestAuthorizationContext> ownerWithoutPasswordChange() {
+        return authorityWithoutPasswordChange("ROLE_OWNER");
+    }
+
+    /** Applies the same temporary-password restriction before a capability URL rule. */
+    private static AuthorizationManager<RequestAuthorizationContext> requiring(Capability capability) {
+        return authorityWithoutPasswordChange(capability.authority());
+    }
+
+    private static AuthorizationManager<RequestAuthorizationContext> authorityWithoutPasswordChange(String authority) {
         return (authentication, context) -> {
             Authentication current = authentication.get();
             return new AuthorizationDecision(isAuthenticated(current)
                     && !hasAuthority(current, RevocationAuthenticationConverter.MUST_CHANGE_PASSWORD)
-                    && hasAuthority(current, "ROLE_OWNER"));
+                    && hasAuthority(current, authority));
         };
+    }
+
+    /** Lets {@link RequiresCapability} fill its {@code {value}} placeholder into the {@code @PreAuthorize} expression. */
+    @Bean
+    static AnnotationTemplateExpressionDefaults annotationTemplateExpressionDefaults() {
+        return new AnnotationTemplateExpressionDefaults();
     }
 
     /** Excludes anonymous requests even though the framework marks their token as authenticated. */

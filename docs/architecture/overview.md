@@ -94,7 +94,7 @@ flowchart LR
     view --> controller
 ```
 
-- **Controller**: bean validation (`@Valid`), role checks (`@PreAuthorize`), translation between JSON and a service call. No
+- **Controller**: bean validation (`@Valid`), capability checks (`@RequiresCapability`), translation between JSON and a service call. No
   repository access, no transaction, no entities in its signatures.
 - **Service / ledger**: the module's rules and its transaction boundary. A class that implements an `*Api` interface is the only
   public entrance and is itself package-private.

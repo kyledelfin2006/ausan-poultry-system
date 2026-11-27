@@ -48,7 +48,7 @@ flowchart LR
 
 Identity becomes trusted at the converter (signature, expiry, **then** a database read on every request). Permission is
 enforced twice: the URL-level rule in `SecurityConfig` (authenticated; `/actuator/**` owner-only) and the method-level
-`@PreAuthorize` on each controller. Some rules live in services because they depend on the data (for example OPENING and
+`@RequiresCapability` on each controller. Both name a `Capability` (the one place that says which role may do what) and are checked against the `CAPABILITY_*` authorities the converter derives from the database role. Some rules live in services because they depend on the data (for example OPENING and
 ADJUSTMENT stock movements are owner-only).
 
 The role in a token is **never trusted**: the converter overwrites it with the database value on every request, so a role
@@ -72,7 +72,7 @@ change, demotion or deactivation applies at once.
 | I4 | Browser-based cross-site calls | Bearer tokens only (no cookies), so a malicious site cannot ride an existing session; CORS restricts which origins browsers let read responses; wildcard origins refused at startup | `SecurityHeadersAndCorsTests`, `CorsPropertiesTests` | If the frontend ever stores the token in a cookie, CSRF protection must be added first |
 | I5 | Clickjacking, MIME sniffing, referrer leaks | Response headers: CSP `default-src 'none'; frame-ancestors 'none'`, `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, `Cache-Control: no-store`, `Permissions-Policy`, HSTS (HTTPS only) | `SecurityHeadersAndCorsTests` | The frontend's own pages need their own headers from whatever serves them |
 | D1 | Overload | Request body limits and pagination caps (`size` max 100 on the audit trail); graceful shutdown; connection pool limits | partial | **No global rate limit** and no request-size limit beyond the server default; put a reverse proxy in front for public exposure |
-| E1 | Assistant performing owner actions | `@PreAuthorize("hasRole('OWNER')")` on every owner-only endpoint; service-level rules for data-dependent permissions; the matrix test fails if an endpoint is added without a declared access level | `SecurityMatrixTests` | For `/api/users/**` and `/api/audit/**` the URL rule answers `403` before the body is read. Other owner-only endpoints still run method security after body validation, so an assistant sending an invalid body there sees `400` instead of `403` (no data leaks) |
+| E1 | Assistant performing owner actions | `@RequiresCapability(...)` on every capability-protected endpoint, resolved from `Capability.grantedTo(role)`; service-level rules for data-dependent permissions; the matrix test fails if an endpoint is added without a declared access level | `SecurityMatrixTests` | For `/api/users/**` and `/api/audit/**` the URL rule answers `403` before the body is read. Other owner-only endpoints still run method security after body validation, so an assistant sending an invalid body there sees `400` instead of `403` (no data leaks) |
 | E2 | Removing the last owner | Services refuse to deactivate or demote the last active owner, and an owner cannot deactivate themselves | `UserAdministrationTests` | none |
 | E3 | Exposed operational endpoints | `/actuator/**` needs the OWNER role except `/actuator/health`; production exposes only `health` and `info` | `SecurityHeadersAndCorsTests` | none |
 
@@ -87,7 +87,7 @@ change, demotion or deactivation applies at once.
 - Bootstrap-owner and owner-reset passwords set `must_change_password`. The converter re-reads this field on every request; until a successful password change clears it, authenticated business routes are limited to profile, logout and password change. Login and health remain public.
 
 ### Authorisation
-Two roles. Owner-only endpoints are listed in [../api/](../api/) and enforced by `@PreAuthorize`; the full table of
+Two roles. Owner-only endpoints are listed in [../api/](../api/) and enforced by `@RequiresCapability`; giving an assistant a capability is one edit in `Capability.grantedTo`, and the matrix test, the OpenAPI snapshot (`x-roles`) and `CapabilityTests` all fail until the change is made on purpose; the full table of
 endpoint x role is executable in `SecurityMatrixTests`, which also fails the build if a new endpoint has no row.
 
 ### Browser access

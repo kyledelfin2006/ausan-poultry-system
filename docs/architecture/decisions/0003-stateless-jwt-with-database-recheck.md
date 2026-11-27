@@ -20,7 +20,7 @@ would keep working until it expires.
   they end every session of that user on every device. Tokens issued before the claim existed count as version 0.
 - The bootstrap owner and users with owner-reset passwords must change the temporary password before using other API routes. This state is read from the database on each request, alongside the role and token version.
 - Brute-force protection: `LoginThrottle`, 5 failures per 15 minutes per (username, address), then 429.
-- Authorization is done with method security (`@PreAuthorize`) and in the services that carry an `Actor` (owner-only rules are
+- Authorization is done with method security (`@RequiresCapability`, backed by `@PreAuthorize`) and in the services that carry an `Actor` (owner-only rules are
   checked again there, so they hold when a service is called from somewhere other than a controller).
 
 ## Consequences

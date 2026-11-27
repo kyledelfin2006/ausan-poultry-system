@@ -13,8 +13,9 @@ import java.util.Set;
  * {@code GET /api/auth/me} lists the caller's capabilities so a UI can show or hide actions without guessing from the
  * role. Giving an assistant one of these later is a change to {@link #grantedTo} only.
  *
- * <p>Route-level {@code @PreAuthorize("hasRole('OWNER')")} rules on controllers are not derived from this enum yet; a
- * test keeps the two from disagreeing about what an assistant may do.
+ * <p>Routes use {@link RequiresCapability} and the URL rules in the security config use the same authorities, so this
+ * enum is the only place roles are mapped to permissions. The one exception is {@code /actuator/**} (operational
+ * endpoints, not an application action), which stays OWNER-only by role.
  */
 public enum Capability {
     /** Cancel a delivery and reverse its stock and money. */
@@ -37,6 +38,12 @@ public enum Capability {
     MANAGE_USERS,
     /** Read the audit trail. */
     VIEW_AUDIT_LOG;
+
+    /** Prefix of the Spring Security authority that stands for a capability; a compile-time constant for annotations. */
+    public static final String AUTHORITY_PREFIX = "CAPABILITY_";
+
+    /** {@return the Spring Security authority string carried by users whose role has this capability} */
+    public String authority() { return AUTHORITY_PREFIX + name(); }
 
     /**
      * The capabilities of a role.

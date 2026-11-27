@@ -4,7 +4,6 @@ import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.Operation;
 import java.util.List;
 import java.util.Map;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.method.HandlerMethod;
 
 /**
@@ -12,7 +11,7 @@ import org.springframework.web.method.HandlerMethod;
  * frontend can hide actions a role cannot use instead of discovering a 403.
  * <p>
  * Three sources, in order of precedence: the {@link #SERVICE_ENFORCED} table (owner-only rules enforced inside a
- * service, invisible to annotations), {@code @PreAuthorize("hasRole('OWNER')")} on the controller method or class, and
+ * service, invisible to annotations), a {@link RoutePolicy} rule (the identity module derives it from its capability policy), and
  * the default "any logged-in role". Rules that apply only to some actions or response fields are explained in
  * {@link #PARTIAL_RULES} and appended to its description.
  */
@@ -24,7 +23,7 @@ final class RoleExtensions {
     private static final List<String> OWNER = List.of("OWNER");
     private static final List<String> ANY = List.of("OWNER", "ASSISTANT");
 
-    /** Owner-only operations whose check lives in a service, keyed by {@code "METHOD /path"}. */
+    /** Operations whose capability check lives in a service (owner-only today), keyed by {@code "METHOD /path"}. */
     static final Map<String, List<String>> SERVICE_ENFORCED = Map.of(
             "POST /api/deliveries/{id}/cancel", OWNER,
             "POST /api/deliveries/{id}/refund", OWNER,
@@ -53,18 +52,22 @@ final class RoleExtensions {
     private RoleExtensions() {}
 
     /**
-     * Marks an operation OWNER-only when its handler carries an owner {@code @PreAuthorize} rule. Run by springdoc once
-     * per controller method, before {@link #apply(OpenAPI)}.
+     * Publishes the roles a {@link RoutePolicy} allows for the operation's handler. Run by springdoc once per controller
+     * method, before {@link #apply(OpenAPI)}.
      *
      * @param operation the operation being built
      * @param handler   the controller method behind it
+     * @param policies  the sources of route rules; the first one with a rule for the handler decides
      * @return the same operation
      */
-    static Operation fromAnnotation(Operation operation, HandlerMethod handler) {
-        // The method's own annotation wins over the class-level one, as in Spring Security.
-        PreAuthorize rule = handler.getMethodAnnotation(PreAuthorize.class);
-        if (rule == null) rule = handler.getBeanType().getAnnotation(PreAuthorize.class);
-        if (rule != null && rule.value().contains("hasRole('OWNER')")) operation.addExtension(EXTENSION, OWNER);
+    static Operation fromPolicies(Operation operation, HandlerMethod handler, List<RoutePolicy> policies) {
+        for (RoutePolicy policy : policies) {
+            var roles = policy.rolesAllowed(handler);
+            if (roles.isPresent()) {
+                operation.addExtension(EXTENSION, roles.get());
+                break;
+            }
+        }
         return operation;
     }
 

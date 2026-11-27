@@ -4,6 +4,7 @@ import java.time.LocalDate;
 import java.util.List;
 import kyle.poultry.identity.Actor;
 import kyle.poultry.identity.Capability;
+import kyle.poultry.identity.RequiresCapability;
 import kyle.poultry.report.DashboardService.Dashboard;
 import kyle.poultry.report.ReportService.InventoryValue;
 import kyle.poultry.report.ReportService.Profit;
@@ -15,7 +16,6 @@ import kyle.poultry.report.SeriesService.SeriesPoint;
 import kyle.poultry.shared.Csv;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -70,7 +70,7 @@ class ReportController {
      * @throws kyle.poultry.shared.RuleViolation if from is after to or the period exceeds 366 days (HTTP 422)
      */
     @GetMapping("/profit")
-    @PreAuthorize("hasRole('OWNER')")
+    @RequiresCapability(Capability.VIEW_COST_AND_PROFIT)
     Profit profit(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
                   @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
         return reports.profit(from, to);
@@ -82,7 +82,7 @@ class ReportController {
      * @return the inventory valuation
      */
     @GetMapping("/inventory-value")
-    @PreAuthorize("hasRole('OWNER')")
+    @RequiresCapability(Capability.VIEW_COST_AND_PROFIT)
     InventoryValue inventoryValue() { return reports.inventoryValue(); }
 
     /**
@@ -112,7 +112,7 @@ class ReportController {
      * @throws kyle.poultry.shared.RuleViolation if from is after to or the period exceeds 366 days (HTTP 422)
      */
     @GetMapping("/profit-series")
-    @PreAuthorize("hasRole('OWNER')")
+    @RequiresCapability(Capability.VIEW_COST_AND_PROFIT)
     ProfitSeries profitSeries(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
                               @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
                               @RequestParam(defaultValue = "DAY") Granularity granularity) {
@@ -152,7 +152,7 @@ class ReportController {
      * @return a {@code text/csv} attachment of {@code metric,value} rows
      */
     @GetMapping("/profit.csv")
-    @PreAuthorize("hasRole('OWNER')")
+    @RequiresCapability(Capability.VIEW_COST_AND_PROFIT)
     ResponseEntity<byte[]> profitCsv(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
                                      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
         return Csv.download("profit-" + from + "-to-" + to + ".csv", ReportCsv.profit(reports.profit(from, to)));
@@ -164,7 +164,7 @@ class ReportController {
      * @return a {@code text/csv} attachment with one row per branch and product, then a TOTAL row
      */
     @GetMapping("/inventory-value.csv")
-    @PreAuthorize("hasRole('OWNER')")
+    @RequiresCapability(Capability.VIEW_COST_AND_PROFIT)
     ResponseEntity<byte[]> inventoryValueCsv() {
         return Csv.download("inventory-value.csv", ReportCsv.inventoryValue(reports.inventoryValue()));
     }
@@ -195,7 +195,7 @@ class ReportController {
      * @return a {@code text/csv} attachment with one row per point, then a TOTAL row
      */
     @GetMapping("/profit-series.csv")
-    @PreAuthorize("hasRole('OWNER')")
+    @RequiresCapability(Capability.VIEW_COST_AND_PROFIT)
     ResponseEntity<byte[]> profitSeriesCsv(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
                                            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
                                            @RequestParam(defaultValue = "DAY") Granularity granularity) {
