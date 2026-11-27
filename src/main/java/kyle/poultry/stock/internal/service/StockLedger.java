@@ -1,5 +1,13 @@
-package kyle.poultry.stock;
+package kyle.poultry.stock.internal.service;
 
+import kyle.poultry.stock.api.StockApi;
+import kyle.poultry.stock.api.exception.InsufficientStockException;
+import kyle.poultry.stock.api.model.MovementType;
+import kyle.poultry.stock.internal.persistence.StockBalance;
+import kyle.poultry.stock.internal.persistence.StockBalanceId;
+import kyle.poultry.stock.internal.persistence.StockBalanceRepository;
+import kyle.poultry.stock.internal.persistence.StockMovement;
+import kyle.poultry.stock.internal.persistence.StockMovementRepository;
 import static java.util.Comparator.comparingLong;
 
 import java.math.BigDecimal;

@@ -1,4 +1,4 @@
-package kyle.poultry.stock;
+package kyle.poultry.stock.api.model;
 
 import java.util.EnumSet;
 import java.util.Set;
@@ -57,7 +57,7 @@ public enum MovementType {
      * @param delta the signed quantity change (positive adds stock, negative removes it)
      * @return {@code true} if the sign matches what this type allows
      */
-    boolean accepts(long delta) {
+    public boolean accepts(long delta) {
         return switch (sign) {
             case IN -> delta > 0;
             case OUT -> delta < 0;
@@ -71,5 +71,5 @@ public enum MovementType {
      *
      * @return {@code true} for {@link #ADJUSTMENT} and {@link #USAGE}
      */
-    boolean needsReason() { return this == ADJUSTMENT || this == USAGE; }
+    public boolean needsReason() { return this == ADJUSTMENT || this == USAGE; }
 }

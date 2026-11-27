@@ -1,5 +1,6 @@
-package kyle.poultry.stock;
+package kyle.poultry.stock.internal.persistence;
 
+import kyle.poultry.stock.api.model.MovementType;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -8,20 +9,20 @@ import java.time.LocalDate;
 import kyle.poultry.identity.api.model.Actor;
 import kyle.poultry.shared.error.RuleViolation;
 import kyle.poultry.shared.reference.SourceRef;
-import kyle.poultry.stock.StockApi.MovementView;
-import kyle.poultry.stock.StockApi.StockCommand;
+import kyle.poultry.stock.api.StockApi.MovementView;
+import kyle.poultry.stock.api.StockApi.StockCommand;
 
 /**
  * One immutable fact: "this much stock entered or left this branch, for this reason". Never updated or deleted.
  * <p>
  * Rows live in {@code stock_movement}, the append-only ledger. A mistake is corrected by adding a new row (a
  * reversal or an adjustment), never by editing an old one. The sign and reason rules are checked in
- * {@link #create} and again by database check constraints. Package-private: other modules see
+ * {@link #create} and again by database check constraints. Internal to the stock module: other modules see
  * {@link MovementView}.
  */
 @Entity
 @Table(name = "stock_movement")
-class StockMovement {
+public class StockMovement {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY) private Long id;
     private long productId;
     private long branchId;
@@ -53,7 +54,7 @@ class StockMovement {
      * @throws RuleViolation if the type or date is missing, the quantity sign is illegal for the type, a
      *         required reason is blank, the unit cost is negative, or a purchase has no cost or a zero cost
      */
-    static StockMovement create(StockCommand c, SourceRef source, Actor actor, Instant now) {
+    public static StockMovement create(StockCommand c, SourceRef source, Actor actor, Instant now) {
         // Rules are checked first, so an invalid command never touches the database.
         if (c.type() == null) throw new RuleViolation("Movement type is required");
         // The sign must match the type (e.g. a purchase cannot remove stock); the database repeats this check.
@@ -99,7 +100,7 @@ class StockMovement {
      * @param now    the creation timestamp
      * @return the new, unsaved reversal movement of type {@code DELIVERY_REVERSAL}
      */
-    StockMovement reversal(String reason, LocalDate on, Actor actor, Instant now) {
+    public StockMovement reversal(String reason, LocalDate on, Actor actor, Instant now) {
         var m = new StockMovement();
         m.productId = productId;
         m.branchId = branchId;
@@ -125,31 +126,31 @@ class StockMovement {
      *
      * @param averageCost the balance's average unit cost after the update; ignored if a cost is already set
      */
-    void stampCostIfMissing(BigDecimal averageCost) {
+    public void stampCostIfMissing(BigDecimal averageCost) {
         // Only fills a gap: purchases, openings and donations already carry their own cost.
         if (unitCost == null) unitCost = averageCost;
     }
 
     /** {@return the database id (null until the movement is saved)} */
-    Long id() { return id; }
+    public Long id() { return id; }
 
     /** {@return the product affected} */
-    long productId() { return productId; }
+    public long productId() { return productId; }
 
     /** {@return the branch affected} */
-    long branchId() { return branchId; }
+    public long branchId() { return branchId; }
 
     /** {@return the signed quantity (positive adds stock, negative removes it)} */
-    long quantityDelta() { return quantityDelta; }
+    public long quantityDelta() { return quantityDelta; }
 
     /** {@return the movement type} */
-    MovementType type() { return type; }
+    public MovementType type() { return type; }
 
     /** {@return the cost per unit (4 decimals), or {@code null} if not yet stamped} */
-    BigDecimal unitCost() { return unitCost; }
+    public BigDecimal unitCost() { return unitCost; }
 
     /** {@return the immutable public representation of this movement} */
-    MovementView view() {
+    public MovementView view() {
         return new MovementView(id, productId, branchId, type, quantityDelta, unitCost, reason, occurredOn,
                 sourceType, sourceId, reversesId, createdBy, createdAt);
     }

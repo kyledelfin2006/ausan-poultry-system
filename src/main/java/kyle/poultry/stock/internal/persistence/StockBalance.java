@@ -1,4 +1,4 @@
-package kyle.poultry.stock;
+package kyle.poultry.stock.internal.persistence;
 
 import jakarta.persistence.EmbeddedId;
 import jakarta.persistence.Entity;
@@ -15,7 +15,7 @@ import java.math.BigDecimal;
  */
 @Entity
 @Table(name = "stock_balance")
-class StockBalance {
+public class StockBalance {
     @EmbeddedId private StockBalanceId id;
     private long quantity;
     private BigDecimal avgUnitCost;
@@ -24,11 +24,11 @@ class StockBalance {
     protected StockBalance() {}
 
     /** {@return the composite key (product and branch)} */
-    StockBalanceId id() { return id; }
+    public StockBalanceId id() { return id; }
 
     /** {@return the units currently on hand} */
-    long quantity() { return quantity; }
+    public long quantity() { return quantity; }
 
     /** {@return the weighted average cost per unit (4 decimals)} */
-    BigDecimal avgUnitCost() { return avgUnitCost; }
+    public BigDecimal avgUnitCost() { return avgUnitCost; }
 }

@@ -5,7 +5,7 @@ import java.time.Clock;
 import java.time.LocalDate;
 import java.util.Map;
 import kyle.poultry.finance.api.model.EntryType;
-import kyle.poultry.stock.StockApi;
+import kyle.poultry.stock.api.StockApi;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

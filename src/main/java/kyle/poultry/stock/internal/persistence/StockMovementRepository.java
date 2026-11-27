@@ -1,5 +1,6 @@
-package kyle.poultry.stock;
+package kyle.poultry.stock.internal.persistence;
 
+import kyle.poultry.stock.api.model.MovementType;
 import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -10,10 +11,10 @@ import org.springframework.data.repository.query.Param;
 /**
  * Spring Data repository for the append-only {@link StockMovement} ledger.
  * <p>
- * Only inserts and reads are used; movements are never updated or deleted. Package-private: only the stock
+ * Only inserts and reads are used; movements are never updated or deleted. Internal to the stock module: only the stock
  * module uses it.
  */
-interface StockMovementRepository extends JpaRepository<StockMovement, Long> {
+public interface StockMovementRepository extends JpaRepository<StockMovement, Long> {
 
     /**
      * Pages through the movements of one product at one branch, newest first.

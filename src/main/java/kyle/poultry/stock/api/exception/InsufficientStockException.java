@@ -1,4 +1,4 @@
-package kyle.poultry.stock;
+package kyle.poultry.stock.api.exception;
 
 import kyle.poultry.shared.error.ConflictException;
 

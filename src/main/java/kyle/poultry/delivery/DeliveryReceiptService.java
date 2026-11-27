@@ -19,9 +19,9 @@ import kyle.poultry.delivery.DeliveryReceipt.ReceiptProduct;
 import kyle.poultry.finance.api.FinanceApi;
 import kyle.poultry.shared.error.NotFoundException;
 import kyle.poultry.shared.reference.SourceRef;
-import kyle.poultry.stock.MovementType;
-import kyle.poultry.stock.StockApi;
-import kyle.poultry.stock.StockApi.MovementView;
+import kyle.poultry.stock.api.model.MovementType;
+import kyle.poultry.stock.api.StockApi;
+import kyle.poultry.stock.api.StockApi.MovementView;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

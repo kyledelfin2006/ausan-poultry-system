@@ -20,8 +20,8 @@ import java.util.Map;
 import kyle.poultry.finance.api.model.EntryType;
 import kyle.poultry.finance.api.FinanceApi;
 import kyle.poultry.finance.api.model.PaymentMethod;
-import kyle.poultry.stock.StockApi;
-import kyle.poultry.stock.StockApi.ProductStockView;
+import kyle.poultry.stock.api.StockApi;
+import kyle.poultry.stock.api.StockApi.ProductStockView;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

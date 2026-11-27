@@ -1,4 +1,4 @@
-package kyle.poultry.stock;
+package kyle.poultry.stock.internal.persistence;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -12,9 +12,9 @@ import org.springframework.data.repository.query.Param;
  * <p>
  * Besides reads it holds the two native statements that are the only way balances change:
  * {@link #ensureRow} and {@link #applyDelta}. They are native SQL on purpose so the quantity check and the
- * weighted-average update happen in one database statement. Package-private: only the stock ledger uses it.
+ * weighted-average update happen in one database statement. Internal to the stock module: only the stock ledger uses it.
  */
-interface StockBalanceRepository extends JpaRepository<StockBalance, StockBalanceId> {
+public interface StockBalanceRepository extends JpaRepository<StockBalance, StockBalanceId> {
 
     /**
      * Finds all balances held at one branch, ordered by product id.

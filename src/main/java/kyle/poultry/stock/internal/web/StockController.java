@@ -1,5 +1,7 @@
-package kyle.poultry.stock;
+package kyle.poultry.stock.internal.web;
 
+import kyle.poultry.stock.api.StockApi;
+import kyle.poultry.stock.api.model.MovementType;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
@@ -12,11 +14,11 @@ import java.util.List;
 import kyle.poultry.finance.api.model.PaymentMethod;
 import kyle.poultry.identity.api.model.Actor;
 import kyle.poultry.identity.api.model.Capability;
-import kyle.poultry.stock.StockApi.BalanceView;
-import kyle.poultry.stock.StockApi.MovementView;
-import kyle.poultry.stock.StockApi.ProductStockView;
-import kyle.poultry.stock.StockApi.ReorderLevelView;
-import kyle.poultry.stock.StockApi.StockCommand;
+import kyle.poultry.stock.api.StockApi.BalanceView;
+import kyle.poultry.stock.api.StockApi.MovementView;
+import kyle.poultry.stock.api.StockApi.ProductStockView;
+import kyle.poultry.stock.api.StockApi.ReorderLevelView;
+import kyle.poultry.stock.api.StockApi.StockCommand;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;

@@ -15,7 +15,7 @@ import kyle.poultry.TestcontainersConfiguration;
 import kyle.poultry.identity.api.model.Actor;
 import kyle.poultry.identity.api.model.Role;
 import kyle.poultry.shared.reference.SourceRef;
-import kyle.poultry.stock.StockApi;
+import kyle.poultry.stock.api.StockApi;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;

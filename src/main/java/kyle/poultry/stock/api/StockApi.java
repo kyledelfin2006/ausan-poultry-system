@@ -1,5 +1,6 @@
-package kyle.poultry.stock;
+package kyle.poultry.stock.api;
 
+import kyle.poultry.stock.api.model.MovementType;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
@@ -28,7 +29,7 @@ import org.springframework.data.domain.Pageable;
  *       process lines in ascending product id so concurrent callers cannot deadlock.</li>
  *   <li><b>Failures:</b> {@link kyle.poultry.shared.error.NotFoundException} (404) for unknown products or branches,
  *       {@link kyle.poultry.shared.error.RuleViolation} (422) for inactive ones or broken input rules,
- *       {@link InsufficientStockException} (409) for shortages.</li>
+ *       {@code InsufficientStockException} (409) for shortages.</li>
  * </ul>
  * Callers: the web controller and the delivery module. The query methods are read-only.
  */

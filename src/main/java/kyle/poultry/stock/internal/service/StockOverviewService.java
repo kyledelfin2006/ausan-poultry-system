@@ -1,5 +1,9 @@
-package kyle.poultry.stock;
+package kyle.poultry.stock.internal.service;
 
+import kyle.poultry.stock.internal.persistence.ReorderLevel;
+import kyle.poultry.stock.internal.persistence.ReorderLevelRepository;
+import kyle.poultry.stock.internal.persistence.StockBalance;
+import kyle.poultry.stock.internal.persistence.StockBalanceRepository;
 import static java.util.Comparator.comparing;
 import static java.util.Comparator.comparingLong;
 
@@ -15,9 +19,9 @@ import kyle.poultry.identity.api.model.Actor;
 import kyle.poultry.identity.api.model.Capability;
 import kyle.poultry.shared.error.NotFoundException;
 import kyle.poultry.shared.error.RuleViolation;
-import kyle.poultry.stock.StockApi.BranchStockView;
-import kyle.poultry.stock.StockApi.ProductStockView;
-import kyle.poultry.stock.StockApi.ReorderLevelView;
+import kyle.poultry.stock.api.StockApi.BranchStockView;
+import kyle.poultry.stock.api.StockApi.ProductStockView;
+import kyle.poultry.stock.api.StockApi.ReorderLevelView;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

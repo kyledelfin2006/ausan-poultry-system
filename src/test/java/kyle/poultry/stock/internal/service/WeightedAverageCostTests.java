@@ -1,5 +1,7 @@
-package kyle.poultry.stock;
+package kyle.poultry.stock.internal.service;
 
+import kyle.poultry.stock.api.StockApi;
+import kyle.poultry.stock.api.model.MovementType;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.math.BigDecimal;
@@ -15,8 +17,8 @@ import kyle.poultry.finance.api.model.PaymentMethod;
 import kyle.poultry.identity.api.model.Actor;
 import kyle.poultry.identity.api.model.Role;
 import kyle.poultry.shared.reference.SourceRef;
-import kyle.poultry.stock.StockApi.StockCommand;
-import kyle.poultry.stock.StockApi.StockLine;
+import kyle.poultry.stock.api.StockApi.StockCommand;
+import kyle.poultry.stock.api.StockApi.StockLine;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

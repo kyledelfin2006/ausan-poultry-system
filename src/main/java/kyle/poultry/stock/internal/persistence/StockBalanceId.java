@@ -1,4 +1,4 @@
-package kyle.poultry.stock;
+package kyle.poultry.stock.internal.persistence;
 
 import jakarta.persistence.Embeddable;
 import java.io.Serializable;
@@ -13,4 +13,4 @@ import java.io.Serializable;
  * @param branchId  the branch that holds it
  */
 @Embeddable
-record StockBalanceId(long productId, long branchId) implements Serializable {}
+public record StockBalanceId(long productId, long branchId) implements Serializable {}

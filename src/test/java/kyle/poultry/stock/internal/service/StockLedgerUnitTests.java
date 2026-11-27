@@ -1,5 +1,12 @@
-package kyle.poultry.stock;
+package kyle.poultry.stock.internal.service;
 
+import kyle.poultry.stock.api.StockApi;
+import kyle.poultry.stock.api.exception.InsufficientStockException;
+import kyle.poultry.stock.api.model.MovementType;
+import kyle.poultry.stock.internal.persistence.StockBalanceId;
+import kyle.poultry.stock.internal.persistence.StockBalanceRepository;
+import kyle.poultry.stock.internal.persistence.StockMovement;
+import kyle.poultry.stock.internal.persistence.StockMovementRepository;
 import static kyle.poultry.support.TestSupport.clockAt;
 import static kyle.poultry.support.TestSupport.withId;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -29,8 +36,8 @@ import kyle.poultry.identity.api.model.Actor;
 import kyle.poultry.identity.api.model.Role;
 import kyle.poultry.shared.error.RuleViolation;
 import kyle.poultry.shared.reference.SourceRef;
-import kyle.poultry.stock.StockApi.StockCommand;
-import kyle.poultry.stock.StockApi.StockLine;
+import kyle.poultry.stock.api.StockApi.StockCommand;
+import kyle.poultry.stock.api.StockApi.StockLine;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

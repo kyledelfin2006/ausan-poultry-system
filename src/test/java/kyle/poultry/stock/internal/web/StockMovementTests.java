@@ -1,5 +1,7 @@
-package kyle.poultry.stock;
+package kyle.poultry.stock.internal.web;
 
+import kyle.poultry.stock.api.model.MovementType;
+import kyle.poultry.stock.internal.persistence.StockMovement;
 import static kyle.poultry.support.TestSupport.withId;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -11,8 +13,8 @@ import kyle.poultry.identity.api.model.Actor;
 import kyle.poultry.identity.api.model.Role;
 import kyle.poultry.shared.error.RuleViolation;
 import kyle.poultry.shared.reference.SourceRef;
-import kyle.poultry.stock.StockApi.MovementView;
-import kyle.poultry.stock.StockApi.StockCommand;
+import kyle.poultry.stock.api.StockApi.MovementView;
+import kyle.poultry.stock.api.StockApi.StockCommand;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
