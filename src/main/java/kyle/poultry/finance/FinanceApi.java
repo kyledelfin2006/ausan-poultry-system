@@ -6,7 +6,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import kyle.poultry.finance.EntryType.CashDirection;
-import kyle.poultry.identity.Actor;
+import kyle.poultry.identity.api.model.Actor;
 import kyle.poultry.shared.reference.SourceRef;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

@@ -1,7 +1,7 @@
 package kyle.poultry.catalog;
 
-import kyle.poultry.identity.Capability;
-import kyle.poultry.identity.RequiresCapability;
+import kyle.poultry.identity.api.model.Capability;
+import kyle.poultry.identity.api.security.RequiresCapability;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;

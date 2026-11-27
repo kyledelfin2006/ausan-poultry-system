@@ -2,9 +2,9 @@ package kyle.poultry.report;
 
 import java.time.LocalDate;
 import java.util.List;
-import kyle.poultry.identity.Actor;
-import kyle.poultry.identity.Capability;
-import kyle.poultry.identity.RequiresCapability;
+import kyle.poultry.identity.api.model.Actor;
+import kyle.poultry.identity.api.model.Capability;
+import kyle.poultry.identity.api.security.RequiresCapability;
 import kyle.poultry.report.DashboardService.Dashboard;
 import kyle.poultry.report.ReportService.InventoryValue;
 import kyle.poultry.report.ReportService.Profit;

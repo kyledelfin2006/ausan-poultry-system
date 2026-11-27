@@ -14,7 +14,7 @@ import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import kyle.poultry.finance.FinanceApi.EntryView;
-import kyle.poultry.identity.Actor;
+import kyle.poultry.identity.api.model.Actor;
 import kyle.poultry.shared.csv.Csv;
 import kyle.poultry.shared.error.RuleViolation;
 import org.springframework.data.domain.Page;

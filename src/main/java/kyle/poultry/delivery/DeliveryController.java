@@ -1,7 +1,7 @@
 package kyle.poultry.delivery;
 
-import kyle.poultry.identity.Capability;
-import kyle.poultry.identity.RequiresCapability;
+import kyle.poultry.identity.api.model.Capability;
+import kyle.poultry.identity.api.security.RequiresCapability;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
@@ -19,7 +19,7 @@ import kyle.poultry.delivery.DeliveryService.CreateResult;
 import kyle.poultry.delivery.DeliveryService.LineRequest;
 import kyle.poultry.delivery.DeliveryService.StatusCounts;
 import kyle.poultry.finance.PaymentMethod;
-import kyle.poultry.identity.Actor;
+import kyle.poultry.identity.api.model.Actor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

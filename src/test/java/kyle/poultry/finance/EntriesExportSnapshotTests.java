@@ -20,7 +20,7 @@ import java.util.Map;
 import java.util.function.Consumer;
 import kyle.poultry.finance.EntryType.CashDirection;
 import kyle.poultry.finance.FinanceApi.EntryView;
-import kyle.poultry.identity.Actor;
+import kyle.poultry.identity.api.model.Actor;
 import kyle.poultry.shared.csv.Csv;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -56,7 +56,7 @@ class EntriesExportSnapshotTests {
 
         // Exactly one read for the whole period, made as the caller.
         verify(exporter, times(1)).forEach(eq(LocalDate.parse("2026-01-01")), eq(LocalDate.parse("2026-01-31")), eq(null),
-                eq(new Actor(1, kyle.poultry.identity.Role.OWNER)), any());
+                eq(new Actor(1, kyle.poultry.identity.api.model.Role.OWNER)), any());
         var text = out.toString(StandardCharsets.UTF_8);
         // Byte-order mark, then header plus 1,500 rows, each once.
         assertThat(text).startsWith(Csv.byteOrderMark() + "id,occurredOn,");

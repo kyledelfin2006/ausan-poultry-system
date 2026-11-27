@@ -6,8 +6,8 @@ import java.time.LocalDate;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 import kyle.poultry.finance.FinanceApi.EntryView;
-import kyle.poultry.identity.Actor;
-import kyle.poultry.identity.Capability;
+import kyle.poultry.identity.api.model.Actor;
+import kyle.poultry.identity.api.model.Capability;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
