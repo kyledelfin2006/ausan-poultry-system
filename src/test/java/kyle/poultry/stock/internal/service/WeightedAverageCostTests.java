@@ -1,5 +1,6 @@
 package kyle.poultry.stock.internal.service;
 
+import kyle.poultry.stock.api.model.MovementView;
 import kyle.poultry.stock.api.StockApi;
 import kyle.poultry.stock.api.model.MovementType;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -17,8 +18,8 @@ import kyle.poultry.finance.api.model.PaymentMethod;
 import kyle.poultry.identity.api.model.Actor;
 import kyle.poultry.identity.api.model.Role;
 import kyle.poultry.shared.reference.SourceRef;
-import kyle.poultry.stock.api.StockApi.StockCommand;
-import kyle.poultry.stock.api.StockApi.StockLine;
+import kyle.poultry.stock.api.model.StockCommand;
+import kyle.poultry.stock.api.model.StockLine;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -72,7 +73,7 @@ class WeightedAverageCostTests {
      * @param cost   the unit cost as text, or null
      * @return the saved movement
      */
-    private StockApi.MovementView record(MovementType type, long delta, String cost) {
+    private MovementView record(MovementType type, long delta, String cost) {
         return stock.record(new StockCommand(productId, branchId, type, delta, cost == null ? null : new BigDecimal(cost),
                 type.needsReason() ? "count" : null, today, type == MovementType.PURCHASE ? PaymentMethod.CASH : null), owner);
     }

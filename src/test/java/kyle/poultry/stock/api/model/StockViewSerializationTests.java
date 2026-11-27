@@ -4,9 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Instant;
 import java.time.LocalDate;
-import kyle.poultry.stock.api.StockApi.BalanceView;
-import kyle.poultry.stock.api.StockApi.BranchStockView;
-import kyle.poultry.stock.api.StockApi.MovementView;
+import kyle.poultry.stock.api.model.BalanceView;
+import kyle.poultry.stock.api.model.BranchStockView;
+import kyle.poultry.stock.api.model.MovementView;
 import tools.jackson.databind.json.JsonMapper;
 import org.junit.jupiter.api.Test;
 

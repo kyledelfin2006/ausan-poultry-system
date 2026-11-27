@@ -1,5 +1,11 @@
 package kyle.poultry.stock.internal.service;
 
+import kyle.poultry.stock.api.model.BalanceView;
+import kyle.poultry.stock.api.model.MovementView;
+import kyle.poultry.stock.api.model.ProductStockView;
+import kyle.poultry.stock.api.model.ReorderLevelView;
+import kyle.poultry.stock.api.model.StockCommand;
+import kyle.poultry.stock.api.model.StockLine;
 import kyle.poultry.stock.api.StockApi;
 import kyle.poultry.stock.api.exception.InsufficientStockException;
 import kyle.poultry.stock.api.model.MovementType;

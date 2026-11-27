@@ -1,5 +1,6 @@
 package kyle.poultry.stock.internal.web;
 
+import kyle.poultry.stock.api.model.BranchStockView;
 import kyle.poultry.stock.api.StockApi;
 import kyle.poultry.stock.api.model.MovementType;
 import jakarta.validation.Valid;
@@ -14,11 +15,11 @@ import java.util.List;
 import kyle.poultry.finance.api.model.PaymentMethod;
 import kyle.poultry.identity.api.model.Actor;
 import kyle.poultry.identity.api.model.Capability;
-import kyle.poultry.stock.api.StockApi.BalanceView;
-import kyle.poultry.stock.api.StockApi.MovementView;
-import kyle.poultry.stock.api.StockApi.ProductStockView;
-import kyle.poultry.stock.api.StockApi.ReorderLevelView;
-import kyle.poultry.stock.api.StockApi.StockCommand;
+import kyle.poultry.stock.api.model.BalanceView;
+import kyle.poultry.stock.api.model.MovementView;
+import kyle.poultry.stock.api.model.ProductStockView;
+import kyle.poultry.stock.api.model.ReorderLevelView;
+import kyle.poultry.stock.api.model.StockCommand;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -142,7 +143,7 @@ class StockController {
         boolean owner = Actor.from(jwt).can(Capability.VIEW_COST_AND_PROFIT);
         return stock.summary(lowOnly).stream().map(p -> owner ? p : new ProductStockView(
                 p.productId(), p.productName(), p.unit(), p.totalQuantity(), p.reorderLevel(), p.low(),
-                p.branches().stream().map(b -> new StockApi.BranchStockView(b.branchId(), b.quantity(), null, b.low())).toList()))
+                p.branches().stream().map(b -> new BranchStockView(b.branchId(), b.quantity(), null, b.low())).toList()))
                 .toList();
     }
 

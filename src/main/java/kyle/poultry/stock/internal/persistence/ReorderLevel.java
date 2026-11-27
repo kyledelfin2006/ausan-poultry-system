@@ -1,5 +1,6 @@
 package kyle.poultry.stock.internal.persistence;
 
+import kyle.poultry.stock.api.model.ReorderLevelView;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
@@ -8,7 +9,7 @@ import java.time.Instant;
 /**
  * The reorder level of one product: the quantity at or below which a branch counts as low on it. Table
  * {@code stock_reorder_level}, one row per product. Unlike the ledgers it is plain configuration and is updated in
- * place. Internal to the stock module; other modules see it through {@code StockApi.ReorderLevelView}.
+ * place. Internal to the stock module; other modules see it through {@code ReorderLevelView}.
  */
 @Entity
 @Table(name = "stock_reorder_level")

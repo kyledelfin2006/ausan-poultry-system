@@ -1,5 +1,6 @@
 package kyle.poultry.report;
 
+import kyle.poultry.stock.api.model.MovementView;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -22,8 +23,8 @@ import kyle.poultry.shared.error.RuleViolation;
 import kyle.poultry.shared.reference.SourceRef;
 import kyle.poultry.stock.api.model.MovementType;
 import kyle.poultry.stock.api.StockApi;
-import kyle.poultry.stock.api.StockApi.StockCommand;
-import kyle.poultry.stock.api.StockApi.StockLine;
+import kyle.poultry.stock.api.model.StockCommand;
+import kyle.poultry.stock.api.model.StockLine;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -111,7 +112,7 @@ class ReportTests {
         var movements = stock.deduct(java.util.List.of(new StockLine(chicken, chickens)), branchId, source, on, owner);
         // Revenue, cost of the delivered stock and the customer's payment, as the delivery module would book them.
         finance.recordSale(money(price), on, source, owner);
-        BigDecimal cost = movements.stream().map(StockApi.MovementView::totalCost)
+        BigDecimal cost = movements.stream().map(MovementView::totalCost)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         finance.recordCostOfGoods(cost, on, source, owner);
         finance.recordPayment(money(price), method, on, source, owner);

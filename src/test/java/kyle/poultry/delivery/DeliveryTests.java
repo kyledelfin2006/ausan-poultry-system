@@ -19,7 +19,7 @@ import kyle.poultry.shared.error.RuleViolation;
 import kyle.poultry.stock.api.exception.InsufficientStockException;
 import kyle.poultry.stock.api.model.MovementType;
 import kyle.poultry.stock.api.StockApi;
-import kyle.poultry.stock.api.StockApi.StockCommand;
+import kyle.poultry.stock.api.model.StockCommand;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

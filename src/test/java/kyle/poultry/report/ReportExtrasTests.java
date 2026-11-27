@@ -1,5 +1,6 @@
 package kyle.poultry.report;
 
+import kyle.poultry.stock.api.model.MovementView;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -21,8 +22,8 @@ import kyle.poultry.shared.error.RuleViolation;
 import kyle.poultry.shared.reference.SourceRef;
 import kyle.poultry.stock.api.model.MovementType;
 import kyle.poultry.stock.api.StockApi;
-import kyle.poultry.stock.api.StockApi.StockCommand;
-import kyle.poultry.stock.api.StockApi.StockLine;
+import kyle.poultry.stock.api.model.StockCommand;
+import kyle.poultry.stock.api.model.StockLine;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -89,7 +90,7 @@ class ReportExtrasTests {
         var source = new SourceRef("DELIVERY", IDS.incrementAndGet());
         var movements = stock.deduct(List.of(new StockLine(chicken, qty)), branchId, source, on, owner);
         finance.recordSale(money(price), on, source, owner);
-        finance.recordCostOfGoods(movements.stream().map(StockApi.MovementView::totalCost).reduce(BigDecimal.ZERO, BigDecimal::add), on, source, owner);
+        finance.recordCostOfGoods(movements.stream().map(MovementView::totalCost).reduce(BigDecimal.ZERO, BigDecimal::add), on, source, owner);
         finance.recordPayment(money(price), method, on, source, owner);
         return source;
     }

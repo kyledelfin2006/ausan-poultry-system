@@ -1,15 +1,17 @@
 package kyle.poultry.stock.api;
 
+import kyle.poultry.stock.api.model.BalanceView;
+import kyle.poultry.stock.api.model.MovementView;
+import kyle.poultry.stock.api.model.ProductStockView;
+import kyle.poultry.stock.api.model.ReorderLevelView;
+import kyle.poultry.stock.api.model.StockCommand;
+import kyle.poultry.stock.api.model.StockLine;
 import kyle.poultry.stock.api.model.MovementType;
 import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
-import kyle.poultry.finance.api.model.PaymentMethod;
 import kyle.poultry.identity.api.model.Actor;
 import kyle.poultry.shared.reference.SourceRef;
-import com.fasterxml.jackson.annotation.JsonInclude;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -177,111 +179,4 @@ public interface StockApi {
      * @throws kyle.poultry.shared.error.NotFoundException                     if the product has no level
      */
     void clearReorderLevel(long productId, Actor actor);
-
-    /**
-     * Input for a manual movement.
-     *
-     * @param productId     the product affected
-     * @param branchId      the branch affected
-     * @param type          the movement type, which decides the legal sign of the quantity
-     * @param quantityDelta signed units: positive adds stock, negative removes it, zero is never allowed
-     * @param unitCost      required for PURCHASE; OPENING and DONATION default to zero
-     * @param reason        free text, required for USAGE and ADJUSTMENT
-     * @param occurredOn    the business date; assistants may backdate at most 7 days, owners may use any past date
-     * @param paymentMethod required for PURCHASE (how the supplier was paid)
-     */
-    record StockCommand(long productId, long branchId, MovementType type, long quantityDelta,
-                        BigDecimal unitCost, String reason, LocalDate occurredOn, PaymentMethod paymentMethod) {}
-
-    /**
-     * One line of a stock-out request.
-     *
-     * @param productId the product to remove
-     * @param quantity  the number of units to remove (positive)
-     */
-    record StockLine(long productId, long quantity) {}
-
-    /**
-     * Public representation of one ledger row.
-     *
-     * @param id            the movement id
-     * @param productId     the product affected
-     * @param branchId      the branch affected
-     * @param type          the movement type
-     * @param quantityDelta signed units added (positive) or removed (negative)
-     * @param unitCost      cost per unit at 4 decimals, or {@code null} if none was recorded; assistant history reads
-     *                      include it only for PURCHASE rows they recorded themselves
-     * @param reason        the free-text reason, if any
-     * @param occurredOn    the business date
-     * @param sourceType    the kind of record that caused it (e.g. DELIVERY), or {@code null}
-     * @param sourceId      the id of that record, or {@code null}
-     * @param reversesId    the id of the movement this one undoes, or {@code null}
-     * @param createdBy     the id of the user who recorded it
-     * @param createdAt     the moment it was recorded
-     */
-    record MovementView(long id, long productId, long branchId, MovementType type, long quantityDelta,
-                        @JsonInclude(JsonInclude.Include.NON_NULL) BigDecimal unitCost, String reason, LocalDate occurredOn,
-                        String sourceType, Long sourceId, Long reversesId, long createdBy, Instant createdAt) {
-
-        /**
-         * |quantity| x unit cost, rounded to centavos.
-         *
-         * @return the absolute value of the movement at its unit cost, at 2 decimals; zero if no cost is recorded
-         */
-        public BigDecimal totalCost() {
-            // No recorded cost counts as zero rather than failing.
-            if (unitCost == null) return BigDecimal.ZERO.setScale(2);
-            // Absolute quantity: the cost of removing 5 units equals the cost of adding 5 at the same price.
-            return unitCost.multiply(BigDecimal.valueOf(Math.abs(quantityDelta))).setScale(2, RoundingMode.HALF_UP);
-        }
-    }
-
-    /**
-     * Public representation of the current stock of one product at one branch.
-     *
-     * @param productId   the product
-     * @param productName the product's name
-     * @param unit        the product's unit of measure
-     * @param branchId    the branch
-     * @param quantity    units on hand
-     * @param averageCost weighted average cost per unit at 4 decimals; omitted from assistant responses
-     */
-    record BalanceView(long productId, String productName, String unit, long branchId, long quantity,
-                       @JsonInclude(JsonInclude.Include.NON_NULL) BigDecimal averageCost) {}
-
-    /**
-     * One branch's stock of a product inside a {@link ProductStockView}.
-     *
-     * @param branchId    the branch
-     * @param quantity    units on hand
-     * @param averageCost weighted average cost per unit at 4 decimals; omitted from assistant responses
-     * @param low         true when the product has a reorder level and {@code quantity} is at or below it
-     */
-    record BranchStockView(long branchId, long quantity,
-                           @JsonInclude(JsonInclude.Include.NON_NULL) BigDecimal averageCost, boolean low) {}
-
-    /**
-     * Stock of one product across all branches.
-     *
-     * @param productId     the product
-     * @param productName   the product's name
-     * @param unit          the product's unit of measure
-     * @param totalQuantity units on hand over all branches
-     * @param reorderLevel  the configured reorder level, or {@code null} when none is set
-     * @param low           true when the product is low (see {@link StockApi#summary})
-     * @param branches      the branches that have held the product, ordered by branch id
-     */
-    record ProductStockView(long productId, String productName, String unit, long totalQuantity, Long reorderLevel,
-                            boolean low, List<BranchStockView> branches) {}
-
-    /**
-     * A configured reorder level.
-     *
-     * @param productId   the product
-     * @param productName the product's name
-     * @param level       units at or below which a branch is low
-     * @param updatedBy   id of the user who last set it
-     * @param updatedAt   when it was last set
-     */
-    record ReorderLevelView(long productId, String productName, long level, long updatedBy, Instant updatedAt) {}
 }

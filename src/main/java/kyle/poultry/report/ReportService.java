@@ -14,7 +14,7 @@ import kyle.poultry.finance.api.FinanceApi;
 import kyle.poultry.finance.api.model.PaymentMethod;
 import kyle.poultry.shared.error.RuleViolation;
 import kyle.poultry.stock.api.StockApi;
-import kyle.poultry.stock.api.StockApi.BalanceView;
+import kyle.poultry.stock.api.model.BalanceView;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

@@ -1,5 +1,6 @@
 package kyle.poultry.stock.internal.service;
 
+import kyle.poultry.stock.api.model.MovementView;
 import kyle.poultry.stock.api.StockApi;
 import kyle.poultry.stock.api.exception.InsufficientStockException;
 import kyle.poultry.stock.api.model.MovementType;
@@ -36,8 +37,8 @@ import kyle.poultry.identity.api.model.Actor;
 import kyle.poultry.identity.api.model.Role;
 import kyle.poultry.shared.error.RuleViolation;
 import kyle.poultry.shared.reference.SourceRef;
-import kyle.poultry.stock.api.StockApi.StockCommand;
-import kyle.poultry.stock.api.StockApi.StockLine;
+import kyle.poultry.stock.api.model.StockCommand;
+import kyle.poultry.stock.api.model.StockLine;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -269,10 +270,10 @@ class StockLedgerUnitTests {
         var order = inOrder(balances);
         order.verify(balances).applyDelta(eq(3L), eq(1L), eq(-5L), isNull());
         order.verify(balances).applyDelta(eq(9L), eq(1L), eq(-2L), isNull());
-        assertThat(result).extracting(StockApi.MovementView::productId).containsExactly(3L, 9L);
-        assertThat(result).extracting(StockApi.MovementView::quantityDelta).containsExactly(-5L, -2L);
+        assertThat(result).extracting(MovementView::productId).containsExactly(3L, 9L);
+        assertThat(result).extracting(MovementView::quantityDelta).containsExactly(-5L, -2L);
         // Cost of goods per line: 5 x 10.5000 = 52.50 and 2 x 4.2500 = 8.50.
-        assertThat(result).extracting(StockApi.MovementView::totalCost)
+        assertThat(result).extracting(MovementView::totalCost)
                 .containsExactly(new BigDecimal("52.50"), new BigDecimal("8.50"));
         assertThat(result).allSatisfy(m -> {
             assertThat(m.type()).isEqualTo(MovementType.DELIVERY_OUT);
@@ -315,10 +316,10 @@ class StockLedgerUnitTests {
 
         var reversals = ledger.reverseAllFor(source, "Delivery cancelled", DAY, OWNER);
 
-        assertThat(reversals).extracting(StockApi.MovementView::productId).containsExactly(3L, 9L);
-        assertThat(reversals).extracting(StockApi.MovementView::quantityDelta).containsExactly(5L, 2L);
-        assertThat(reversals).extracting(StockApi.MovementView::reversesId).containsExactly(12L, 11L);
-        assertThat(reversals).extracting(StockApi.MovementView::type).containsOnly(MovementType.DELIVERY_REVERSAL);
+        assertThat(reversals).extracting(MovementView::productId).containsExactly(3L, 9L);
+        assertThat(reversals).extracting(MovementView::quantityDelta).containsExactly(5L, 2L);
+        assertThat(reversals).extracting(MovementView::reversesId).containsExactly(12L, 11L);
+        assertThat(reversals).extracting(MovementView::type).containsOnly(MovementType.DELIVERY_REVERSAL);
         // The goods go back at the cost they left with, so the average cost can return to where it was.
         verify(balances).applyDelta(3, 1, 5, new BigDecimal("4.2500"));
         verify(balances).applyDelta(9, 1, 2, new BigDecimal("10.5000"));

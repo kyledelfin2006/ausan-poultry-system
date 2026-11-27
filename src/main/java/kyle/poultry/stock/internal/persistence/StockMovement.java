@@ -9,8 +9,8 @@ import java.time.LocalDate;
 import kyle.poultry.identity.api.model.Actor;
 import kyle.poultry.shared.error.RuleViolation;
 import kyle.poultry.shared.reference.SourceRef;
-import kyle.poultry.stock.api.StockApi.MovementView;
-import kyle.poultry.stock.api.StockApi.StockCommand;
+import kyle.poultry.stock.api.model.MovementView;
+import kyle.poultry.stock.api.model.StockCommand;
 
 /**
  * One immutable fact: "this much stock entered or left this branch, for this reason". Never updated or deleted.
