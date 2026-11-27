@@ -34,6 +34,12 @@ final class IdempotencyContract {
             ok.setDescription("Repeat of an earlier request with the same `Idempotency-Key` by the same user: the "
                     + "original delivery, nothing new created. The same key with a different request is a 422.");
         }
+        var conflict = post.getResponses().get("409");
+        if (conflict != null) {
+            conflict.setDescription("Clashes with current state (`CONFLICT`, e.g. insufficient stock), or an identical "
+                    + "request with the same `Idempotency-Key` is still running (`REQUEST_IN_PROGRESS`, with a "
+                    + "`Retry-After` header: wait, then resend the identical request with the same key).");
+        }
         if (post.getParameters() != null) {
             post.getParameters().stream().filter(p -> "Idempotency-Key".equals(p.getName())).forEach(p -> p.setDescription(
                     "Optional, 1-100 characters, chosen by the client (a UUID is fine). Send the same key when retrying "

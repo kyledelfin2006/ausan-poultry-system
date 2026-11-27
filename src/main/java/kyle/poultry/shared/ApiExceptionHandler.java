@@ -89,13 +89,13 @@ class ApiExceptionHandler extends ResponseEntityExceptionHandler {
      * Maps a repeat that arrived while the first identical request is still running to HTTP 409 with {@code Retry-After}.
      *
      * @param e the in-progress exception
-     * @return a 409 problem detail with code {@code CONFLICT} and a {@code Retry-After} header
+     * @return a 409 problem detail with code {@code REQUEST_IN_PROGRESS} and a {@code Retry-After} header
      */
     @ExceptionHandler(RequestInProgressException.class)
     ResponseEntity<ProblemDetail> inProgress(RequestInProgressException e) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .header(HttpHeaders.RETRY_AFTER, String.valueOf(RequestInProgressException.RETRY_AFTER_SECONDS))
-                .body(problem(HttpStatus.CONFLICT, e.getMessage(), ErrorCodes.CONFLICT));
+                .body(problem(HttpStatus.CONFLICT, e.getMessage(), ErrorCodes.REQUEST_IN_PROGRESS));
     }
 
     /**

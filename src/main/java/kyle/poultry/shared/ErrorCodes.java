@@ -40,6 +40,12 @@ public final class ErrorCodes {
     /** HTTP 409: a database constraint rejected the change (duplicate name, referenced row, ...). */
     public static final String DATA_CONFLICT = "DATA_CONFLICT";
 
+    /**
+     * HTTP 409: an identical request (same {@code Idempotency-Key}) is still running. Unlike {@link #CONFLICT} this is
+     * safe to repeat: wait for {@code Retry-After} seconds, then send the same request with the same key.
+     */
+    public static final String REQUEST_IN_PROGRESS = "REQUEST_IN_PROGRESS";
+
     /** HTTP 415: the request body is not JSON. */
     public static final String UNSUPPORTED_MEDIA_TYPE = "UNSUPPORTED_MEDIA_TYPE";
 
@@ -54,7 +60,7 @@ public final class ErrorCodes {
 
     /** Every code above, in documentation order; used to publish the allowed values in the OpenAPI schema. */
     public static final List<String> ALL = List.of(VALIDATION_FAILED, BAD_REQUEST, UNAUTHENTICATED, FORBIDDEN,
-            NOT_FOUND, METHOD_NOT_ALLOWED, NOT_ACCEPTABLE, CONFLICT, DATA_CONFLICT, UNSUPPORTED_MEDIA_TYPE,
+            NOT_FOUND, METHOD_NOT_ALLOWED, NOT_ACCEPTABLE, CONFLICT, DATA_CONFLICT, REQUEST_IN_PROGRESS, UNSUPPORTED_MEDIA_TYPE,
             RULE_VIOLATION, TOO_MANY_REQUESTS, INTERNAL_ERROR);
 
     /** Not instantiable: constants and a lookup only. */

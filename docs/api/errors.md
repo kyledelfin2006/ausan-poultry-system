@@ -28,13 +28,16 @@ machine-readable `code`:
 | `NOT_ACCEPTABLE` | 406 | The server cannot produce what the `Accept` header asks for. | Client bug. |
 | `CONFLICT` | 409 | The request clashes with the current state: insufficient stock (`Insufficient stock for product 2 at branch 1`), username already taken, delivery no longer ACTIVE (done or cancelled twice, cancel after Done). | Show `detail`; refresh the data the user was looking at. |
 | `DATA_CONFLICT` | 409 | A database rule rejected the change, e.g. a duplicate product, branch or package name or SKU. `detail` is always `The change conflicts with existing data`. | Tell the user the name or SKU is probably already taken. |
+| `REQUEST_IN_PROGRESS` | 409 | An identical request (same `Idempotency-Key`) is still running, e.g. a double click or a retry after a slow network. Nothing was done by this second call. The `Retry-After` header holds the seconds to wait. | **The only 409 that is safe to repeat.** Wait `Retry-After` seconds, then resend the identical request with the same key; give up after about 3 tries. Never auto-retry `CONFLICT` or `DATA_CONFLICT`. |
 | `UNSUPPORTED_MEDIA_TYPE` | 415 | The body is not JSON. | Client bug; send `Content-Type: application/json`. |
 | `RULE_VIOLATION` | 422 | The request is well-formed but a business rule forbids it: future date; an assistant date more than 7 Manila calendar days in the past; inactive product/branch/package; missing payment method; refund above what is held; duplicate item; report period longer than 366 days; wrong current password; a [password rule](auth-session.md#password-rules); `Idempotency-Key` reused with a different request. | Show `detail` to the user. |
 | `TOO_MANY_REQUESTS` | 429 | Five failed logins within 15 minutes for the same username and address, **or** three CSV exports already running (`GET /api/finance/entries.csv`). The `Retry-After` header holds the seconds to wait. | Disable the login button and show a countdown; for an export, wait and press Download again. |
 | `INTERNAL_ERROR` | 500 | An unexpected server error. `detail` is always `An unexpected error occurred`; nothing internal is leaked. | Show a generic "try again later" and report it. |
 
 Rule of thumb for the UI: `400` = fix the form or it's a bug, `409`/`422` = show `detail`, `401` = go to login,
-`403` = hide the action, `5xx` = retry later.
+`403` = hide the action, `5xx` = retry later. Branch on `code`, not on the status alone: of the three `409` codes only
+`REQUEST_IN_PROGRESS` is retried automatically, and `429` is never retried automatically (disable the control for
+`Retry-After` seconds instead).
 
 ## 401 and 403 from the security layer have no body
 

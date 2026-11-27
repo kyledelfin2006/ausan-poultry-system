@@ -70,7 +70,7 @@ class IdempotencyLockWaitTests {
 
             assertThat(blocked.statusCode()).as(blocked.body()).isEqualTo(409);
             assertThat(blocked.headers().firstValue("Retry-After")).contains("1");
-            assertThat((String) JsonPath.read(blocked.body(), "$.code")).isEqualTo("CONFLICT");
+            assertThat((String) JsonPath.read(blocked.body(), "$.code")).isEqualTo("REQUEST_IN_PROGRESS");
             assertThat(ms).as("gave up after the short wait, not the pool timeout").isBetween(2_000L, 8_000L);
             holder.rollback();
         }
