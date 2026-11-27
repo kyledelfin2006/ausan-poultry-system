@@ -3,7 +3,7 @@ package kyle.poultry.catalog.internal.persistence;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import kyle.poultry.catalog.api.CatalogApi.ProductView;
+import kyle.poultry.catalog.api.model.ProductView;
 
 /**
  * A stockable, sellable product (for example a chicken or a bag of feed), stored in the {@code product} table.

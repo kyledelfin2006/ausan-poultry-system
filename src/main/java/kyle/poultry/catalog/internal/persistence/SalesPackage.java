@@ -1,5 +1,6 @@
 package kyle.poultry.catalog.internal.persistence;
 
+import kyle.poultry.catalog.api.model.PackageView;
 import kyle.poultry.catalog.internal.model.PackageItem;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
@@ -11,7 +12,7 @@ import java.util.List;
  * A pre-set bundle sold at one price, e.g. "Package Small". Its contents define the stock movement of a sale.
  * <p>
  * Stored in {@code sales_package} with its lines in {@code package_item}. It is internal to the catalog module: other modules
- * see it as {@code CatalogApi.PackageView}. The contents are fixed after creation; only name, price and the
+ * see it as {@code PackageView}. The contents are fixed after creation; only name, price and the
  * active flag may change.
  */
 @Entity

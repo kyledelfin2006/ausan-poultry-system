@@ -1,7 +1,7 @@
 package kyle.poultry.catalog.internal.persistence;
 
 import jakarta.persistence.*;
-import kyle.poultry.catalog.api.CatalogApi.BranchView;
+import kyle.poultry.catalog.api.model.BranchView;
 
 /**
  * A farm branch (a location that holds stock and receives deliveries), stored in the {@code branch} table.

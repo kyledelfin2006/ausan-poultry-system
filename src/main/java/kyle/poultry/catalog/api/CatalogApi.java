@@ -1,6 +1,8 @@
 package kyle.poultry.catalog.api;
 
-import java.math.BigDecimal;
+import kyle.poultry.catalog.api.model.BranchView;
+import kyle.poultry.catalog.api.model.PackageView;
+import kyle.poultry.catalog.api.model.ProductView;
 import java.util.List;
 
 /**
@@ -60,45 +62,4 @@ public interface CatalogApi {
      * @return all packages
      */
     List<PackageView> packages();
-
-    /**
-     * Public representation of a product.
-     *
-     * @param id           the product id
-     * @param name         the unique product name
-     * @param unit         the unit of measure, e.g. {@code "pc"}
-     * @param defaultPrice the suggested selling price at 2 decimals, or {@code null} if none
-     * @param active       whether the product may be used for new movements and packages
-     */
-    record ProductView(long id, String name, String unit, BigDecimal defaultPrice, boolean active) {}
-
-    /**
-     * Public representation of a branch.
-     *
-     * @param id     the branch id
-     * @param name   the unique branch name
-     * @param active whether the branch may be used for new movements and deliveries
-     */
-    record BranchView(long id, String name, boolean active) {}
-
-    /**
-     * Public representation of a sales package.
-     *
-     * @param id     the package id
-     * @param sku    the unique stock-keeping code
-     * @param name   the unique display name
-     * @param price  the selling price at 2 decimals
-     * @param active whether the package may still be sold
-     * @param items  the package contents, fixed since creation
-     */
-    record PackageView(long id, String sku, String name, BigDecimal price, boolean active, List<PackageItemView> items) {}
-
-    /**
-     * One line of a package's contents.
-     *
-     * @param productId   the id of the contained product
-     * @param productName the product's current name
-     * @param quantity    units of that product in one package
-     */
-    record PackageItemView(long productId, String productName, long quantity) {}
 }

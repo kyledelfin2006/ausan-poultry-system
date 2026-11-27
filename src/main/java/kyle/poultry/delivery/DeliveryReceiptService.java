@@ -1,5 +1,6 @@
 package kyle.poultry.delivery;
 
+import kyle.poultry.catalog.api.model.PackageItemView;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.math.RoundingMode;
@@ -11,8 +12,8 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import kyle.poultry.catalog.api.CatalogApi;
-import kyle.poultry.catalog.api.CatalogApi.PackageView;
-import kyle.poultry.catalog.api.CatalogApi.ProductView;
+import kyle.poultry.catalog.api.model.PackageView;
+import kyle.poultry.catalog.api.model.ProductView;
 import kyle.poultry.delivery.DeliveryReceipt.ReceiptLine;
 import kyle.poultry.delivery.DeliveryReceipt.ReceiptProduct;
 import kyle.poultry.finance.FinanceApi;
@@ -123,7 +124,7 @@ class DeliveryReceiptService {
         for (int i = 0; i < lines.size(); i++) {
             var pkg = packages.get(lines.get(i).packageId());
             long perPackage = pkg == null ? 0 : pkg.items().stream().filter(it -> it.productId() == productId)
-                    .mapToLong(CatalogApi.PackageItemView::quantity).sum();
+                    .mapToLong(PackageItemView::quantity).sum();
             long units = perPackage * lines.get(i).quantity();
             if (units > 0) { unitsByLine.put(i, units); totalUnits += units; }
         }

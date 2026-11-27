@@ -15,9 +15,9 @@ import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.util.List;
-import kyle.poultry.catalog.api.CatalogApi.BranchView;
-import kyle.poultry.catalog.api.CatalogApi.PackageView;
-import kyle.poultry.catalog.api.CatalogApi.ProductView;
+import kyle.poultry.catalog.api.model.BranchView;
+import kyle.poultry.catalog.api.model.PackageView;
+import kyle.poultry.catalog.api.model.ProductView;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 

@@ -22,7 +22,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
 import kyle.poultry.catalog.api.CatalogApi;
-import kyle.poultry.catalog.api.CatalogApi.ProductView;
+import kyle.poultry.catalog.api.model.ProductView;
 import kyle.poultry.finance.FinanceApi;
 import kyle.poultry.finance.PaymentMethod;
 import kyle.poultry.identity.api.model.Actor;

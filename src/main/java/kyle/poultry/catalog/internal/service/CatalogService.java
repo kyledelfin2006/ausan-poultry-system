@@ -1,5 +1,9 @@
 package kyle.poultry.catalog.internal.service;
 
+import kyle.poultry.catalog.api.model.BranchView;
+import kyle.poultry.catalog.api.model.PackageItemView;
+import kyle.poultry.catalog.api.model.PackageView;
+import kyle.poultry.catalog.api.model.ProductView;
 import kyle.poultry.catalog.api.CatalogApi;
 import kyle.poultry.catalog.internal.model.PackageItem;
 import kyle.poultry.catalog.internal.persistence.Branch;
