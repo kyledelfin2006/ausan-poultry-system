@@ -35,10 +35,10 @@ import kyle.poultry.finance.api.model.PaymentMethod;
  * @param products         the stock taken out, per product
  */
 public record DeliveryReceipt(long id, String code, DeliveryStatus status, String customerName, String driverName,
-                       long fromBranchId, String destination, Instant startedAt, Instant completedAt,
-                       PaymentMethod paymentMethod, String cancelReason, String returnReason, BigDecimal retainedPayment,
-                       boolean countedInProfit, BigDecimal total, BigDecimal costOfGoods, BigDecimal grossProfit,
-                       BigDecimal marginPercent, List<ReceiptLine> lines, List<ReceiptProduct> products) {
+                              long fromBranchId, String destination, Instant startedAt, Instant completedAt,
+                              PaymentMethod paymentMethod, String cancelReason, String returnReason, BigDecimal retainedPayment,
+                              boolean countedInProfit, BigDecimal total, BigDecimal costOfGoods, BigDecimal grossProfit,
+                              BigDecimal marginPercent, List<ReceiptLine> lines, List<ReceiptProduct> products) {
 
     /**
      * One package line with its cost and profit.

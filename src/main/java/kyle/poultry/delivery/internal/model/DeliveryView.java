@@ -27,7 +27,7 @@ import kyle.poultry.finance.api.model.PaymentMethod;
  * @param createdAt       when it was created
  */
 public record DeliveryView(long id, String code, DeliveryStatus status, String customerName, String driverName,
-                    long fromBranchId, String destination, Instant startedAt, Instant completedAt,
-                    BigDecimal total, PaymentMethod paymentMethod, String cancelReason, String returnReason,
-                    BigDecimal retainedPayment,
-                    List<DeliveryLine> lines, long createdBy, Instant createdAt) {}
+                           long fromBranchId, String destination, Instant startedAt, Instant completedAt,
+                           BigDecimal total, PaymentMethod paymentMethod, String cancelReason, String returnReason,
+                           BigDecimal retainedPayment,
+                           List<DeliveryLine> lines, long createdBy, Instant createdAt) {}

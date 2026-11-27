@@ -1,5 +1,9 @@
 package kyle.poultry.delivery.internal.service;
 
+import kyle.poultry.delivery.internal.model.CreateRequest;
+import kyle.poultry.delivery.internal.model.CreateResult;
+import kyle.poultry.delivery.internal.model.LineRequest;
+import kyle.poultry.delivery.internal.model.StatusCounts;
 import kyle.poultry.delivery.internal.model.DeliveryLine;
 import kyle.poultry.delivery.internal.model.DeliveryStatus;
 import kyle.poultry.delivery.internal.model.DeliveryView;
@@ -36,7 +40,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.jdbc.UncategorizedSQLException;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -76,38 +79,6 @@ public class DeliveryService {
         this.deliveries = deliveries; this.catalog = catalog; this.stock = stock; this.finance = finance; this.clock = clock;
         this.jdbc = jdbc;
     }
-
-    /**
-     * One package line of a new delivery.
-     *
-     * @param packageId the sales package being sold
-     * @param quantity  how many packages; must be positive
-     * @param unitPrice price override for this delivery only, or null to use the package price
-     */
-    public record LineRequest(long packageId, long quantity, BigDecimal unitPrice) {}
-
-    /**
-     * Everything needed to create a delivery.
-     *
-     * @param customerName  who the goods are for
-     * @param driverName    who delivers them
-     * @param fromBranchId  branch whose stock is used
-     * @param destination   where the goods go
-     * @param startedAt     when the trip starts, or null for now
-     * @param paymentMethod how the customer paid
-     * @param lines         the packages sold; at least one
-     */
-    public record CreateRequest(String customerName, String driverName, long fromBranchId, String destination,
-                         Instant startedAt, PaymentMethod paymentMethod, List<LineRequest> lines) {}
-
-    /**
-     * Outcome of a create call.
-     *
-     * @param delivery the delivery (new, or the earlier one for a repeated idempotency key)
-     * @param created  false when an earlier request with the same idempotency key already created {@code delivery}
-     */
-    public record CreateResult(DeliveryView delivery, boolean created) {}
-
     /**
      * Creates a delivery without an idempotency key.
      *
@@ -396,18 +367,6 @@ public class DeliveryService {
     public DeliveryView get(long id) {
         return view(deliveries.findById(id).orElseThrow(() -> new NotFoundException("Delivery", id)));
     }
-
-    /**
-     * How many deliveries a selection holds in each status.
-     *
-     * @param active    deliveries still on the road
-     * @param done      deliveries that arrived
-     * @param cancelled deliveries that were cancelled
-     * @param returned  deliveries that arrived and then came back
-     * @param total     the four added together
-     */
-    public record StatusCounts(long active, long done, long cancelled, long returned, long total) {}
-
     /**
      * Lists deliveries, newest first (by start time, then id). The caller's sort parameter is ignored so the order is
      * always the documented one.
