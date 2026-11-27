@@ -13,7 +13,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.stream.Stream;
 import kyle.poultry.TestcontainersConfiguration;
-import kyle.poultry.finance.PaymentMethod;
+import kyle.poultry.finance.api.model.PaymentMethod;
 import kyle.poultry.identity.api.model.Actor;
 import kyle.poultry.identity.api.model.Role;
 import kyle.poultry.shared.error.RuleViolation;

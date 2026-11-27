@@ -12,7 +12,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import kyle.poultry.catalog.api.CatalogApi;
 import kyle.poultry.catalog.api.model.ProductView;
-import kyle.poultry.finance.FinanceApi;
+import kyle.poultry.finance.api.FinanceApi;
 import kyle.poultry.identity.api.model.Actor;
 import kyle.poultry.identity.api.model.Capability;
 import kyle.poultry.shared.time.BusinessDatePolicy;

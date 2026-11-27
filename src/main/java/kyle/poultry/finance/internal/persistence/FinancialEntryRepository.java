@@ -1,5 +1,6 @@
-package kyle.poultry.finance;
+package kyle.poultry.finance.internal.persistence;
 
+import kyle.poultry.finance.api.model.EntryType;
 import jakarta.persistence.LockModeType;
 import java.time.LocalDate;
 import java.util.List;
@@ -18,7 +19,7 @@ import org.springframework.data.repository.query.Param;
  * lookup it holds the aggregate queries (sums per source, per period, per type and per method) so that totals are
  * computed by the database and never by loading entries into memory.
  */
-interface FinancialEntryRepository extends JpaRepository<FinancialEntry, Long> {
+public interface FinancialEntryRepository extends JpaRepository<FinancialEntry, Long> {
 
     /**
      * Finds a source's entries of the given types, e.g. its sale and cost rows before they are reversed.

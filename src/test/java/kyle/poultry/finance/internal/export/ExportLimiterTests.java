@@ -1,4 +1,4 @@
-package kyle.poultry.finance;
+package kyle.poultry.finance.internal.export;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;

@@ -1,5 +1,11 @@
-package kyle.poultry.finance;
+package kyle.poultry.finance.internal.web;
 
+import kyle.poultry.finance.api.FinanceApi;
+import kyle.poultry.finance.api.model.EntryType;
+import kyle.poultry.finance.api.model.PaymentMethod;
+import kyle.poultry.finance.internal.export.EntryExporter;
+import kyle.poultry.finance.internal.export.ExportLimiter;
+import kyle.poultry.finance.internal.service.FinanceLedger;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
@@ -13,7 +19,7 @@ import java.io.UncheckedIOException;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
-import kyle.poultry.finance.FinanceApi.EntryView;
+import kyle.poultry.finance.api.FinanceApi.EntryView;
 import kyle.poultry.identity.api.model.Actor;
 import kyle.poultry.shared.csv.Csv;
 import kyle.poultry.shared.error.RuleViolation;
@@ -29,12 +35,12 @@ import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBo
 
 /**
  * HTTP face of the finance module under {@code /api/finance}: record expenses and browse ledger entries. It is
- * package-private and used by authenticated owners and assistants (JWT is required globally); money rules
+ * internal to the finance module and used by authenticated owners and assistants (JWT is required globally); money rules
  * live in {@link FinanceApi}, and violations become HTTP 422 through the shared exception handler.
  */
 @RestController
 @RequestMapping("/api/finance")
-class FinanceController {
+public class FinanceController {
     /** Longest period one CSV export may cover; one full leap year, like the reports. */
     private static final int MAX_EXPORT_DAYS = 366;
 
@@ -49,7 +55,7 @@ class FinanceController {
      * @param exporter      reads entries one at a time for the CSV download
      * @param exportLimiter caps how many downloads run at once
      */
-    FinanceController(FinanceApi finance, EntryExporter exporter, ExportLimiter exportLimiter) {
+    public FinanceController(FinanceApi finance, EntryExporter exporter, ExportLimiter exportLimiter) {
         this.finance = finance;
         this.exporter = exporter;
         this.exportLimiter = exportLimiter;
@@ -114,7 +120,7 @@ class FinanceController {
      *         {@code Retry-After})
      */
     @GetMapping("/entries.csv")
-    ResponseEntity<StreamingResponseBody> entriesCsv(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+    public ResponseEntity<StreamingResponseBody> entriesCsv(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
                                       @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
                                       @RequestParam(required = false) EntryType type,
                                       @AuthenticationPrincipal Jwt jwt) {

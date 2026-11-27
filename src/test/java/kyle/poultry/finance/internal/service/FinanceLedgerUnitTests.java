@@ -1,5 +1,9 @@
-package kyle.poultry.finance;
+package kyle.poultry.finance.internal.service;
 
+import kyle.poultry.finance.api.model.EntryType;
+import kyle.poultry.finance.api.model.PaymentMethod;
+import kyle.poultry.finance.internal.persistence.FinancialEntry;
+import kyle.poultry.finance.internal.persistence.FinancialEntryRepository;
 import static kyle.poultry.support.TestSupport.clockAt;
 import static kyle.poultry.support.TestSupport.withId;
 import static org.assertj.core.api.Assertions.assertThat;

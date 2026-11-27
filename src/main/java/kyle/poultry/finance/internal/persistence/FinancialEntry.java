@@ -1,22 +1,24 @@
-package kyle.poultry.finance;
+package kyle.poultry.finance.internal.persistence;
 
+import kyle.poultry.finance.api.model.EntryType;
+import kyle.poultry.finance.api.model.PaymentMethod;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
-import kyle.poultry.finance.FinanceApi.EntryView;
+import kyle.poultry.finance.api.FinanceApi.EntryView;
 import kyle.poultry.identity.api.model.Actor;
 import kyle.poultry.shared.error.RuleViolation;
 import kyle.poultry.shared.reference.SourceRef;
 
 /**
  * One immutable financial fact: a sale, a cost, a payment, a refund, a purchase or an expense, stored as a row of
- * the {@code financial_entry} table. It belongs to the finance module and is package-private; other modules see only
+ * the {@code financial_entry} table. It belongs to the finance module and is internal to the finance module; other modules see only
  * {@link EntryView}. It is never updated or deleted; mistakes are corrected by new reversal rows.
  */
 @Entity
 @Table(name = "financial_entry")
-class FinancialEntry {
+public class FinancialEntry {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY) private Long id;
     @Enumerated(EnumType.STRING) private EntryType type;
     @Enumerated(EnumType.STRING) private EntryType.CashDirection cashDirection;
@@ -47,7 +49,7 @@ class FinancialEntry {
      * @return the new, unsaved entry
      * @throws RuleViolation if a cash entry has no method or the date is missing
      */
-    static FinancialEntry of(EntryType type, BigDecimal amount, PaymentMethod method, LocalDate on,
+    public static FinancialEntry of(EntryType type, BigDecimal amount, PaymentMethod method, LocalDate on,
                              String description, SourceRef source, Actor actor, Instant now) {
         // Cash must always say how it moved; the database enforces the same rule as a last line of defence.
         if (type.cashDirection() != EntryType.CashDirection.NONE && method == null)
@@ -77,7 +79,7 @@ class FinancialEntry {
      * @return the new, unsaved reversal entry
      * @throws RuleViolation if this entry is not a SALE or COST_OF_GOODS
      */
-    FinancialEntry reversal(LocalDate on, Actor actor, Instant now) {
+    public FinancialEntry reversal(LocalDate on, Actor actor, Instant now) {
         // Only revenue and cost can be cancelled; money rows are corrected with a refund instead.
         EntryType reversalType = switch (type) {
             case SALE -> EntryType.SALE_REVERSAL;
@@ -100,7 +102,7 @@ class FinancialEntry {
     }
 
     /** {@return the database id, null until saved} */
-    Long id() { return id; }
+    public Long id() { return id; }
 
     /** {@return what this entry means} */
     EntryType type() { return type; }
@@ -109,7 +111,7 @@ class FinancialEntry {
     BigDecimal amount() { return amount; }
 
     /** {@return an immutable copy of this entry for use outside the module} */
-    EntryView view() {
+    public EntryView view() {
         return new EntryView(id, type, cashDirection, amount, method, occurredOn, description,
                 sourceType, sourceId, reversesId, createdBy, createdAt);
     }

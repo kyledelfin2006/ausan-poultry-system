@@ -3,7 +3,7 @@ package kyle.poultry.delivery;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
-import kyle.poultry.finance.PaymentMethod;
+import kyle.poultry.finance.api.model.PaymentMethod;
 
 /**
  * Read model of a delivery for the API. Package-private; serialized to JSON by {@link DeliveryController}.

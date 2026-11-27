@@ -1,4 +1,4 @@
-package kyle.poultry.finance;
+package kyle.poultry.finance.internal.export;
 
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -16,7 +16,7 @@ import org.springframework.stereotype.Component;
  * connection too.
  */
 @Component
-class ExportLimiter {
+public class ExportLimiter {
     /** Seconds a refused client is told to wait; an export of a normal period finishes well within this. */
     static final int RETRY_AFTER_SECONDS = 5;
 
@@ -38,21 +38,21 @@ class ExportLimiter {
      * @return the permit; call {@link Permit#release()} when the export ends (calling it again does nothing)
      * @throws TooManyRequestsException when all permits are in use
      */
-    Permit acquire() {
+    public Permit acquire() {
         if (!permits.tryAcquire())
             throw new TooManyRequestsException("Too many exports are running; try again shortly", RETRY_AFTER_SECONDS);
         return new Permit(permits);
     }
 
     /** One taken permit; releasing it twice returns it only once. */
-    static final class Permit {
+    public static final class Permit {
         private final Semaphore owner;
         private final AtomicBoolean released = new AtomicBoolean();
 
         private Permit(Semaphore owner) { this.owner = owner; }
 
         /** Gives the permit back. */
-        void release() {
+        public void release() {
             if (released.compareAndSet(false, true)) owner.release();
         }
     }

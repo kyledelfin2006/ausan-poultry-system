@@ -1,7 +1,7 @@
 package kyle.poultry.report;
 
 import java.util.Map;
-import kyle.poultry.finance.PaymentMethod;
+import kyle.poultry.finance.api.model.PaymentMethod;
 import kyle.poultry.report.ReportService.InventoryValue;
 import kyle.poultry.report.ReportService.Profit;
 import kyle.poultry.report.ReportService.Summary;

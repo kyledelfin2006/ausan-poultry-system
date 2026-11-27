@@ -8,7 +8,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
-import kyle.poultry.finance.PaymentMethod;
+import kyle.poultry.finance.api.model.PaymentMethod;
 import kyle.poultry.shared.error.ConflictException;
 import kyle.poultry.shared.error.RuleViolation;
 import org.junit.jupiter.api.Test;

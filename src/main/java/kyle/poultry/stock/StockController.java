@@ -9,7 +9,7 @@ import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
-import kyle.poultry.finance.PaymentMethod;
+import kyle.poultry.finance.api.model.PaymentMethod;
 import kyle.poultry.identity.api.model.Actor;
 import kyle.poultry.identity.api.model.Capability;
 import kyle.poultry.stock.StockApi.BalanceView;

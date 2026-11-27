@@ -18,7 +18,7 @@ import kyle.poultry.delivery.DeliveryService.CreateRequest;
 import kyle.poultry.delivery.DeliveryService.CreateResult;
 import kyle.poultry.delivery.DeliveryService.LineRequest;
 import kyle.poultry.delivery.DeliveryService.StatusCounts;
-import kyle.poultry.finance.PaymentMethod;
+import kyle.poultry.finance.api.model.PaymentMethod;
 import kyle.poultry.identity.api.model.Actor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;

@@ -16,7 +16,7 @@ import kyle.poultry.catalog.api.model.PackageView;
 import kyle.poultry.catalog.api.model.ProductView;
 import kyle.poultry.delivery.DeliveryReceipt.ReceiptLine;
 import kyle.poultry.delivery.DeliveryReceipt.ReceiptProduct;
-import kyle.poultry.finance.FinanceApi;
+import kyle.poultry.finance.api.FinanceApi;
 import kyle.poultry.shared.error.NotFoundException;
 import kyle.poultry.shared.reference.SourceRef;
 import kyle.poultry.stock.MovementType;

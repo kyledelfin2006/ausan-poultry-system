@@ -1,5 +1,10 @@
-package kyle.poultry.finance;
+package kyle.poultry.finance.internal.service;
 
+import kyle.poultry.finance.api.FinanceApi;
+import kyle.poultry.finance.api.model.EntryType;
+import kyle.poultry.finance.api.model.PaymentMethod;
+import kyle.poultry.finance.internal.persistence.FinancialEntry;
+import kyle.poultry.finance.internal.persistence.FinancialEntryRepository;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Clock;
@@ -20,16 +25,16 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * The implementation of {@link FinanceApi}: validates each request, appends immutable ledger rows and answers
- * period aggregates. It is package-private so other modules can only reach it through the interface.
+ * period aggregates. It is internal to the finance module so other modules can only reach it through the interface.
  *
  * <p>The class is transactional: each call joins the caller's transaction (or starts one), which is what makes a
  * delivery and its ledger rows succeed or fail together. Rows are only ever inserted, never updated or deleted.
  */
 @Service
 @Transactional
-class FinanceLedger implements FinanceApi {
-    /** The entry types an assistant may see; shared with {@link EntryExporter} so both read paths apply one rule. */
-    static final List<EntryType> ASSISTANT_VISIBLE_TYPES =
+public class FinanceLedger implements FinanceApi {
+    /** The entry types an assistant may see; shared with {@code EntryExporter} so both read paths apply one rule. */
+    public static final List<EntryType> ASSISTANT_VISIBLE_TYPES =
             List.of(EntryType.SALE, EntryType.SALE_REVERSAL, EntryType.PAYMENT_IN, EntryType.REFUND);
 
     private final FinancialEntryRepository entries;
@@ -263,7 +268,7 @@ class FinanceLedger implements FinanceApi {
      * @param to   last date of the period
      * @throws RuleViolation if either date is missing or {@code to} is before {@code from}
      */
-    static void requirePeriod(LocalDate from, LocalDate to) {
+    public static void requirePeriod(LocalDate from, LocalDate to) {
         if (from == null || to == null || to.isBefore(from))
             throw new RuleViolation("A valid from/to period is required");
     }

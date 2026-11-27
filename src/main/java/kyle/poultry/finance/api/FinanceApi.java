@@ -1,11 +1,13 @@
-package kyle.poultry.finance;
+package kyle.poultry.finance.api;
 
+import kyle.poultry.finance.api.model.EntryType;
+import kyle.poultry.finance.api.model.PaymentMethod;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
-import kyle.poultry.finance.EntryType.CashDirection;
+import kyle.poultry.finance.api.model.EntryType.CashDirection;
 import kyle.poultry.identity.api.model.Actor;
 import kyle.poultry.shared.reference.SourceRef;
 import org.springframework.data.domain.Page;

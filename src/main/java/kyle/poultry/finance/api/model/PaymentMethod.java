@@ -1,4 +1,4 @@
-package kyle.poultry.finance;
+package kyle.poultry.finance.api.model;
 
 /**
  * How money moved. A starting set; extend when the business names more methods. It is stored on every cash ledger

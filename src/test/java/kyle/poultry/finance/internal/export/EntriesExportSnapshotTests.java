@@ -1,5 +1,9 @@
-package kyle.poultry.finance;
+package kyle.poultry.finance.internal.export;
 
+import kyle.poultry.finance.api.FinanceApi;
+import kyle.poultry.finance.api.model.EntryType;
+import kyle.poultry.finance.api.model.PaymentMethod;
+import kyle.poultry.finance.internal.web.FinanceController;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -18,8 +22,8 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.function.Consumer;
-import kyle.poultry.finance.EntryType.CashDirection;
-import kyle.poultry.finance.FinanceApi.EntryView;
+import kyle.poultry.finance.api.model.EntryType.CashDirection;
+import kyle.poultry.finance.api.FinanceApi.EntryView;
 import kyle.poultry.identity.api.model.Actor;
 import kyle.poultry.shared.csv.Csv;
 import org.junit.jupiter.api.Test;

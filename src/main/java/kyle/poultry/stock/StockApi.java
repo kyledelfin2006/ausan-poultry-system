@@ -5,7 +5,7 @@ import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
-import kyle.poultry.finance.PaymentMethod;
+import kyle.poultry.finance.api.model.PaymentMethod;
 import kyle.poultry.identity.api.model.Actor;
 import kyle.poultry.shared.reference.SourceRef;
 import com.fasterxml.jackson.annotation.JsonInclude;

@@ -5,7 +5,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
-import kyle.poultry.finance.PaymentMethod;
+import kyle.poultry.finance.api.model.PaymentMethod;
 import kyle.poultry.shared.error.ConflictException;
 import kyle.poultry.shared.error.RuleViolation;
 

@@ -4,7 +4,7 @@ import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.util.Map;
-import kyle.poultry.finance.EntryType;
+import kyle.poultry.finance.api.model.EntryType;
 import kyle.poultry.stock.StockApi;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import org.springframework.stereotype.Service;

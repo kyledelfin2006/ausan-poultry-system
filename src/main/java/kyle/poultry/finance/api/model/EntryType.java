@@ -1,4 +1,4 @@
-package kyle.poultry.finance;
+package kyle.poultry.finance.api.model;
 
 /**
  * What a ledger row means, and therefore its direction. It is the vocabulary of the finance module and is used by

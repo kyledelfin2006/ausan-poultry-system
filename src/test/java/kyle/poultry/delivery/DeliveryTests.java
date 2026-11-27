@@ -11,7 +11,7 @@ import java.util.UUID;
 import kyle.poultry.TestcontainersConfiguration;
 import kyle.poultry.delivery.DeliveryService.CreateRequest;
 import kyle.poultry.delivery.DeliveryService.LineRequest;
-import kyle.poultry.finance.PaymentMethod;
+import kyle.poultry.finance.api.model.PaymentMethod;
 import kyle.poultry.identity.api.model.Actor;
 import kyle.poultry.identity.api.model.Role;
 import kyle.poultry.shared.error.ConflictException;

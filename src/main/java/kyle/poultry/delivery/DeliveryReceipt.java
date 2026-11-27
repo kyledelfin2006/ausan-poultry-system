@@ -3,7 +3,7 @@ package kyle.poultry.delivery;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
-import kyle.poultry.finance.PaymentMethod;
+import kyle.poultry.finance.api.model.PaymentMethod;
 
 /**
  * The owner's receipt of one delivery: the sale as the customer saw it, plus what the goods cost and what was earned.
