@@ -221,8 +221,8 @@ class DeliveryQueryTests {
 
         deliver(branchA, "Catalog load", "2021-12-02T01:00:00Z");
 
-        long productLoads = statistics.getEntityStatistics("kyle.poultry.catalog.Product").getFetchCount()
-                + statistics.getEntityStatistics("kyle.poultry.catalog.Product").getLoadCount();
+        long productLoads = statistics.getEntityStatistics("kyle.poultry.catalog.internal.persistence.Product").getFetchCount()
+                + statistics.getEntityStatistics("kyle.poultry.catalog.internal.persistence.Product").getLoadCount();
         assertThat(productLoads).as("Product rows loaded while creating one delivery").isLessThanOrEqualTo(6);
     }
 

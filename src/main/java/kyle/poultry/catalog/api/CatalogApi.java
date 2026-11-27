@@ -1,4 +1,4 @@
-package kyle.poultry.catalog;
+package kyle.poultry.catalog.api;
 
 import java.math.BigDecimal;
 import java.util.List;

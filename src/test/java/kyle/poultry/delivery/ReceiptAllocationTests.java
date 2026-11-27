@@ -6,8 +6,8 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import kyle.poultry.catalog.CatalogApi.PackageItemView;
-import kyle.poultry.catalog.CatalogApi.PackageView;
+import kyle.poultry.catalog.api.CatalogApi.PackageItemView;
+import kyle.poultry.catalog.api.CatalogApi.PackageView;
 import org.junit.jupiter.api.Test;
 
 /**

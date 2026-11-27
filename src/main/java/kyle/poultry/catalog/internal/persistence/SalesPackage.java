@@ -1,5 +1,6 @@
-package kyle.poultry.catalog;
+package kyle.poultry.catalog.internal.persistence;
 
+import kyle.poultry.catalog.internal.model.PackageItem;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -9,13 +10,13 @@ import java.util.List;
 /**
  * A pre-set bundle sold at one price, e.g. "Package Small". Its contents define the stock movement of a sale.
  * <p>
- * Stored in {@code sales_package} with its lines in {@code package_item}. It is package-private: other modules
+ * Stored in {@code sales_package} with its lines in {@code package_item}. It is internal to the catalog module: other modules
  * see it as {@code CatalogApi.PackageView}. The contents are fixed after creation; only name, price and the
  * active flag may change.
  */
 @Entity
 @Table(name = "sales_package")
-class SalesPackage {
+public class SalesPackage {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY) private Long id;
     @Column(nullable = false, unique = true) private String sku;
     @Column(nullable = false, unique = true) private String name;
@@ -38,7 +39,7 @@ class SalesPackage {
      * @param price the selling price, rounded to 2 decimals (half-up)
      * @param items the contents; copied so later changes to the caller's list do not affect the package
      */
-    SalesPackage(String sku, String name, BigDecimal price, List<PackageItem> items) {
+    public SalesPackage(String sku, String name, BigDecimal price, List<PackageItem> items) {
         this.sku = sku; this.name = name; this.price = price.setScale(2, RoundingMode.HALF_UP);
         this.items = new ArrayList<>(items);
     }
@@ -50,7 +51,7 @@ class SalesPackage {
      * @param price  the new price (rounded to 2 decimals), or {@code null} to keep the current one
      * @param active the new active flag, or {@code null} to keep the current one
      */
-    void update(String name, BigDecimal price, Boolean active) {
+    public void update(String name, BigDecimal price, Boolean active) {
         // Partial-update (PATCH) semantics: only fields the caller sent are changed.
         if (name != null) this.name = name;
         if (price != null) this.price = price.setScale(2, RoundingMode.HALF_UP);
@@ -58,20 +59,20 @@ class SalesPackage {
     }
 
     /** {@return the database id (null until the package is saved)} */
-    Long id() { return id; }
+    public Long id() { return id; }
 
     /** {@return the unique stock-keeping code} */
-    String sku() { return sku; }
+    public String sku() { return sku; }
 
     /** {@return the display name} */
-    String name() { return name; }
+    public String name() { return name; }
 
     /** {@return the selling price at 2 decimals} */
-    BigDecimal price() { return price; }
+    public BigDecimal price() { return price; }
 
     /** {@return whether the package may still be sold} */
-    boolean active() { return active; }
+    public boolean active() { return active; }
 
     /** {@return the package contents (the live list held by the entity)} */
-    List<PackageItem> items() { return items; }
+    public List<PackageItem> items() { return items; }
 }

@@ -1,5 +1,13 @@
-package kyle.poultry.catalog;
+package kyle.poultry.catalog.internal.service;
 
+import kyle.poultry.catalog.api.CatalogApi;
+import kyle.poultry.catalog.internal.model.PackageItem;
+import kyle.poultry.catalog.internal.persistence.Branch;
+import kyle.poultry.catalog.internal.persistence.BranchRepository;
+import kyle.poultry.catalog.internal.persistence.Product;
+import kyle.poultry.catalog.internal.persistence.ProductRepository;
+import kyle.poultry.catalog.internal.persistence.SalesPackage;
+import kyle.poultry.catalog.internal.persistence.SalesPackageRepository;
 import java.math.BigDecimal;
 import java.util.HashSet;
 import java.util.List;
@@ -21,12 +29,12 @@ import org.springframework.transaction.annotation.Transactional;
  * <p>
  * The class is read-only transactional by default; every method that changes data re-declares
  * {@code @Transactional} to make it read-write. Updates rely on JPA dirty checking, so the changed entity is
- * flushed at commit without an explicit save. It is package-private: other modules use it only through
- * {@link CatalogApi}, and {@link CatalogController} calls the non-API methods.
+ * flushed at commit without an explicit save. It is internal to the catalog module: other modules use it only through
+ * {@link CatalogApi}, and {@code CatalogController} calls the non-API methods.
  */
 @Service
 @Transactional(readOnly = true)
-class CatalogService implements CatalogApi {
+public class CatalogService implements CatalogApi {
     private final ProductRepository products;
     private final BranchRepository branches;
     private final SalesPackageRepository packages;
@@ -90,7 +98,7 @@ class CatalogService implements CatalogApi {
      *
      * @return all branches
      */
-    List<BranchView> branches() {
+    public List<BranchView> branches() {
         return branches.findAll(Sort.by("id")).stream().map(Branch::view).toList();
     }
 
@@ -103,7 +111,7 @@ class CatalogService implements CatalogApi {
      * @return the saved product
      */
     @Transactional
-    ProductView createProduct(String name, String unit, BigDecimal defaultPrice) {
+    public ProductView createProduct(String name, String unit, BigDecimal defaultPrice) {
         var saved = products.save(new Product(name, unit, defaultPrice)).view();
         audit.record(AuditAction.CREATED, AuditEntity.PRODUCT, saved.id(), "name: " + saved.name() + "; unit: " + saved.unit());
         return saved;
@@ -121,7 +129,7 @@ class CatalogService implements CatalogApi {
      * @throws NotFoundException if no product has that id
      */
     @Transactional
-    ProductView updateProduct(long id, String name, String unit, BigDecimal defaultPrice, Boolean active) {
+    public ProductView updateProduct(long id, String name, String unit, BigDecimal defaultPrice, Boolean active) {
         var p = products.findById(id).orElseThrow(() -> new NotFoundException("Product", id));
         var before = p.view();
         // No save() needed: the entity is managed, so the change is flushed when the transaction commits.
@@ -140,7 +148,7 @@ class CatalogService implements CatalogApi {
      * @return the saved branch
      */
     @Transactional
-    BranchView createBranch(String name) {
+    public BranchView createBranch(String name) {
         var saved = branches.save(new Branch(name)).view();
         audit.record(AuditAction.CREATED, AuditEntity.BRANCH, saved.id(), "name: " + saved.name());
         return saved;
@@ -156,7 +164,7 @@ class CatalogService implements CatalogApi {
      * @throws NotFoundException if no branch has that id
      */
     @Transactional
-    BranchView updateBranch(long id, String name, Boolean active) {
+    public BranchView updateBranch(long id, String name, Boolean active) {
         var b = branches.findById(id).orElseThrow(() -> new NotFoundException("Branch", id));
         var before = b.view();
         // No save() needed: the entity is managed, so the change is flushed when the transaction commits.
@@ -180,7 +188,7 @@ class CatalogService implements CatalogApi {
      * @throws NotFoundException if a listed product does not exist
      */
     @Transactional
-    PackageView createPackage(String sku, String name, BigDecimal price, List<PackageItem> items) {
+    public PackageView createPackage(String sku, String name, BigDecimal price, List<PackageItem> items) {
         // The controller already validates input, but the service re-checks so other callers cannot bypass it.
         if (items == null || items.isEmpty()) throw new RuleViolation("A package needs at least one item");
         var seen = new HashSet<Long>();
@@ -208,7 +216,7 @@ class CatalogService implements CatalogApi {
      * @throws NotFoundException if no package has that id
      */
     @Transactional
-    PackageView updatePackage(long id, String name, BigDecimal price, Boolean active) {
+    public PackageView updatePackage(long id, String name, BigDecimal price, Boolean active) {
         var p = packages.findById(id).orElseThrow(() -> new NotFoundException("Package", id));
         var beforeName = p.name(); var beforePrice = p.price(); var beforeActive = p.active();
         // No save() needed: the entity is managed, so the change is flushed when the transaction commits.

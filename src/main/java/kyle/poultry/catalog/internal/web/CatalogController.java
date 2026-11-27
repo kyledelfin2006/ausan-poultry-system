@@ -1,5 +1,7 @@
-package kyle.poultry.catalog;
+package kyle.poultry.catalog.internal.web;
 
+import kyle.poultry.catalog.internal.model.PackageItem;
+import kyle.poultry.catalog.internal.service.CatalogService;
 import kyle.poultry.identity.api.model.Capability;
 import kyle.poultry.identity.api.security.RequiresCapability;
 import jakarta.validation.Valid;
@@ -13,9 +15,9 @@ import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.util.List;
-import kyle.poultry.catalog.CatalogApi.BranchView;
-import kyle.poultry.catalog.CatalogApi.PackageView;
-import kyle.poultry.catalog.CatalogApi.ProductView;
+import kyle.poultry.catalog.api.CatalogApi.BranchView;
+import kyle.poultry.catalog.api.CatalogApi.PackageView;
+import kyle.poultry.catalog.api.CatalogApi.ProductView;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 

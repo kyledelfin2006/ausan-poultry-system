@@ -1,17 +1,17 @@
-package kyle.poultry.catalog;
+package kyle.poultry.catalog.internal.persistence;
 
 import jakarta.persistence.*;
-import kyle.poultry.catalog.CatalogApi.BranchView;
+import kyle.poultry.catalog.api.CatalogApi.BranchView;
 
 /**
  * A farm branch (a location that holds stock and receives deliveries), stored in the {@code branch} table.
  * <p>
- * It is package-private: other modules see branches only through {@link BranchView} returned by
- * {@link CatalogApi}. A branch is never deleted; it is deactivated so history that points at it stays valid.
+ * It is internal to the catalog module: other modules see branches only through {@link BranchView} returned by
+ * {@code CatalogApi}. A branch is never deleted; it is deactivated so history that points at it stays valid.
  */
 @Entity
 @Table(name = "branch")
-class Branch {
+public class Branch {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY) private Long id;
     @Column(nullable = false, unique = true) private String name;
     private boolean active = true;
@@ -24,7 +24,7 @@ class Branch {
      *
      * @param name the unique branch name
      */
-    Branch(String name) { this.name = name; }
+    public Branch(String name) { this.name = name; }
 
     /**
      * Applies a partial update; a {@code null} argument leaves that field unchanged.
@@ -32,15 +32,15 @@ class Branch {
      * @param name   the new name, or {@code null} to keep the current one
      * @param active the new active flag, or {@code null} to keep the current one
      */
-    void update(String name, Boolean active) {
+    public void update(String name, Boolean active) {
         // Partial-update (PATCH) semantics: only fields the caller sent are changed.
         if (name != null) this.name = name;
         if (active != null) this.active = active;
     }
 
     /** {@return whether the branch may still be used for new stock movements and deliveries} */
-    boolean active() { return active; }
+    public boolean active() { return active; }
 
     /** {@return the immutable public representation of this branch} */
-    BranchView view() { return new BranchView(id, name, active); }
+    public BranchView view() { return new BranchView(id, name, active); }
 }

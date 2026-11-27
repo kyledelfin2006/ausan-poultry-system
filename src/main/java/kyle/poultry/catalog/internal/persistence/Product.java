@@ -1,19 +1,19 @@
-package kyle.poultry.catalog;
+package kyle.poultry.catalog.internal.persistence;
 
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import kyle.poultry.catalog.CatalogApi.ProductView;
+import kyle.poultry.catalog.api.CatalogApi.ProductView;
 
 /**
  * A stockable, sellable product (for example a chicken or a bag of feed), stored in the {@code product} table.
  * <p>
- * It is package-private: other modules see products only through {@link ProductView} returned by
- * {@link CatalogApi}. Products are deactivated rather than deleted so stock and delivery history stays valid.
+ * It is internal to the catalog module: other modules see products only through {@link ProductView} returned by
+ * {@code CatalogApi}. Products are deactivated rather than deleted so stock and delivery history stays valid.
  */
 @Entity
 @Table(name = "product")
-class Product {
+public class Product {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY) private Long id;
     @Column(nullable = false, unique = true) private String name;
     @Column(nullable = false) private String unit;
@@ -30,7 +30,7 @@ class Product {
      * @param unit         the unit of measure shown with quantities, e.g. {@code "pc"}
      * @param defaultPrice the suggested selling price, or {@code null} if none; rounded to 2 decimals
      */
-    Product(String name, String unit, BigDecimal defaultPrice) {
+    public Product(String name, String unit, BigDecimal defaultPrice) {
         this.name = name; this.unit = unit; this.defaultPrice = scale(defaultPrice);
     }
 
@@ -42,7 +42,7 @@ class Product {
      * @param defaultPrice the new default price (rounded to 2 decimals), or {@code null} to keep the current one
      * @param active       the new active flag, or {@code null} to keep the current one
      */
-    void update(String name, String unit, BigDecimal defaultPrice, Boolean active) {
+    public void update(String name, String unit, BigDecimal defaultPrice, Boolean active) {
         // Partial-update (PATCH) semantics: only fields the caller sent are changed.
         if (name != null) this.name = name;
         if (unit != null) this.unit = unit;
@@ -51,10 +51,10 @@ class Product {
     }
 
     /** {@return whether the product may still be used for new stock movements and packages} */
-    boolean active() { return active; }
+    public boolean active() { return active; }
 
     /** {@return the immutable public representation of this product} */
-    ProductView view() { return new ProductView(id, name, unit, defaultPrice, active); }
+    public ProductView view() { return new ProductView(id, name, unit, defaultPrice, active); }
 
     /**
      * Rounds a money amount to centavos (2 decimals, half-up), passing {@code null} through.

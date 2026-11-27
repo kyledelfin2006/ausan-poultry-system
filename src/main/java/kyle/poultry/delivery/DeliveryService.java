@@ -11,7 +11,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
-import kyle.poultry.catalog.CatalogApi;
+import kyle.poultry.catalog.api.CatalogApi;
 import kyle.poultry.finance.FinanceApi;
 import kyle.poultry.finance.PaymentMethod;
 import kyle.poultry.identity.api.model.Actor;
