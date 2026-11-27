@@ -23,7 +23,7 @@ import java.util.ArrayList;
 import java.util.Map;
 import java.util.function.Consumer;
 import kyle.poultry.finance.api.model.EntryType.CashDirection;
-import kyle.poultry.finance.api.FinanceApi.EntryView;
+import kyle.poultry.finance.api.model.EntryView;
 import kyle.poultry.identity.api.model.Actor;
 import kyle.poultry.shared.csv.Csv;
 import org.junit.jupiter.api.Test;

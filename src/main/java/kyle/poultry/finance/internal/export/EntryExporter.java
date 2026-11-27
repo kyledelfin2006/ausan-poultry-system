@@ -9,7 +9,7 @@ import jakarta.persistence.PersistenceContext;
 import java.time.LocalDate;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
-import kyle.poultry.finance.api.FinanceApi.EntryView;
+import kyle.poultry.finance.api.model.EntryView;
 import kyle.poultry.identity.api.model.Actor;
 import kyle.poultry.identity.api.model.Capability;
 import org.springframework.stereotype.Service;

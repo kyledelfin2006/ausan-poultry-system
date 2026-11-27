@@ -1,5 +1,6 @@
 package kyle.poultry.finance.internal.service;
 
+import kyle.poultry.finance.api.model.EntryView;
 import kyle.poultry.finance.api.FinanceApi;
 import kyle.poultry.finance.api.model.EntryType;
 import kyle.poultry.finance.api.model.PaymentMethod;

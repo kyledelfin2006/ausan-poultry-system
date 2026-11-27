@@ -1,13 +1,12 @@
 package kyle.poultry.finance.api;
 
 import kyle.poultry.finance.api.model.EntryType;
+import kyle.poultry.finance.api.model.EntryView;
 import kyle.poultry.finance.api.model.PaymentMethod;
 import java.math.BigDecimal;
-import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
-import kyle.poultry.finance.api.model.EntryType.CashDirection;
 import kyle.poultry.identity.api.model.Actor;
 import kyle.poultry.shared.reference.SourceRef;
 import org.springframework.data.domain.Page;
@@ -192,24 +191,4 @@ public interface FinanceApi {
      * @throws kyle.poultry.shared.error.RuleViolation if a date is missing or {@code to} is before {@code from}
      */
     Page<EntryView> entries(LocalDate from, LocalDate to, EntryType type, Pageable page, Actor actor);
-
-    /**
-     * Read-only copy of one ledger entry, safe to hand to other modules and to serialise.
-     *
-     * @param id            entry id
-     * @param type          what the entry means
-     * @param cashDirection whether cash came in, went out or did not move
-     * @param amount        positive PHP amount
-     * @param method        payment method; null for entries that move no cash
-     * @param occurredOn    business date (Asia/Manila)
-     * @param description   optional note
-     * @param sourceType    kind of record that caused it (e.g. DELIVERY); null for expenses
-     * @param sourceId      id of that record
-     * @param reversesId    for reversal entries, the entry being cancelled
-     * @param createdBy     id of the user who recorded it
-     * @param createdAt     when it was recorded
-     */
-    record EntryView(long id, EntryType type, CashDirection cashDirection, BigDecimal amount, PaymentMethod method,
-                     LocalDate occurredOn, String description, String sourceType, Long sourceId, Long reversesId,
-                     long createdBy, Instant createdAt) {}
 }

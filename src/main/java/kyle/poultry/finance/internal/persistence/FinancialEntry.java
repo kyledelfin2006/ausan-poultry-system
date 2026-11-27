@@ -6,7 +6,7 @@ import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
-import kyle.poultry.finance.api.FinanceApi.EntryView;
+import kyle.poultry.finance.api.model.EntryView;
 import kyle.poultry.identity.api.model.Actor;
 import kyle.poultry.shared.error.RuleViolation;
 import kyle.poultry.shared.reference.SourceRef;
