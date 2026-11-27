@@ -79,7 +79,7 @@ jobs:
       # Fix wrapper execution before invoking Maven.
       - run: chmod +x mvnw
       # Restore unit data under the directory read by JaCoCo's verify-phase merge.
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@v8
         with:
           # Download the artifact produced by this workflow's unit-test job.
           name: unit-coverage
