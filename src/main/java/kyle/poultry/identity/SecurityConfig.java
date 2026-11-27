@@ -11,9 +11,13 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.authorization.AuthorizationDecision;
+import org.springframework.security.authorization.AuthorizationManager;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
@@ -22,6 +26,7 @@ import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.intercept.RequestAuthorizationContext;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
 import org.springframework.security.web.header.writers.StaticHeadersWriter;
@@ -66,15 +71,53 @@ class SecurityConfig {
                 .authorizeHttpRequests(a -> a
                         .requestMatchers("/api/auth/login", "/actuator/health/**").permitAll()
                         // Metrics and other operational endpoints can reveal internals, so only the owner may read them.
-                        .requestMatchers("/actuator/**").hasRole("OWNER")
+                        .requestMatchers("/actuator/**").access(ownerWithoutPasswordChange())
                         // Wholly owner-only areas are also refused here, before the body is read, so an assistant
                         // gets 403 (not 400) for any request; @PreAuthorize stays as defence in depth.
-                        .requestMatchers("/api/users", "/api/users/**", "/api/audit", "/api/audit/**").hasRole("OWNER")
-                        .anyRequest().authenticated())
+                        .requestMatchers("/api/users", "/api/users/**", "/api/audit", "/api/audit/**")
+                        .access(ownerWithoutPasswordChange())
+                        .anyRequest().access(authenticatedUnlessPasswordChangeRequired()))
                 .oauth2ResourceServer(o -> o.jwt(j -> j.jwtAuthenticationConverter(converter)))
                 // Missing, invalid or revoked credentials all answer a plain 401 with no details.
                 .exceptionHandling(e -> e.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
                 .build();
+    }
+
+    /** Keeps users with a temporary password to the small set of routes needed to finish or abandon sign-in. */
+    private static AuthorizationManager<RequestAuthorizationContext> authenticatedUnlessPasswordChangeRequired() {
+        return (authentication, context) -> {
+            Authentication current = authentication.get();
+            if (!isAuthenticated(current)) return new AuthorizationDecision(false);
+            if (!hasAuthority(current, RevocationAuthenticationConverter.MUST_CHANGE_PASSWORD))
+                return new AuthorizationDecision(true);
+            var request = context.getRequest();
+            boolean allowed = ("GET".equals(request.getMethod()) && "/api/auth/me".equals(request.getServletPath()))
+                    || ("POST".equals(request.getMethod())
+                    && ("/api/auth/password".equals(request.getServletPath())
+                    || "/api/auth/logout".equals(request.getServletPath())));
+            return new AuthorizationDecision(allowed);
+        };
+    }
+
+    /** Applies the same temporary-password restriction before the owner-only URL rules. */
+    private static AuthorizationManager<RequestAuthorizationContext> ownerWithoutPasswordChange() {
+        return (authentication, context) -> {
+            Authentication current = authentication.get();
+            return new AuthorizationDecision(isAuthenticated(current)
+                    && !hasAuthority(current, RevocationAuthenticationConverter.MUST_CHANGE_PASSWORD)
+                    && hasAuthority(current, "ROLE_OWNER"));
+        };
+    }
+
+    /** Excludes anonymous requests even though the framework marks their token as authenticated. */
+    private static boolean isAuthenticated(Authentication authentication) {
+        return authentication != null && authentication.isAuthenticated()
+                && !(authentication instanceof AnonymousAuthenticationToken);
+    }
+
+    /** Checks whether the current identity has one of the authorities supplied by the converter. */
+    private static boolean hasAuthority(Authentication authentication, String authority) {
+        return authentication.getAuthorities().stream().anyMatch(granted -> authority.equals(granted.getAuthority()));
     }
 
     /**

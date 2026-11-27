@@ -37,5 +37,8 @@ final class CsvContract {
                     .description("`attachment; filename=\"...\"`: the suggested file name, which includes the period.")
                     .schema(new StringSchema()));
         });
+        // A streamed export is scanned as an empty object schema that no response refers to once the content is replaced.
+        if (openApi.getComponents() != null && openApi.getComponents().getSchemas() != null)
+            openApi.getComponents().getSchemas().remove("StreamingResponseBody");
     }
 }

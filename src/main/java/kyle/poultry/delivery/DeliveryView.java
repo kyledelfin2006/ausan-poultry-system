@@ -20,12 +20,14 @@ import kyle.poultry.finance.PaymentMethod;
  * @param total           sum of the line totals
  * @param paymentMethod   how the customer paid
  * @param cancelReason    why it was cancelled, or null
- * @param retainedPayment for a CANCELLED delivery: money received and not yet refunded; otherwise null
+ * @param returnReason    why the goods came back after arrival, or null
+ * @param retainedPayment for a CANCELLED or RETURNED delivery: money received and not yet refunded; otherwise null
  * @param lines           the packages sold
  * @param createdBy       id of the user who created it
  * @param createdAt       when it was created
  */
 record DeliveryView(long id, String code, DeliveryStatus status, String customerName, String driverName,
                     long fromBranchId, String destination, Instant startedAt, Instant completedAt,
-                    BigDecimal total, PaymentMethod paymentMethod, String cancelReason, BigDecimal retainedPayment,
+                    BigDecimal total, PaymentMethod paymentMethod, String cancelReason, String returnReason,
+                    BigDecimal retainedPayment,
                     List<DeliveryLine> lines, long createdBy, Instant createdAt) {}

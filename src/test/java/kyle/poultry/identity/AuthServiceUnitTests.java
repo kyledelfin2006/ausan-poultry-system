@@ -33,7 +33,7 @@ class AuthServiceUnitTests {
     /** Builds the service with a cheap encoder and a signer that returns a fixed token. */
     @BeforeEach
     void setUp() {
-        service = new AuthService(users, encoder, jwt, new SecurityProperties("x".repeat(32), null),
+        service = new AuthService(users, encoder, jwt, new SecurityProperties("0123456789abcdefghijklmnopqrstuv", null),
                 Clock.fixed(NOW, ZoneOffset.UTC));
     }
 

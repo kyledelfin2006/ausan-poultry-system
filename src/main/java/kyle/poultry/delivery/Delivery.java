@@ -42,6 +42,10 @@ class Delivery {
     private String cancelReason;
     /** When it was cancelled; null unless cancelled. */
     private Instant cancelledAt;
+    /** Why the delivered goods came back; null unless returned. */
+    private String returnReason;
+    /** When the return was recorded; null unless returned. */
+    private Instant returnedAt;
     /** Id of the user who created it. */
     private long createdBy;
     /** When it was created. */
@@ -128,6 +132,26 @@ class Delivery {
     }
 
     /**
+     * Records that the whole delivery came back after arrival (DONE -> RETURNED).
+     *
+     * @param reason why it came back
+     * @param now    when the return is recorded
+     * @throws ConflictException when the delivery is not DONE
+     * @throws RuleViolation     when the reason is blank
+     */
+    void markReturned(String reason, Instant now) {
+        if (status != DeliveryStatus.DONE)
+            throw new ConflictException("Delivery " + code + " is " + status + "; only a DONE delivery can be returned");
+        if (reason == null || reason.isBlank()) throw new RuleViolation("A return reason is required");
+        this.status = DeliveryStatus.RETURNED;
+        this.returnReason = reason;
+        this.returnedAt = now;
+    }
+
+    /** {@return true when the sale was undone: the delivery is CANCELLED or RETURNED} */
+    boolean isReversed() { return status == DeliveryStatus.CANCELLED || status == DeliveryStatus.RETURNED; }
+
+    /**
      * Guards a transition: DONE and CANCELLED are final.
      *
      * @param action what is being attempted, for the error message
@@ -162,6 +186,8 @@ class Delivery {
     PaymentMethod paymentMethod() { return paymentMethod; }
     /** {@return the cancellation reason, or null} */
     String cancelReason() { return cancelReason; }
+    /** {@return the return reason, or null} */
+    String returnReason() { return returnReason; }
     /** {@return the package lines} */
     List<DeliveryLine> lines() { return lines; }
     /** {@return the id of the creating user} */

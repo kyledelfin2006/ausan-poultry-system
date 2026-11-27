@@ -18,6 +18,8 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
  * registered by {@link SecurityConfig}.
  */
 final class RevocationAuthenticationConverter implements Converter<Jwt, AbstractAuthenticationToken> {
+    /** Authority used to limit sessions that still carry a bootstrap or owner-reset password. */
+    static final String MUST_CHANGE_PASSWORD = "MUST_CHANGE_PASSWORD";
     private final AppUserRepository users;
 
     /**
@@ -31,7 +33,7 @@ final class RevocationAuthenticationConverter implements Converter<Jwt, Abstract
      * Turns a verified token into an authentication for the user's CURRENT state.
      *
      * @param jwt the verified token
-     * @return an authentication whose principal carries the database role and whose authority is {@code ROLE_<role>}
+     * @return an authentication whose principal carries the database role and any temporary-password restriction
      * @throws BadCredentialsException when the subject is not a number, the user no longer exists, the user is
      *                                 inactive, or the token was revoked by a sign-out or password change; the
      *                                 filter answers 401
@@ -59,6 +61,9 @@ final class RevocationAuthenticationConverter implements Converter<Jwt, Abstract
         var claims = new HashMap<>(jwt.getClaims());
         claims.put("role", role.name());
         var current = new Jwt(jwt.getTokenValue(), jwt.getIssuedAt(), jwt.getExpiresAt(), jwt.getHeaders(), claims);
-        return new JwtAuthenticationToken(current, List.of(new SimpleGrantedAuthority("ROLE_" + role.name())), String.valueOf(id));
+        var authorities = new java.util.ArrayList<SimpleGrantedAuthority>();
+        authorities.add(new SimpleGrantedAuthority("ROLE_" + role.name()));
+        if (user.mustChangePassword()) authorities.add(new SimpleGrantedAuthority(MUST_CHANGE_PASSWORD));
+        return new JwtAuthenticationToken(current, authorities, String.valueOf(id));
     }
 }

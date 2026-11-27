@@ -37,7 +37,7 @@ class OwnerBootstrap implements ApplicationRunner {
             log.warn("No users exist and app.bootstrap.owner-* is not set; nobody will be able to log in");
             return;
         }
-        users.create(props.ownerUsername(), props.ownerPassword(), "Owner", Role.OWNER);
+        users.create(props.ownerUsername(), props.ownerPassword(), "Owner", Role.OWNER, props.requirePasswordChange());
         // Log the username only; the password must never be logged.
         log.info("Created initial owner account '{}'", props.ownerUsername());
     }

@@ -3,6 +3,7 @@ package kyle.poultry.report;
 import java.time.LocalDate;
 import java.util.List;
 import kyle.poultry.identity.Actor;
+import kyle.poultry.identity.Capability;
 import kyle.poultry.report.DashboardService.Dashboard;
 import kyle.poultry.report.ReportService.InventoryValue;
 import kyle.poultry.report.ReportService.Profit;
@@ -57,7 +58,7 @@ class ReportController {
     Summary summary(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
                     @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
                     @AuthenticationPrincipal Jwt jwt) {
-        return visibleSummary(reports.summary(from, to), Actor.from(jwt).isOwner());
+        return visibleSummary(reports.summary(from, to), Actor.from(jwt).can(Capability.VIEW_COST_AND_PROFIT));
     }
 
     /**
@@ -98,7 +99,7 @@ class ReportController {
                   @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
                   @RequestParam(defaultValue = "DAY") Granularity granularity,
                   @AuthenticationPrincipal Jwt jwt) {
-        return visibleSeries(series.series(from, to, granularity), Actor.from(jwt).isOwner());
+        return visibleSeries(series.series(from, to, granularity), Actor.from(jwt).can(Capability.VIEW_COST_AND_PROFIT));
     }
 
     /**
@@ -126,7 +127,7 @@ class ReportController {
      * @return the dashboard
      */
     @GetMapping("/dashboard")
-    Dashboard dashboard(@AuthenticationPrincipal Jwt jwt) { return dashboard.dashboard(Actor.from(jwt).isOwner()); }
+    Dashboard dashboard(@AuthenticationPrincipal Jwt jwt) { return dashboard.dashboard(Actor.from(jwt).can(Capability.VIEW_COST_AND_PROFIT)); }
 
     /**
      * The summary report as a CSV download; open to owner and assistant.
@@ -140,7 +141,7 @@ class ReportController {
                                       @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
                                       @AuthenticationPrincipal Jwt jwt) {
         return Csv.download("summary-" + from + "-to-" + to + ".csv",
-                ReportCsv.summary(visibleSummary(reports.summary(from, to), Actor.from(jwt).isOwner())));
+                ReportCsv.summary(visibleSummary(reports.summary(from, to), Actor.from(jwt).can(Capability.VIEW_COST_AND_PROFIT))));
     }
 
     /**
@@ -182,7 +183,7 @@ class ReportController {
                                      @RequestParam(defaultValue = "DAY") Granularity granularity,
                                      @AuthenticationPrincipal Jwt jwt) {
         return Csv.download("series-" + from + "-to-" + to + ".csv",
-                ReportCsv.series(visibleSeries(series.series(from, to, granularity), Actor.from(jwt).isOwner())));
+                ReportCsv.series(visibleSeries(series.series(from, to, granularity), Actor.from(jwt).can(Capability.VIEW_COST_AND_PROFIT))));
     }
 
     /**

@@ -30,7 +30,7 @@ machine-readable `code`:
 | `DATA_CONFLICT` | 409 | A database rule rejected the change, e.g. a duplicate product, branch or package name or SKU. `detail` is always `The change conflicts with existing data`. | Tell the user the name or SKU is probably already taken. |
 | `UNSUPPORTED_MEDIA_TYPE` | 415 | The body is not JSON. | Client bug; send `Content-Type: application/json`. |
 | `RULE_VIOLATION` | 422 | The request is well-formed but a business rule forbids it: future date; an assistant date more than 7 Manila calendar days in the past; inactive product/branch/package; missing payment method; refund above what is held; duplicate item; report period longer than 366 days; wrong current password; a [password rule](auth-session.md#password-rules); `Idempotency-Key` reused with a different request. | Show `detail` to the user. |
-| `TOO_MANY_REQUESTS` | 429 | Five failed logins within 15 minutes for the same username and address. The `Retry-After` header holds the seconds to wait. | Disable the login button and show a countdown. |
+| `TOO_MANY_REQUESTS` | 429 | Five failed logins within 15 minutes for the same username and address, **or** three CSV exports already running (`GET /api/finance/entries.csv`). The `Retry-After` header holds the seconds to wait. | Disable the login button and show a countdown; for an export, wait and press Download again. |
 | `INTERNAL_ERROR` | 500 | An unexpected server error. `detail` is always `An unexpected error occurred`; nothing internal is leaked. | Show a generic "try again later" and report it. |
 
 Rule of thumb for the UI: `400` = fix the form or it's a bug, `409`/`422` = show `detail`, `401` = go to login,

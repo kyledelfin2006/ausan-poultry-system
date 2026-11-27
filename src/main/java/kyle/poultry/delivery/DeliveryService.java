@@ -15,17 +15,21 @@ import kyle.poultry.catalog.CatalogApi;
 import kyle.poultry.finance.FinanceApi;
 import kyle.poultry.finance.PaymentMethod;
 import kyle.poultry.identity.Actor;
+import kyle.poultry.identity.Capability;
 import kyle.poultry.shared.BusinessDatePolicy;
 import kyle.poultry.shared.NotFoundException;
+import kyle.poultry.shared.RequestInProgressException;
 import kyle.poultry.shared.RuleViolation;
 import kyle.poultry.shared.SourceRef;
 import kyle.poultry.stock.StockApi;
 import kyle.poultry.stock.StockApi.MovementView;
 import kyle.poultry.stock.StockApi.StockLine;
+import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.jdbc.UncategorizedSQLException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
@@ -41,6 +45,9 @@ import org.springframework.transaction.annotation.Transactional;
 class DeliveryService {
     /** Marks stock and finance entries as belonging to a delivery, so they can be found and reversed later. */
     private static final String SOURCE_TYPE = "DELIVERY";
+
+    /** How long a repeated request waits for the first one before being told to retry (CON-3). */
+    private static final int LOCK_WAIT_MS = 2_500;
 
     private final DeliveryRepository deliveries;
     private final CatalogApi catalog;
@@ -125,9 +132,7 @@ class DeliveryService {
      */
     CreateResult create(CreateRequest r, Actor actor, String idempotencyKey) {
         if (idempotencyKey != null) {
-            // Serialise same-key requests: the lock is released automatically when this transaction ends.
-            jdbc.queryForList("select pg_advisory_xact_lock(hashtextextended(?, 0))",
-                    actor.userId() + ":" + idempotencyKey);
+            lockKey(actor.userId() + ":" + idempotencyKey);
             var existing = jdbc.query("select delivery_id from delivery_idempotency where idempotency_key = ? and user_id = ?",
                     (rs, i) -> rs.getLong(1), idempotencyKey, actor.userId());
             if (!existing.isEmpty()) {
@@ -145,6 +150,32 @@ class DeliveryService {
                     idempotencyKey, actor.userId(), view.id(), java.sql.Timestamp.from(clock.instant()));
         }
         return new CreateResult(view, true);
+    }
+
+    /**
+     * Serialises same-key requests with a transaction-scoped advisory lock (released when the transaction ends), but waits
+     * only {@link #LOCK_WAIT_MS}. A waiter holds a pooled connection, so an unbounded wait lets a stuck first request use
+     * up the pool; after the short wait the repeat is refused with a retry hint instead.
+     *
+     * <p>The timeout is set for this one statement and cleared straight after, so the stock-row locks taken later in the
+     * same transaction keep their normal behaviour.
+     *
+     * @param key the lock key, "userId:idempotencyKey"
+     * @throws RequestInProgressException when the lock stayed taken for the whole wait
+     */
+    private void lockKey(String key) {
+        jdbc.queryForObject("select set_config('lock_timeout', ?, true)", String.class, LOCK_WAIT_MS + "ms");
+        try {
+            jdbc.queryForList("select pg_advisory_xact_lock(hashtextextended(?, 0))", key);
+        } catch (PessimisticLockingFailureException e) {
+            throw new RequestInProgressException();
+        } catch (UncategorizedSQLException e) {
+            // The PostgreSQL driver's lock timeout (SQLSTATE 55P03) is not categorised by Spring; anything else is a real error.
+            if (!"55P03".equals(e.getSQLException().getSQLState())) throw e;
+            // The transaction is rolled back as the exception leaves create.
+            throw new RequestInProgressException();
+        }
+        jdbc.queryForObject("select set_config('lock_timeout', '0', true)", String.class);
     }
 
     /**
@@ -204,7 +235,7 @@ class DeliveryService {
         Instant now = clock.instant().truncatedTo(ChronoUnit.MICROS);
         Instant startedAt = r.startedAt() == null ? now : r.startedAt();
         if (startedAt.isAfter(now)) throw new RuleViolation("Start time cannot be in the future");
-        BusinessDatePolicy.requireAllowed(startedAt.atZone(clock.getZone()).toLocalDate(), actor.isOwner(), clock);
+        BusinessDatePolicy.requireAllowed(startedAt.atZone(clock.getZone()).toLocalDate(), actor.can(Capability.BACKDATE_FREELY), clock);
 
         var lines = new ArrayList<DeliveryLine>();
         Map<Long, Long> productQuantities = new TreeMap<>();   // product id -> units to take out of the branch
@@ -270,7 +301,7 @@ class DeliveryService {
         d.markDone(completedAt, clock.instant());
         // Runs after the domain checks so a missing or future time keeps its specific message; a rule violation here
         // rolls the whole transaction back, so the delivery stays ACTIVE.
-        BusinessDatePolicy.requireAllowed(completedAt.atZone(clock.getZone()).toLocalDate(), actor.isOwner(), clock);
+        BusinessDatePolicy.requireAllowed(completedAt.atZone(clock.getZone()).toLocalDate(), actor.can(Capability.BACKDATE_FREELY), clock);
         return view(d);
     }
 
@@ -288,8 +319,10 @@ class DeliveryService {
      * @throws RuleViolation         when no reason is given
      */
     DeliveryView cancel(long id, String reason, Actor actor) {
-        if (!actor.isOwner()) throw new AccessDeniedException("Only the owner can cancel a delivery");
+        actor.require(Capability.CANCEL_DELIVERY);
         var d = lock(id);
+        // Change the delivery BEFORE any stock call: stock writes flush pending changes and then detach every entity in
+        // the transaction (DBG-3), so a change made to d after stock.* would be silently lost.
         d.cancel(reason, clock.instant());
         var source = new SourceRef(SOURCE_TYPE, d.id());
         LocalDate on = LocalDate.now(clock);
@@ -300,7 +333,31 @@ class DeliveryService {
     }
 
     /**
-     * Owner only. Money actually handed back for a cancelled delivery, never more than was paid.
+     * Owner only. Records that the whole delivery came back after arrival (DONE -> RETURNED): the goods go back to sellable stock and the sale and its cost are reversed, exactly as for a cancellation. Money is handed back separately with {@link #refund}.
+     *
+     * @param id     the delivery
+     * @param reason why it came back
+     * @param actor  must be allowed to return deliveries
+     * @return the returned delivery with the money still held
+     * @throws AccessDeniedException when the actor may not return deliveries
+     * @throws NotFoundException     when the delivery does not exist
+     * @throws kyle.poultry.shared.ConflictException when the delivery is not DONE
+     * @throws RuleViolation         when no reason is given
+     */
+    DeliveryView returnDelivery(long id, String reason, Actor actor) {
+        actor.require(Capability.RETURN_DELIVERY);
+        var d = lock(id);
+        // Change the delivery BEFORE any stock call: stock writes detach every entity in the transaction (DBG-3).
+        d.markReturned(reason, clock.instant());
+        var source = new SourceRef(SOURCE_TYPE, d.id());
+        LocalDate on = LocalDate.now(clock);
+        stock.reverseAllFor(source, "Delivery " + d.code() + " returned", on, actor);
+        finance.reverseSaleAndCost(source, on, actor);
+        return view(d);
+    }
+
+    /**
+     * Owner only. Money actually handed back for a cancelled or returned delivery, never more than was paid.
      *
      * @param id          the delivery
      * @param amount      amount refunded
@@ -310,13 +367,13 @@ class DeliveryService {
      * @return the delivery with its remaining retained payment
      * @throws AccessDeniedException when the actor is not an owner
      * @throws NotFoundException     when the delivery does not exist
-     * @throws RuleViolation         when the delivery is not CANCELLED or the amount exceeds what is still retained
+     * @throws RuleViolation         when the delivery is not CANCELLED or RETURNED or the amount exceeds what is still retained
      */
     DeliveryView refund(long id, BigDecimal amount, PaymentMethod method, String description, Actor actor) {
-        if (!actor.isOwner()) throw new AccessDeniedException("Only the owner can record a refund");
+        actor.require(Capability.RECORD_REFUND);
         var d = lock(id);
-        if (d.status() != DeliveryStatus.CANCELLED)
-            throw new RuleViolation("Only a cancelled delivery can be refunded; " + d.code() + " is " + d.status());
+        if (!d.isReversed())
+            throw new RuleViolation("Only a cancelled or returned delivery can be refunded; " + d.code() + " is " + d.status());
         finance.recordRefund(amount, method, LocalDate.now(clock),
                 description == null || description.isBlank() ? "Refund for " + d.code() : description,
                 new SourceRef(SOURCE_TYPE, d.id()), actor);
@@ -341,9 +398,10 @@ class DeliveryService {
      * @param active    deliveries still on the road
      * @param done      deliveries that arrived
      * @param cancelled deliveries that were cancelled
-     * @param total     the three added together
+     * @param returned  deliveries that arrived and then came back
+     * @param total     the four added together
      */
-    record StatusCounts(long active, long done, long cancelled, long total) {}
+    record StatusCounts(long active, long done, long cancelled, long returned, long total) {}
 
     /**
      * Lists deliveries, newest first (by start time, then id). The caller's sort parameter is ignored so the order is
@@ -361,10 +419,10 @@ class DeliveryService {
                 Sort.by(Sort.Order.desc("startedAt"), Sort.Order.desc("id")));
         var result = deliveries.findAll(spec, newestFirst);
         var cancelledIds = result.getContent().stream()
-                .filter(d -> d.status() == DeliveryStatus.CANCELLED).map(Delivery::id).toList();
+                .filter(Delivery::isReversed).map(Delivery::id).toList();
         Map<Long, BigDecimal> retained = cancelledIds.isEmpty()
                 ? Map.of() : finance.retainedPayments(SOURCE_TYPE, cancelledIds);
-        return result.map(d -> view(d, d.status() == DeliveryStatus.CANCELLED
+        return result.map(d -> view(d, d.isReversed()
                 ? retained.getOrDefault(d.id(), BigDecimal.ZERO.setScale(2)) : null));
     }
 
@@ -381,7 +439,8 @@ class DeliveryService {
         long active = deliveries.count(base.withStatus(DeliveryStatus.ACTIVE).toSpecification(clock.getZone()));
         long done = deliveries.count(base.withStatus(DeliveryStatus.DONE).toSpecification(clock.getZone()));
         long cancelled = deliveries.count(base.withStatus(DeliveryStatus.CANCELLED).toSpecification(clock.getZone()));
-        return new StatusCounts(active, done, cancelled, active + done + cancelled);
+        long returned = deliveries.count(base.withStatus(DeliveryStatus.RETURNED).toSpecification(clock.getZone()));
+        return new StatusCounts(active, done, cancelled, returned, active + done + cancelled + returned);
     }
 
     /**
@@ -402,7 +461,7 @@ class DeliveryService {
      * @return the view
      */
     private DeliveryView view(Delivery d) {
-        BigDecimal retained = d.status() == DeliveryStatus.CANCELLED
+        BigDecimal retained = d.isReversed()
                 ? finance.retainedPayment(new SourceRef(SOURCE_TYPE, d.id())) : null;
         return view(d, retained);
     }
@@ -411,7 +470,7 @@ class DeliveryService {
     private DeliveryView view(Delivery d, BigDecimal retained) {
         return new DeliveryView(d.id(), d.code(), d.status(), d.customerName(), d.driverName(), d.fromBranchId(),
                 d.destination(), d.startedAt(), d.completedAt(), d.total(), d.paymentMethod(), d.cancelReason(),
-                retained, List.copyOf(d.lines()), d.createdBy(), d.createdAt());
+                d.returnReason(), retained, List.copyOf(d.lines()), d.createdBy(), d.createdAt());
     }
 
     /**

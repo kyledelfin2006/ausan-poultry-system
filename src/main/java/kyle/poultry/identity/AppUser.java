@@ -22,6 +22,8 @@ class AppUser {
     @Enumerated(EnumType.STRING) @Column(nullable = false) private Role role;
     /** False once deactivated; an inactive user can neither log in nor use an existing token. */
     private boolean active = true;
+    /** True while a temporary or bootstrap password still needs to be replaced by this user. */
+    @Column(name = "must_change_password", nullable = false) private boolean mustChangePassword;
     /** When the account was created. */
     @Column(nullable = false) private Instant createdAt;
     /**
@@ -43,8 +45,23 @@ class AppUser {
      * @param now          creation time
      */
     AppUser(String username, String passwordHash, String displayName, Role role, Instant now) {
+        this(username, passwordHash, displayName, role, now, false);
+    }
+
+    /**
+     * Creates a new user whose temporary password may need to be replaced at first login.
+     *
+     * @param username unique login name
+     * @param passwordHash BCrypt hash (never the plain password)
+     * @param displayName name shown in the UI
+     * @param role authorization level
+     * @param now creation time
+     * @param mustChangePassword whether this is a temporary password
+     */
+    AppUser(String username, String passwordHash, String displayName, Role role, Instant now, boolean mustChangePassword) {
         this.username = username; this.passwordHash = passwordHash;
         this.displayName = displayName; this.role = role; this.createdAt = now;
+        this.mustChangePassword = mustChangePassword;
     }
 
     /** {@return the database id} */
@@ -59,6 +76,8 @@ class AppUser {
     Role role() { return role; }
     /** {@return whether the account is active} */
     boolean active() { return active; }
+    /** {@return whether this user must replace a temporary password before using other API routes} */
+    boolean mustChangePassword() { return mustChangePassword; }
     /** {@return the current token version; tokens carrying any other value are refused} */
     int tokenVersion() { return tokenVersion; }
 
@@ -72,4 +91,6 @@ class AppUser {
     void revokeTokens() { this.tokenVersion++; }
     /** Replaces the password hash; the caller must pass a BCrypt hash. */
     void setPasswordHash(String hash) { this.passwordHash = hash; }
+    /** Sets whether the user must replace their current password. */
+    void requirePasswordChange(boolean required) { this.mustChangePassword = required; }
 }

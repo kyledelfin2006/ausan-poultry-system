@@ -95,6 +95,13 @@ class DeliveryController {
     record CancelBody(@NotBlank @Size(max = 255) String reason) {}
 
     /**
+     * Body of {@code POST /api/deliveries/{id}/return}.
+     *
+     * @param reason why the delivered goods came back
+     */
+    record ReturnBody(@NotBlank @Size(max = 255) String reason) {}
+
+    /**
      * Body of {@code POST /api/deliveries/{id}/refund}.
      *
      * @param amount      money handed back, at least 0.01, up to 2 decimals
@@ -164,7 +171,7 @@ class DeliveryController {
      * @param customer optional customer-name filter
      * @param from     optional first business date, inclusive
      * @param to       optional last business date, inclusive
-     * @return the active, done and cancelled counts and their total
+     * @return the active, done, cancelled and returned counts and their total
      * @throws kyle.poultry.shared.RuleViolation if from is after to (HTTP 422)
      */
     @GetMapping("/summary")
@@ -222,7 +229,21 @@ class DeliveryController {
     }
 
     /**
-     * Records a refund for a cancelled delivery (owner only: 403 otherwise).
+     * Records that a DONE delivery came back (owner only, enforced in the service: 403 otherwise). Stock goes back and
+     * the sale and cost are reversed; hand money back afterwards with the refund endpoint.
+     *
+     * @param id  the delivery id
+     * @param b   the reason
+     * @param jwt the authenticated user
+     * @return the returned delivery
+     */
+    @PostMapping("/{id}/return")
+    DeliveryView returnDelivery(@PathVariable long id, @Valid @RequestBody ReturnBody b, @AuthenticationPrincipal Jwt jwt) {
+        return deliveries.returnDelivery(id, b.reason(), Actor.from(jwt));
+    }
+
+    /**
+     * Records a refund for a cancelled or returned delivery (owner only: 403 otherwise).
      *
      * @param id  the delivery id
      * @param b   the refund details

@@ -8,9 +8,10 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *
  * @param ownerUsername login name of the initial owner
  * @param ownerPassword initial password; supplied through the environment, never committed
+ * @param requirePasswordChange whether the initial owner must replace the bootstrap password before using the API
  */
 @ConfigurationProperties("app.bootstrap")
-record BootstrapProperties(String ownerUsername, String ownerPassword) {
+record BootstrapProperties(String ownerUsername, String ownerPassword, boolean requirePasswordChange) {
 
     /** {@return true when both the username and the password are set and non-blank} */
     boolean configured() {

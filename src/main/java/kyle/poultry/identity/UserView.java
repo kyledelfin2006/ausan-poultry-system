@@ -8,5 +8,6 @@ package kyle.poultry.identity;
  * @param displayName name shown in the UI
  * @param role        authorization level
  * @param active      false when the account is deactivated
+ * @param mustChangePassword true when the user must replace a temporary password
  */
-record UserView(long id, String username, String displayName, Role role, boolean active) {}
+record UserView(long id, String username, String displayName, Role role, boolean active, boolean mustChangePassword) {}

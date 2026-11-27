@@ -34,6 +34,7 @@ class AuthSessionTests {
     @LocalServerPort int port;
     @Autowired JwtEncoder jwtEncoder;
     @Autowired Clock clock;
+    @Autowired org.springframework.jdbc.core.JdbcTemplate jdbc;
     @Autowired MeterRegistry metrics;
 
     /** {@return a client for the running application} */
@@ -122,6 +123,72 @@ class AuthSessionTests {
         assertThat(api.call("GET", "/api/products", targetToken, null).statusCode()).isEqualTo(401);
         assertThat(api.call("GET", "/api/products", owner, null).statusCode()).isEqualTo(200);
         api.login(target.username(), "reset-by-the-owner-1");
+    }
+
+    /** /me lists what the caller may do, from the central policy, so a UI need not guess from the role. */
+    @Test
+    @SuppressWarnings("unchecked")
+    void meListsTheCapabilitiesOfTheRole() throws Exception {
+        var api = api();
+        var owner = api.call("GET", "/api/auth/me", api.ownerToken(), null);
+        assertThat((java.util.List<String>) com.jayway.jsonpath.JsonPath.read(owner.body(), "$.capabilities"))
+                .containsExactlyElementsOf(java.util.Arrays.stream(Capability.values()).map(Enum::name).toList());
+
+        String assistantToken = api.login(api.createUserWithId(api.ownerToken(), "ASSISTANT").username(), PASSWORD);
+        var assistant = api.call("GET", "/api/auth/me", assistantToken, null);
+        assertThat((java.util.List<?>) com.jayway.jsonpath.JsonPath.read(assistant.body(), "$.capabilities")).isEmpty();
+    }
+
+    /** A reset password restricts the user to profile, logout and password change until they choose a new password. */
+    @Test
+    void aResetPasswordMustBeChangedBeforeNormalApiAccess() throws Exception {
+        var api = api();
+        String owner = api.ownerToken();
+        var target = api.createUserWithId(owner, "ASSISTANT");
+        String temporaryPassword = "temporary-reset-password";
+        assertThat(api.call("POST", "/api/users/" + target.id() + "/password", owner,
+                "{\"newPassword\":\"" + temporaryPassword + "\"}").statusCode()).isEqualTo(204);
+
+        String temporaryToken = api.login(target.username(), temporaryPassword);
+        var profile = api.call("GET", "/api/auth/me", temporaryToken, null);
+        assertThat(profile.statusCode()).isEqualTo(200);
+        assertThat(field(profile.body(), "mustChangePassword")).isEqualTo("true");
+        assertThat(api.call("GET", "/api/products", temporaryToken, null).statusCode()).isEqualTo(403);
+        assertThat(api.call("POST", "/api/auth/logout", temporaryToken, null).statusCode()).isEqualTo(204);
+
+        // Use a fresh temporary login after logout, then change it and verify the old token is revoked.
+        temporaryToken = api.login(target.username(), temporaryPassword);
+        assertThat(api.call("POST", "/api/auth/password", temporaryToken,
+                "{\"currentPassword\":\"" + temporaryPassword + "\",\"newPassword\":\"changed-password-2026\"}").statusCode())
+                .isEqualTo(204);
+        assertThat(api.call("GET", "/api/auth/me", temporaryToken, null).statusCode()).isEqualTo(401);
+
+        String currentToken = api.login(target.username(), "changed-password-2026");
+        var currentProfile = api.call("GET", "/api/auth/me", currentToken, null);
+        assertThat(field(currentProfile.body(), "mustChangePassword")).isEqualTo("false");
+        assertThat(api.call("GET", "/api/products", currentToken, null).statusCode()).isEqualTo(200);
+    }
+
+    /**
+     * The restriction holds for a write, for the streamed CSV export (answered on an async thread) and for owner-only
+     * routes, and the protected effect does not happen: no delivery is created.
+     */
+    @Test
+    void aUserWhoMustChangeThePasswordCannotWriteStreamOrAdminister() throws Exception {
+        var api = api();
+        String owner = api.ownerToken();
+        var target = api.createUserWithId(owner, "ASSISTANT");
+        assertThat(api.call("POST", "/api/users/" + target.id() + "/password", owner,
+                "{\"newPassword\":\"temporary-reset-password\"}").statusCode()).isEqualTo(204);
+        String temporaryToken = api.login(target.username(), "temporary-reset-password");
+        int deliveriesBefore = jdbc.queryForObject("select count(*) from delivery", Integer.class);
+
+        assertThat(api.call("POST", "/api/deliveries", temporaryToken, "{}").statusCode()).isEqualTo(403);
+        assertThat(api.call("GET", "/api/finance/entries.csv?from=2026-01-01&to=2026-01-02", temporaryToken, null)
+                .statusCode()).isEqualTo(403);
+        assertThat(api.call("GET", "/api/users", temporaryToken, null).statusCode()).isEqualTo(403);
+
+        assertThat(jdbc.queryForObject("select count(*) from delivery", Integer.class)).isEqualTo(deliveriesBefore);
     }
 
     /** The password policy answers 422 on every path that sets a password, and nothing changes when it refuses. */

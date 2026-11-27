@@ -5,6 +5,8 @@ spring:
     hibernate.ddl-auto: validate
     properties.hibernate.default_batch_fetch_size: 50
   jackson.time-zone: Asia/Manila
+  # CSV exports are streamed on an async request; the container default (30 s) could cut a slow download short.
+  mvc.async.request-timeout: 5m
   docker.compose.lifecycle-management: start_only
 
 app:
@@ -17,6 +19,10 @@ app:
     # Creates the first OWNER only when the user table is empty and both values are supplied.
     owner-username: ${APP_BOOTSTRAP_OWNER_USERNAME:}
     owner-password: ${APP_BOOTSTRAP_OWNER_PASSWORD:}
+    require-password-change: true
+  exports:
+    # CSV downloads that may run at once; each holds a database connection until the client has the whole file.
+    max-concurrent: 3
   cors:
     # Browser origins allowed to call the API (exact scheme://host[:port], no wildcards). The defaults are the usual
     # local frontend dev servers (Vite and generic); production sets APP_CORS_ALLOWED_ORIGINS (see application-prod.yaml).

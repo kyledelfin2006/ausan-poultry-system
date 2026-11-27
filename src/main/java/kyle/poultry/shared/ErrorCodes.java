@@ -46,7 +46,7 @@ public final class ErrorCodes {
     /** HTTP 422: the request is well-formed but a business rule forbids it. */
     public static final String RULE_VIOLATION = "RULE_VIOLATION";
 
-    /** HTTP 429: too many failed logins; wait for the {@code Retry-After} header. */
+    /** HTTP 429: too many failed logins, or too many exports running at once; wait for the {@code Retry-After} header. */
     public static final String TOO_MANY_REQUESTS = "TOO_MANY_REQUESTS";
 
     /** HTTP 500: an unexpected server error; the response carries no internal detail. */

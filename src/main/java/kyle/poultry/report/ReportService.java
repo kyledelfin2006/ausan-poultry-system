@@ -168,8 +168,44 @@ class ReportService {
     Summary summary(LocalDate from, LocalDate to) {
         // Validate first so a bad request never reaches the database.
         requirePeriod(from, to);
-        // One grouped query gives every per-type total at once.
-        Map<EntryType, BigDecimal> t = finance.totalsByType(from, to);
+        return summary(from, to, finance.totalsByType(from, to), finance.retainedOnCancelledSources(to));
+    }
+
+    /**
+     * Reads the per-type totals of a period with one grouped query, so a caller that needs both the summary and the
+     * profit of the same period (the dashboard) queries once and shares the result.
+     *
+     * @param from first business date included
+     * @param to   last business date included
+     * @return the total of every entry type, 0.00 for types with no entries
+     * @throws RuleViolation if a date is missing, {@code from} is after {@code to}, or the period exceeds 366 days
+     */
+    Map<EntryType, BigDecimal> totals(LocalDate from, LocalDate to) {
+        requirePeriod(from, to);
+        return finance.totalsByType(from, to);
+    }
+
+    /**
+     * Money still held for cancelled sources as of a date. It reads the whole ledger up to that date, so callers that
+     * need it for several periods ending on the same day should call it once.
+     *
+     * @param asOf the date the amount is measured at
+     * @return the retained amount
+     */
+    BigDecimal retainedOnCancelled(LocalDate asOf) {
+        return finance.retainedOnCancelledSources(asOf);
+    }
+
+    /**
+     * Builds the summary from figures already read, so no further ledger query is needed for the totals.
+     *
+     * @param from     first business date included (already validated)
+     * @param to       last business date included
+     * @param t        the period's totals, from {@link #totals}
+     * @param retained the retained amount as of {@code to}, from {@link #retainedOnCancelled}
+     * @return the summary
+     */
+    Summary summary(LocalDate from, LocalDate to, Map<EntryType, BigDecimal> t, BigDecimal retained) {
         BigDecimal received = t.get(EntryType.PAYMENT_IN), refunds = t.get(EntryType.REFUND);
         BigDecimal purchases = t.get(EntryType.STOCK_PURCHASE), expenses = t.get(EntryType.EXPENSE);
         BigDecimal gross = t.get(EntryType.SALE), cancelled = t.get(EntryType.SALE_REVERSAL);
@@ -178,7 +214,7 @@ class ReportService {
         return new Summary(new Period(from, to),
                 new Sales(gross, cancelled, gross.subtract(cancelled)),
                 // Retained money is measured as of the period end and kept apart from sales.
-                new Collections(received, refunds, received.subtract(refunds), finance.retainedOnCancelledSources(to)),
+                new Collections(received, refunds, received.subtract(refunds), retained),
                 purchases, expenses,
                 new CashMovement(cash, finance.cashByMethod(from, to)));
     }
@@ -195,7 +231,18 @@ class ReportService {
     Profit profit(LocalDate from, LocalDate to) {
         // Validate first so a bad request never reaches the database.
         requirePeriod(from, to);
-        Map<EntryType, BigDecimal> t = finance.totalsByType(from, to);
+        return profit(from, to, finance.totalsByType(from, to));
+    }
+
+    /**
+     * Builds the profit report from totals already read.
+     *
+     * @param from first business date included (already validated)
+     * @param to   last business date included
+     * @param t    the period's totals, from {@link #totals}
+     * @return net sales, net cost of goods, gross profit, expenses and profit
+     */
+    Profit profit(LocalDate from, LocalDate to, Map<EntryType, BigDecimal> t) {
         // Cancelled deliveries drop out of both revenue and cost through their reversal rows.
         BigDecimal netSales = t.get(EntryType.SALE).subtract(t.get(EntryType.SALE_REVERSAL));
         BigDecimal cogs = t.get(EntryType.COST_OF_GOODS).subtract(t.get(EntryType.COGS_REVERSAL));

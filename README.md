@@ -179,8 +179,8 @@ PowerShell:
 git clone https://github.com/kyledelfin2006/ausan-poultry-system.git
 cd ausan-poultry-system
 
-# Signing key: any string of at least 32 bytes
-$env:APP_SECURITY_JWT_SECRET = "dev-only-secret-change-me-at-least-32-bytes-long"
+# Signing key: generate a random value (32+ bytes and 16+ distinct byte values)
+$env:APP_SECURITY_JWT_SECRET = [Convert]::ToBase64String([Security.Cryptography.RandomNumberGenerator]::GetBytes(48))
 # Creates the first OWNER if the user table is empty
 $env:APP_BOOTSTRAP_OWNER_USERNAME = "owner"
 $env:APP_BOOTSTRAP_OWNER_PASSWORD = "dev-owner-password"
@@ -202,8 +202,8 @@ All production settings come from a `.env` file (template: [.env.example](.env.e
 |---|---|---|
 | `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD` | yes | PostgreSQL container |
 | `SPRING_DATASOURCE_URL`, `_USERNAME`, `_PASSWORD` | yes | Datasource used by the app (password must equal `POSTGRES_PASSWORD`) |
-| `APP_SECURITY_JWT_SECRET` | yes | HS256 signing key, at least 32 bytes. Changing it logs everyone out |
-| `APP_BOOTSTRAP_OWNER_USERNAME`, `_PASSWORD` | first start only | Creates the first OWNER when no users exist; remove afterwards |
+| `APP_SECURITY_JWT_SECRET` | yes | HS256 signing key, 32+ bytes and 16+ distinct byte values. Changing it logs everyone out |
+| `APP_BOOTSTRAP_OWNER_USERNAME`, `_PASSWORD` | first start only | Creates the first OWNER, who must change the bootstrap password before using other API routes; remove afterwards |
 | `APP_CORS_ALLOWED_ORIGINS` | no | Exact frontend origins, comma-separated; empty means same-origin only |
 | `APP_PORT` | no | Host port for the API (default 8080) |
 | `JAVA_OPTS` | no | JVM flags (default `-XX:MaxRAMPercentage=75`) |

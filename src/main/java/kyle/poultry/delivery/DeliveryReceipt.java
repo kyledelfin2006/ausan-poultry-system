@@ -10,7 +10,7 @@ import kyle.poultry.finance.PaymentMethod;
  * Package-private read model serialized by {@link DeliveryController}. All money is PHP at 2 decimals, except unit costs
  * (4 decimals).
  *
- * <p>The figures describe the sale as it was made. For a CANCELLED delivery the ledger has reversed the sale and its
+ * <p>The figures describe the sale as it was made. For a CANCELLED or RETURNED delivery the ledger has reversed the sale and its
  * cost, so {@code countedInProfit} is false and the delivery contributes nothing to the profit report.
  *
  * @param id               database id
@@ -24,8 +24,9 @@ import kyle.poultry.finance.PaymentMethod;
  * @param completedAt      when it arrived, or null while not done
  * @param paymentMethod    how the customer paid
  * @param cancelReason     why it was cancelled, or null
- * @param retainedPayment  for a CANCELLED delivery the money held and not refunded; otherwise null
- * @param countedInProfit  false for a CANCELLED delivery
+ * @param returnReason     why the goods came back after arrival, or null
+ * @param retainedPayment  for a CANCELLED or RETURNED delivery the money held and not refunded; otherwise null
+ * @param countedInProfit  false for a CANCELLED or RETURNED delivery
  * @param total            sum of the package line totals (what the customer paid)
  * @param costOfGoods      what the delivered stock cost, at the average cost at the time of the sale
  * @param grossProfit      total minus cost of goods
@@ -35,7 +36,7 @@ import kyle.poultry.finance.PaymentMethod;
  */
 record DeliveryReceipt(long id, String code, DeliveryStatus status, String customerName, String driverName,
                        long fromBranchId, String destination, Instant startedAt, Instant completedAt,
-                       PaymentMethod paymentMethod, String cancelReason, BigDecimal retainedPayment,
+                       PaymentMethod paymentMethod, String cancelReason, String returnReason, BigDecimal retainedPayment,
                        boolean countedInProfit, BigDecimal total, BigDecimal costOfGoods, BigDecimal grossProfit,
                        BigDecimal marginPercent, List<ReceiptLine> lines, List<ReceiptProduct> products) {
 

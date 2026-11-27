@@ -54,10 +54,10 @@ checklist shown when a pull request is opened.
 | Finance | `FinanceLedgerUnitTests` | pure unit |
 | Finance | `FinanceAndCostTests` | PostgreSQL |
 | Delivery | `DeliveryStateMachineTests`, `DeliveryServiceUnitTests` | pure unit |
-| Delivery | `DeliveryTests`, `DeliveryApiTests`, `DeliveryIdempotencyTests`, `DeliveryEdgeCaseTests` | PostgreSQL, HTTP |
+| Delivery | `DeliveryTests`, `DeliveryApiTests`, `DeliveryIdempotencyTests`, `DeliveryEdgeCaseTests`, `DeliveryIndexPlanTests` | PostgreSQL, HTTP; the index-plan test loads 100,000 rows and runs `EXPLAIN (ANALYZE, BUFFERS)` |
 | Delivery | `DeliveryConcurrencyTests` | PostgreSQL, racing transactions |
 | Catalog | `CatalogApiTests` | PostgreSQL, HTTP |
-| Identity | `ApiSecurityTests`, `SecurityMatrixTests`, `SecurityHeadersAndCorsTests`, `UserAdministrationTests`, `LoginThrottleTests`, `PasswordPolicyTests`, `CorsPropertiesTests` | HTTP, security chain, pure unit |
+| Identity | `ApiSecurityTests`, `SecurityMatrixTests`, `SecurityHeadersAndCorsTests`, `UserAdministrationTests`, `AuthSessionTests`, `OwnerBootstrapTests`, `SecurityPropertiesTests`, `LoginThrottleTests`, `PasswordPolicyTests`, `CorsPropertiesTests` | HTTP, security chain, pure unit |
 | Shared | `RequestIdFilterTests`, `CsvTests` | pure unit, HTTP |
 | Stock / Finance / Delivery / Report (read side) | `StockOverviewTests`, `EntriesExportTests`, `DeliveryQueryTests`, `ReceiptAllocationTests`, `DashboardServiceTests`, `ReportExtrasTests` | PostgreSQL, HTTP |
 | Report | `ReportTests` | PostgreSQL, HTTP |

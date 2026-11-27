@@ -12,6 +12,7 @@ import java.util.stream.Collectors;
 import kyle.poultry.catalog.CatalogApi;
 import kyle.poultry.catalog.CatalogApi.ProductView;
 import kyle.poultry.identity.Actor;
+import kyle.poultry.identity.Capability;
 import kyle.poultry.shared.NotFoundException;
 import kyle.poultry.shared.RuleViolation;
 import kyle.poultry.stock.StockApi.BranchStockView;
@@ -155,6 +156,6 @@ class StockOverviewService {
      * @throws AccessDeniedException when the actor is not the owner
      */
     private static void requireOwner(Actor actor) {
-        if (!actor.isOwner()) throw new AccessDeniedException("Only the owner can change reorder levels");
+        actor.require(Capability.SET_REORDER_LEVELS);
     }
 }

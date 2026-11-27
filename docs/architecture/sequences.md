@@ -35,14 +35,17 @@ sequenceDiagram
     F->>RC: verified token
     RC->>DB: load user by id (every request)
     RC-->>F: reject if missing, inactive or the ver claim differs from the stored token_version (401); replace the role claim with the database role
-    F->>C: authenticated request
+    RC-->>F: add temporary-password restriction from the database row when required
+    F->>C: request (restricted users may only read profile, logout or change password)
     C->>C: @PreAuthorize (role), then Actor.from(jwt)
 ```
 
 Why the database is read on every request: a deactivated user, a changed role, a sign-out or a password change takes effect
 immediately instead of when the token expires ([ADR-0003](decisions/0003-stateless-jwt-with-database-recheck.md)). `POST /api/auth/logout`
 and `POST /api/auth/password` raise the user's `token_version`, so every token issued before stops working at once, on every device;
-`GET /api/auth/me` returns the caller's profile. The `X-Request-Id` is echoed on every response, including 401 and 403.
+`GET /api/auth/me` returns the caller's profile and whether a bootstrap/reset password must be changed. Until changed,
+authenticated business calls are limited to profile, logout and password change; login and health remain public. The
+`X-Request-Id` is echoed on every response, including 401 and 403.
 
 ## 2. Record a stock purchase
 

@@ -5,7 +5,8 @@ Every endpoint here answers `403` (empty body) for an assistant.
 `UserView`, returned by all of them (never includes the password):
 
 ```json
-{ "id": 2, "username": "maria", "displayName": "Maria Santos", "role": "ASSISTANT", "active": true }
+{ "id": 2, "username": "maria", "displayName": "Maria Santos", "role": "ASSISTANT", "active": true,
+  "mustChangePassword": false }
 ```
 
 ## `POST /api/users`
@@ -19,6 +20,7 @@ Every endpoint here answers `403` (empty body) for an assistant.
 
 `201` returns the `UserView`. Errors: `400`, `401`, `403`, `409` (`Username already taken`), `422` (a
 [password rule](auth-session.md#password-rules)). User changes are recorded in the [audit trail](audit.md).
+Users created here keep the password selected by the owner; `mustChangePassword` becomes `true` after an owner reset.
 
 ## `GET /api/users`
 
@@ -48,5 +50,6 @@ Resets another user's password without the old one.
 |---|---|---|---|
 | newPassword | string | yes | 10-72 characters |
 
-`204` with no body. The target user's sessions end at once (they must log in with the new password); your own session is
-unaffected. Errors: `400`, `403`, `404`, `422` (a [password rule](auth-session.md#password-rules)).
+`204` with no body. The target user's sessions end at once and the next login is restricted to profile, logout and
+password change until they choose a new password; your own session is unaffected. Errors: `400`, `403`, `404`, `422`
+(a [password rule](auth-session.md#password-rules)).

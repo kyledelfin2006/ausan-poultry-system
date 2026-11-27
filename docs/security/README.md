@@ -61,7 +61,7 @@ change, demotion or deactivation applies at once.
 | S1 | Guessing or brute-forcing passwords | BCrypt; 5 attempts per username+direct peer address in 15 minutes then `429` (the attempt is counted atomically before the password is checked, so parallel guesses cannot exceed it); the throttle key is a fixed-size digest and `username` (50) and `password` (128) are length-limited, so oversized input cannot pin memory; when the table is full, unblocked keys are evicted first so a flood cannot clear active blocks; changing your own password is limited the same way; forwarded headers are ignored in the production direct-access deployment; unknown users cost the same BCrypt work (no user enumeration by timing); one message for every login failure | `LoginThrottleTests`, `AuthSessionTests`, `UserAdministrationTests` | Throttle is in memory, per instance, reset on restart; an attacker rotating addresses and usernames is not slowed globally |
 | S2 | Weak passwords | `PasswordPolicy`: 10+ characters, 72-byte cap, blocklist, not the username, not repeated | `PasswordPolicyTests`, `AuthSessionTests` | Blocklist is small, not a breach database; no MFA |
 | S3 | Stolen or leaked token used after the user is done | 8-hour lifetime; **logout** and **password change/reset** invalidate all of a user's tokens at once (`token_version`); deactivation is checked on every request | `AuthSessionTests` | No per-device logout; a stolen token works until the user logs out or changes password |
-| S4 | Forged token | HS256 pinned (no algorithm confusion); secret must be at least 32 bytes or startup fails; signature and expiry checked by the resource-server filter | `ApiSecurityTests` | One shared secret: whoever reads it can mint tokens. Rotate on suspicion (see operations guide) |
+| S4 | Forged token | HS256 pinned (no algorithm confusion); secret must be at least 32 bytes and contain 16 distinct byte values or startup fails; signature and expiry checked by the resource-server filter | `SecurityPropertiesTests`, `ApiSecurityTests` | Distinct-byte count is a low-diversity check, not an entropy measurement; generate the key with a cryptographic random generator. One shared secret can mint tokens if leaked; rotate on suspicion |
 | S5 | Token with stale or missing version | Missing `ver` claim counts as version 0 (so tokens from before the feature work); any other mismatch is `401` | `AuthSessionTests.tokenVersionClaim...` | none |
 | T1 | Editing history (ledger, stock, audit) | Ledgers are append-only by design; corrections are reversals; `audit_log` rejects UPDATE, DELETE and TRUNCATE in the database | `AuditTrailTests.theTableIsAppendOnlyInTheDatabase`, finance and stock tests | A DBA with superuser rights can drop the trigger; out of scope |
 | T2 | Double submit creating two deliveries | `Idempotency-Key` header | `DeliveryIdempotencyTests` | Clients must send the header |
@@ -84,6 +84,7 @@ change, demotion or deactivation applies at once.
 - Per request: signature and expiry, then a primary-key read of the user: must exist, be active, and match the token
   version; the role comes from this row.
 - Sign-out: `POST /api/auth/logout` raises `app_user.token_version`, which invalidates every older token of that user.
+- Bootstrap-owner and owner-reset passwords set `must_change_password`. The converter re-reads this field on every request; until a successful password change clears it, authenticated business routes are limited to profile, logout and password change. Login and health remain public.
 
 ### Authorisation
 Two roles. Owner-only endpoints are listed in [../api/](../api/) and enforced by `@PreAuthorize`; the full table of
@@ -138,5 +139,6 @@ request ids end to end. Suggested alerts are in [observability.md](observability
 |---|---|
 | a role rule or add an endpoint | `SecurityMatrixTests.MATRIX` (the build fails otherwise), this page's section 4 if a threat row changes |
 | token contents or lifetime | sections 4 (S3-S5) and 5, `docs/api/auth-session.md` |
+| Bootstrap or reset password flow | `docs/api/auth-session.md`, `docs/api/users.md`, `docs/operations.md`; add an HTTP integration assertion |
 | headers or CORS | section 4 (I4, I5), `SecurityHeadersAndCorsTests` |
 | the audit scope | `docs/api/audit.md`, `AuditTrailTests` |

@@ -18,6 +18,7 @@ Both fields are required and non-blank.
 ```
 
 - Tokens last 8 hours. There is no refresh endpoint: when `expiresAt` passes (or any call answers 401), log in again.
+- After login, call `GET /api/auth/me`. If `mustChangePassword` is `true`, that token may only read the profile, log out, or call `POST /api/auth/password`; login and the public health check remain available. After changing the password, log in again.
 - More about the session (`GET /api/auth/me`, `POST /api/auth/logout`, password rules, request ids, CORS) is in
   [auth-session.md](auth-session.md).
 - An unknown user, a wrong password and an inactive user all answer the same `401` (`UNAUTHENTICATED`,

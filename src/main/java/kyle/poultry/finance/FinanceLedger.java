@@ -9,12 +9,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import kyle.poultry.identity.Actor;
+import kyle.poultry.identity.Capability;
 import kyle.poultry.shared.BusinessDatePolicy;
 import kyle.poultry.shared.RuleViolation;
 import kyle.poultry.shared.SourceRef;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,7 +28,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @Transactional
 class FinanceLedger implements FinanceApi {
-    private static final List<EntryType> ASSISTANT_VISIBLE_TYPES =
+    /** The entry types an assistant may see; shared with {@link EntryExporter} so both read paths apply one rule. */
+    static final List<EntryType> ASSISTANT_VISIBLE_TYPES =
             List.of(EntryType.SALE, EntryType.SALE_REVERSAL, EntryType.PAYMENT_IN, EntryType.REFUND);
 
     private final FinancialEntryRepository entries;
@@ -84,7 +85,7 @@ class FinanceLedger implements FinanceApi {
     /** {@inheritDoc} */
     @Override
     public void reverseSaleAndCost(SourceRef source, LocalDate on, Actor actor) {
-        BusinessDatePolicy.requireAllowed(on, actor.isOwner(), clock);
+        BusinessDatePolicy.requireAllowed(on, actor.can(Capability.BACKDATE_FREELY), clock);
         // Find the source's sale and cost rows, skip those already reversed (makes the call idempotent),
         // and append a compensating row for each. Originals are never touched, so the audit trail stays intact.
         entries.findBySourceTypeAndSourceIdAndTypeIn(source.type(), source.id(),
@@ -99,10 +100,10 @@ class FinanceLedger implements FinanceApi {
     public EntryView recordRefund(BigDecimal amount, PaymentMethod method, LocalDate on, String description,
                                   SourceRef source, Actor actor) {
         // Handing money back is an owner decision.
-        if (!actor.isOwner()) throw new AccessDeniedException("Refunds are restricted to the owner");
+        actor.require(Capability.RECORD_REFUND);
         BigDecimal refund = normalise(amount);
         requireSource(source);
-        BusinessDatePolicy.requireAllowed(on, actor.isOwner(), clock);
+        BusinessDatePolicy.requireAllowed(on, actor.can(Capability.BACKDATE_FREELY), clock);
         // Locking the payment rows makes concurrent refunds for one source queue up, so the cap below
         // is checked against up-to-date totals and the source cannot be over-refunded.
         entries.findBySourceTypeAndSourceIdAndType(source.type(), source.id(), EntryType.PAYMENT_IN);
@@ -198,8 +199,8 @@ class FinanceLedger implements FinanceApi {
     @Transactional(readOnly = true)
     public Page<EntryView> entries(LocalDate from, LocalDate to, EntryType type, Pageable page, Actor actor) {
         requirePeriod(from, to);
-        if (!actor.isOwner() && type != null && !ASSISTANT_VISIBLE_TYPES.contains(type)) return Page.empty(page);
-        var result = actor.isOwner()
+        if (!actor.can(Capability.VIEW_COST_AND_PROFIT) && type != null && !ASSISTANT_VISIBLE_TYPES.contains(type)) return Page.empty(page);
+        var result = actor.can(Capability.VIEW_COST_AND_PROFIT)
                 ? type == null ? entries.period(from, to, page) : entries.periodByType(from, to, type, page)
                 : type == null ? entries.periodByTypes(from, to, ASSISTANT_VISIBLE_TYPES, page)
                 : entries.periodByType(from, to, type, page);
@@ -222,7 +223,7 @@ class FinanceLedger implements FinanceApi {
      */
     private EntryView append(EntryType type, BigDecimal amount, PaymentMethod method, LocalDate on,
                              String description, SourceRef source, Actor actor) {
-        BusinessDatePolicy.requireAllowed(on, actor.isOwner(), clock);
+        BusinessDatePolicy.requireAllowed(on, actor.can(Capability.BACKDATE_FREELY), clock);
         // The creation time comes from the injected clock so tests control it.
         var e = FinancialEntry.of(type, normalise(amount), method, on, description, source, actor, clock.instant());
         return entries.save(e).view();
@@ -262,7 +263,7 @@ class FinanceLedger implements FinanceApi {
      * @param to   last date of the period
      * @throws RuleViolation if either date is missing or {@code to} is before {@code from}
      */
-    private static void requirePeriod(LocalDate from, LocalDate to) {
+    static void requirePeriod(LocalDate from, LocalDate to) {
         if (from == null || to == null || to.isBefore(from))
             throw new RuleViolation("A valid from/to period is required");
     }

@@ -11,6 +11,7 @@ import java.time.LocalDate;
 import java.util.List;
 import kyle.poultry.finance.PaymentMethod;
 import kyle.poultry.identity.Actor;
+import kyle.poultry.identity.Capability;
 import kyle.poultry.stock.StockApi.BalanceView;
 import kyle.poultry.stock.StockApi.MovementView;
 import kyle.poultry.stock.StockApi.ProductStockView;
@@ -90,7 +91,7 @@ class StockController {
     @GetMapping("/balances")
     List<BalanceView> balances(@RequestParam(required = false) Long branchId,
                                @AuthenticationPrincipal Jwt jwt) {
-        boolean owner = Actor.from(jwt).isOwner();
+        boolean owner = Actor.from(jwt).can(Capability.VIEW_COST_AND_PROFIT);
         return stock.balances(branchId).stream().map(b -> owner ? b
                 : new BalanceView(b.productId(), b.productName(), b.unit(), b.branchId(), b.quantity(), null)).toList();
     }
@@ -108,7 +109,7 @@ class StockController {
                                @AuthenticationPrincipal Jwt jwt) {
         Actor actor = Actor.from(jwt);
         return stock.history(productId, branchId, page).map(movement -> {
-            boolean canSeeCost = actor.isOwner() || (movement.type() == MovementType.PURCHASE
+            boolean canSeeCost = actor.can(Capability.VIEW_COST_AND_PROFIT) || (movement.type() == MovementType.PURCHASE
                     && movement.createdBy() == actor.userId());
             return canSeeCost ? movement : withoutCost(movement);
         });
@@ -136,7 +137,7 @@ class StockController {
     @GetMapping("/summary")
     List<ProductStockView> summary(@RequestParam(defaultValue = "false") boolean lowOnly,
                                    @AuthenticationPrincipal Jwt jwt) {
-        boolean owner = Actor.from(jwt).isOwner();
+        boolean owner = Actor.from(jwt).can(Capability.VIEW_COST_AND_PROFIT);
         return stock.summary(lowOnly).stream().map(p -> owner ? p : new ProductStockView(
                 p.productId(), p.productName(), p.unit(), p.totalQuantity(), p.reorderLevel(), p.low(),
                 p.branches().stream().map(b -> new StockApi.BranchStockView(b.branchId(), b.quantity(), null, b.low())).toList()))

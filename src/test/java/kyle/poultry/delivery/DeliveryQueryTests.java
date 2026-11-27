@@ -207,6 +207,25 @@ class DeliveryQueryTests {
                 .isLessThanOrEqualTo(8);
     }
 
+    /**
+     * Building a package view on the delivery write path reads only the package's own products. Filler products make a
+     * whole-catalog read per line obvious: the number of Product rows loaded must not grow with the catalog.
+     */
+    @Test
+    void creatingADeliveryDoesNotLoadTheWholeProductCatalog() {
+        for (int i = 0; i < 40; i++)
+            jdbc.update("insert into product (name, unit) values (?, 'pc')", "filler-" + i + "-" + UUID.randomUUID());
+        Statistics statistics = entityManagerFactory.unwrap(SessionFactory.class).getStatistics();
+        statistics.setStatisticsEnabled(true);
+        statistics.clear();
+
+        deliver(branchA, "Catalog load", "2021-12-02T01:00:00Z");
+
+        long productLoads = statistics.getEntityStatistics("kyle.poultry.catalog.Product").getFetchCount()
+                + statistics.getEntityStatistics("kyle.poultry.catalog.Product").getLoadCount();
+        assertThat(productLoads).as("Product rows loaded while creating one delivery").isLessThanOrEqualTo(6);
+    }
+
     /** The list needs a token. */
     @Test
     void listAndSummaryRequireAuthentication() {

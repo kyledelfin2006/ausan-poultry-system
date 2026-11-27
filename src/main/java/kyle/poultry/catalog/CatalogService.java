@@ -68,7 +68,7 @@ class CatalogService implements CatalogApi {
         var p = packages.findById(id).orElseThrow(() -> new NotFoundException("Package", id));
         // The message uses the package name (not the id) because that is what staff recognise.
         if (!p.active()) throw new RuleViolation("Package " + p.name() + " is inactive");
-        return view(p, productNames());
+        return view(p, namesFor(p));
     }
 
     /** {@inheritDoc} */
@@ -194,7 +194,7 @@ class CatalogService implements CatalogApi {
         var saved = packages.save(new SalesPackage(sku, name, price, items));
         audit.record(AuditAction.CREATED, AuditEntity.PACKAGE, saved.id(),
                 "sku: " + saved.sku() + "; name: " + saved.name() + "; price: " + saved.price().toPlainString());
-        return view(saved, productNames());
+        return view(saved, namesFor(saved));
     }
 
     /**
@@ -216,7 +216,7 @@ class CatalogService implements CatalogApi {
         var changes = AuditChanges.of().field("name", beforeName, p.name()).field("price", beforePrice, p.price())
                 .field("active", beforeActive, p.active());
         if (!changes.isEmpty()) audit.record(AuditAction.UPDATED, AuditEntity.PACKAGE, id, changes.summary());
-        return view(p, productNames());
+        return view(p, namesFor(p));
     }
 
     /**
@@ -226,6 +226,18 @@ class CatalogService implements CatalogApi {
      */
     private Map<Long, String> productNames() {
         return products.findAll().stream().collect(Collectors.toMap(p -> p.view().id(), p -> p.view().name()));
+    }
+
+    /**
+     * Builds the product id to name lookup for ONE package, reading only the products it contains. Single-package
+     * callers (including the delivery write path, once per line) use this instead of loading the whole catalog.
+     *
+     * @param p the package whose contents need names
+     * @return a map from product id to name for the package's products
+     */
+    private Map<Long, String> namesFor(SalesPackage p) {
+        var ids = p.items().stream().map(i -> i.productId()).distinct().toList();
+        return products.findAllById(ids).stream().collect(Collectors.toMap(x -> x.view().id(), x -> x.view().name()));
     }
 
     /**
