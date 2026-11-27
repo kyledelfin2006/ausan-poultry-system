@@ -1,4 +1,4 @@
-package kyle.poultry.audit;
+package kyle.poultry.audit.api.model;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;

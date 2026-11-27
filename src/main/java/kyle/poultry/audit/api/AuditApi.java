@@ -1,4 +1,7 @@
-package kyle.poultry.audit;
+package kyle.poultry.audit.api;
+
+import kyle.poultry.audit.api.model.AuditAction;
+import kyle.poultry.audit.api.model.AuditEntity;
 
 /**
  * The only way other modules write to the audit trail. The acting user is taken from the current security context,

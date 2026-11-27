@@ -1,4 +1,4 @@
-package kyle.poultry.audit;
+package kyle.poultry.audit.api.model;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

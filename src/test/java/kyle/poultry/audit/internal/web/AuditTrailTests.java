@@ -1,4 +1,4 @@
-package kyle.poultry.audit;
+package kyle.poultry.audit.internal.web;
 
 import static kyle.poultry.support.HttpApiClient.PASSWORD;
 import static kyle.poultry.support.HttpApiClient.field;
@@ -12,6 +12,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 import kyle.poultry.TestcontainersConfiguration;
+import kyle.poultry.audit.api.AuditApi;
+import kyle.poultry.audit.api.model.AuditAction;
+import kyle.poultry.audit.api.model.AuditEntity;
 import kyle.poultry.support.HttpApiClient;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;

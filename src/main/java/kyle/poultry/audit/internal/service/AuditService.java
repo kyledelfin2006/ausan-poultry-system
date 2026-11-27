@@ -1,9 +1,15 @@
-package kyle.poultry.audit;
+package kyle.poultry.audit.internal.service;
 
 import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
+import kyle.poultry.audit.api.AuditApi;
+import kyle.poultry.audit.api.model.AuditAction;
+import kyle.poultry.audit.api.model.AuditEntity;
+import kyle.poultry.audit.internal.model.AuditView;
+import kyle.poultry.audit.internal.persistence.AuditLog;
+import kyle.poultry.audit.internal.persistence.AuditLogRepository;
 import kyle.poultry.shared.web.RequestIdFilter;
 import org.slf4j.MDC;
 import org.springframework.data.domain.Page;
@@ -19,11 +25,11 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Writes and reads the audit trail; implements the public {@link AuditApi}. Package-private: other modules use it
- * only through the interface, and {@link AuditController} calls {@link #search}.
+ * Writes and reads the audit trail; implements the public {@link AuditApi}. Other modules use it
+ * only through the interface, and the audit controller calls {@link #search}.
  */
 @Service
-class AuditService implements AuditApi {
+public class AuditService implements AuditApi {
     /** Longest summary stored; matches the column size. */
     static final int MAX_SUMMARY = 1000;
     /** Actor name used when nobody is logged in (for example the first-owner bootstrap at startup). */
@@ -40,7 +46,7 @@ class AuditService implements AuditApi {
      * @param clock   source of "now" (also gives the business time zone for date filters)
      * @param metrics registry for the {@code ausan.audit.entries} counter
      */
-    AuditService(AuditLogRepository log, Clock clock, MeterRegistry metrics) {
+    public AuditService(AuditLogRepository log, Clock clock, MeterRegistry metrics) {
         this.log = log; this.clock = clock; this.metrics = metrics;
     }
 
@@ -77,7 +83,7 @@ class AuditService implements AuditApi {
      * @return one page of entries
      */
     @Transactional(readOnly = true)
-    Page<AuditView> search(AuditEntity entity, Long entityId, Long actorId, LocalDate from, LocalDate to, int page, int size) {
+    public Page<AuditView> search(AuditEntity entity, Long entityId, Long actorId, LocalDate from, LocalDate to, int page, int size) {
         // Start from "match everything" and AND on each filter that was supplied.
         Specification<AuditLog> spec = (r, q, cb) -> cb.conjunction();
         if (entity != null) spec = spec.and((r, q, cb) -> cb.equal(r.get("entityType"), entity));

@@ -2,10 +2,10 @@ package kyle.poultry.identity;
 
 import java.time.Clock;
 import java.util.List;
-import kyle.poultry.audit.AuditAction;
-import kyle.poultry.audit.AuditApi;
-import kyle.poultry.audit.AuditChanges;
-import kyle.poultry.audit.AuditEntity;
+import kyle.poultry.audit.api.model.AuditAction;
+import kyle.poultry.audit.api.AuditApi;
+import kyle.poultry.audit.api.model.AuditChanges;
+import kyle.poultry.audit.api.model.AuditEntity;
 import kyle.poultry.shared.ConflictException;
 import kyle.poultry.shared.NotFoundException;
 import kyle.poultry.shared.RuleViolation;

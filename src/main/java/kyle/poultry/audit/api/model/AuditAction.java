@@ -1,4 +1,4 @@
-package kyle.poultry.audit;
+package kyle.poultry.audit.api.model;
 
 /**
  * What happened to an audited record. Stored as text in {@code audit_log.action}, so existing names must never be

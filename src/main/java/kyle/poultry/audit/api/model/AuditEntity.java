@@ -1,4 +1,4 @@
-package kyle.poultry.audit;
+package kyle.poultry.audit.api.model;
 
 /**
  * The kind of record an audit entry is about. Stored as text in {@code audit_log.entity_type}, so existing names

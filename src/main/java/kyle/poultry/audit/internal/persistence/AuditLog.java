@@ -1,15 +1,19 @@
-package kyle.poultry.audit;
+package kyle.poultry.audit.internal.persistence;
 
 import jakarta.persistence.*;
 import java.time.Instant;
+import kyle.poultry.audit.api.AuditApi;
+import kyle.poultry.audit.api.model.AuditAction;
+import kyle.poultry.audit.api.model.AuditEntity;
+import kyle.poultry.audit.internal.model.AuditView;
 
 /**
- * One row of the append-only {@code audit_log} table. Package-private: other modules write through {@link AuditApi}
+ * One row of the append-only {@code audit_log} table. Public only so the service layer can reach it; the boundary is enforced by ArchUnit (nothing outside {@code audit} may use {@code ..internal..}). Other modules write through {@link AuditApi}
  * and the API reads through {@link AuditView}. There are no setters; the database also refuses UPDATE and DELETE.
  */
 @Entity
 @Table(name = "audit_log")
-class AuditLog {
+public class AuditLog {
     /** Database-generated primary key. */
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY) private Long id;
     /** When the change was recorded. */
@@ -44,7 +48,7 @@ class AuditLog {
      * @param summary       the description (already trimmed to the column size)
      * @param requestId     the request id, or null
      */
-    AuditLog(Instant occurredAt, Long actorUserId, String actorUsername, AuditAction action, AuditEntity entityType,
+    public AuditLog(Instant occurredAt, Long actorUserId, String actorUsername, AuditAction action, AuditEntity entityType,
              long entityId, String summary, String requestId) {
         this.occurredAt = occurredAt; this.actorUserId = actorUserId; this.actorUsername = actorUsername;
         this.action = action; this.entityType = entityType; this.entityId = entityId;
@@ -52,7 +56,7 @@ class AuditLog {
     }
 
     /** {@return the API view of this entry} */
-    AuditView view() {
+    public AuditView view() {
         return new AuditView(id, occurredAt, actorUserId, actorUsername, action, entityType, entityId, summary, requestId);
     }
 }

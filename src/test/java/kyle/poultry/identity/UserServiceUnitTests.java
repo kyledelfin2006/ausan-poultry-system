@@ -9,7 +9,7 @@ import java.sql.SQLException;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneId;
-import kyle.poultry.audit.AuditApi;
+import kyle.poultry.audit.api.AuditApi;
 import kyle.poultry.shared.ConflictException;
 import org.hibernate.exception.ConstraintViolationException;
 import org.junit.jupiter.api.BeforeEach;

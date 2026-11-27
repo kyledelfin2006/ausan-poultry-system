@@ -1,6 +1,8 @@
-package kyle.poultry.audit;
+package kyle.poultry.audit.internal.model;
 
 import java.time.Instant;
+import kyle.poultry.audit.api.model.AuditAction;
+import kyle.poultry.audit.api.model.AuditEntity;
 
 /**
  * One audit entry as returned by {@code GET /api/audit}.

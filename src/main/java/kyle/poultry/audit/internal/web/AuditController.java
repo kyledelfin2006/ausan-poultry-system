@@ -1,9 +1,12 @@
-package kyle.poultry.audit;
+package kyle.poultry.audit.internal.web;
 
 import org.springframework.security.access.prepost.PreAuthorize;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import java.time.LocalDate;
+import kyle.poultry.audit.api.model.AuditEntity;
+import kyle.poultry.audit.internal.model.AuditView;
+import kyle.poultry.audit.internal.service.AuditService;
 import kyle.poultry.shared.RuleViolation;
 import org.springframework.data.domain.Page;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -13,7 +16,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * HTTP endpoint {@code GET /api/audit}: the read-only audit trail. OWNER only. Package-private; reached only over HTTP.
+ * HTTP endpoint {@code GET /api/audit}: the read-only audit trail. OWNER only. Internal to the audit module; reached only over HTTP.
  */
 @RestController
 @RequestMapping("/api/audit")

@@ -85,13 +85,22 @@ class ModuleBoundaryTests {
      */
     @ArchTest
     static final ArchRule onlyPublicTypesCrossModuleBoundaries = allOf(ALLOWED.keySet().stream().sorted().map(module -> {
-        // "Internal" = repositories, controllers and anything that is not public, inside this module.
-        DescribedPredicate<JavaClass> internal = resideInAPackage(pkg(module))
+        // "Internal" = anything in the module's internal.. package, plus (for a module that is still flat)
+        // repositories, controllers and anything that is not public.
+        DescribedPredicate<JavaClass> internal = resideInAPackage("kyle.poultry." + module + ".internal..")
+                .or(resideInAPackage(pkg(module))
                 .and(JavaClass.Predicates.simpleNameEndingWith("Repository")
                         .or(JavaClass.Predicates.simpleNameEndingWith("Controller"))
-                        .or(not(modifier(PUBLIC))))
+                        .or(not(modifier(PUBLIC)))))
                 .as("internal types of module '%s' (repositories, controllers, non-public types)".formatted(module));
         return (ArchRule) noClasses().that().resideOutsideOfPackage(pkg(module))
                 .should().dependOnClassesThat(internal).allowEmptyShould(true);
     }).toList());
+
+    /** Rule (d): a module's public face ({@code ..api..}) never depends on its own {@code ..internal..} packages. */
+    @ArchTest
+    static final ArchRule apiDoesNotLeakInternals = allOf(ALLOWED.keySet().stream().sorted().map(module ->
+            (ArchRule) noClasses().that().resideInAPackage("kyle.poultry." + module + ".api..")
+                    .should().dependOnClassesThat().resideInAPackage("kyle.poultry." + module + ".internal..")
+                    .allowEmptyShould(true)).toList());
 }
