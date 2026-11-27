@@ -1,4 +1,4 @@
-package kyle.poultry.delivery;
+package kyle.poultry.delivery.internal.model;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -7,7 +7,7 @@ import kyle.poultry.finance.api.model.PaymentMethod;
 
 /**
  * The owner's receipt of one delivery: the sale as the customer saw it, plus what the goods cost and what was earned.
- * Package-private read model serialized by {@link DeliveryController}. All money is PHP at 2 decimals, except unit costs
+ * Internal to the delivery module read model serialized by {@code DeliveryController}. All money is PHP at 2 decimals, except unit costs
  * (4 decimals).
  *
  * <p>The figures describe the sale as it was made. For a CANCELLED or RETURNED delivery the ledger has reversed the sale and its
@@ -34,7 +34,7 @@ import kyle.poultry.finance.api.model.PaymentMethod;
  * @param lines            the packages sold, each with its share of the cost
  * @param products         the stock taken out, per product
  */
-record DeliveryReceipt(long id, String code, DeliveryStatus status, String customerName, String driverName,
+public record DeliveryReceipt(long id, String code, DeliveryStatus status, String customerName, String driverName,
                        long fromBranchId, String destination, Instant startedAt, Instant completedAt,
                        PaymentMethod paymentMethod, String cancelReason, String returnReason, BigDecimal retainedPayment,
                        boolean countedInProfit, BigDecimal total, BigDecimal costOfGoods, BigDecimal grossProfit,
@@ -51,7 +51,7 @@ record DeliveryReceipt(long id, String code, DeliveryStatus status, String custo
      * @param costOfGoods the cost of the stock this line used (a product shared by several lines is split by units)
      * @param profit      line total minus cost of goods
      */
-    record ReceiptLine(long packageId, String packageName, long quantity, BigDecimal unitPrice, BigDecimal lineTotal,
+    public record ReceiptLine(long packageId, String packageName, long quantity, BigDecimal unitPrice, BigDecimal lineTotal,
                        BigDecimal costOfGoods, BigDecimal profit) {}
 
     /**
@@ -64,6 +64,6 @@ record DeliveryReceipt(long id, String code, DeliveryStatus status, String custo
      * @param unitCost    weighted average cost per unit at the moment of the sale (4 decimals)
      * @param totalCost   cost of the units taken out, rounded to centavos as booked in the ledger
      */
-    record ReceiptProduct(long productId, String productName, String unit, long quantity, BigDecimal unitCost,
+    public record ReceiptProduct(long productId, String productName, String unit, long quantity, BigDecimal unitCost,
                           BigDecimal totalCost) {}
 }

@@ -1,5 +1,9 @@
-package kyle.poultry.delivery;
+package kyle.poultry.delivery.internal.service;
 
+import kyle.poultry.delivery.internal.model.DeliveryLine;
+import kyle.poultry.delivery.internal.model.DeliveryStatus;
+import kyle.poultry.delivery.internal.persistence.Delivery;
+import kyle.poultry.delivery.internal.persistence.DeliveryRepository;
 import static kyle.poultry.support.TestSupport.clockAt;
 import static kyle.poultry.support.TestSupport.withId;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -21,8 +25,8 @@ import java.util.Optional;
 import kyle.poultry.catalog.api.CatalogApi;
 import kyle.poultry.catalog.api.model.PackageItemView;
 import kyle.poultry.catalog.api.model.PackageView;
-import kyle.poultry.delivery.DeliveryService.CreateRequest;
-import kyle.poultry.delivery.DeliveryService.LineRequest;
+import kyle.poultry.delivery.internal.service.DeliveryService.CreateRequest;
+import kyle.poultry.delivery.internal.service.DeliveryService.LineRequest;
 import kyle.poultry.finance.api.FinanceApi;
 import kyle.poultry.finance.api.model.PaymentMethod;
 import kyle.poultry.identity.api.model.Actor;

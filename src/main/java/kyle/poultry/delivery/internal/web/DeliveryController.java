@@ -1,5 +1,11 @@
-package kyle.poultry.delivery;
+package kyle.poultry.delivery.internal.web;
 
+import kyle.poultry.delivery.internal.service.DeliveryFilter;
+import kyle.poultry.delivery.internal.model.DeliveryReceipt;
+import kyle.poultry.delivery.internal.model.DeliveryStatus;
+import kyle.poultry.delivery.internal.model.DeliveryView;
+import kyle.poultry.delivery.internal.service.DeliveryReceiptService;
+import kyle.poultry.delivery.internal.service.DeliveryService;
 import kyle.poultry.identity.api.model.Capability;
 import kyle.poultry.identity.api.security.RequiresCapability;
 import jakarta.validation.Valid;
@@ -14,10 +20,10 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
-import kyle.poultry.delivery.DeliveryService.CreateRequest;
-import kyle.poultry.delivery.DeliveryService.CreateResult;
-import kyle.poultry.delivery.DeliveryService.LineRequest;
-import kyle.poultry.delivery.DeliveryService.StatusCounts;
+import kyle.poultry.delivery.internal.service.DeliveryService.CreateRequest;
+import kyle.poultry.delivery.internal.service.DeliveryService.CreateResult;
+import kyle.poultry.delivery.internal.service.DeliveryService.LineRequest;
+import kyle.poultry.delivery.internal.service.DeliveryService.StatusCounts;
 import kyle.poultry.finance.api.model.PaymentMethod;
 import kyle.poultry.identity.api.model.Actor;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -33,7 +39,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 /**
  * HTTP endpoints under {@code /api/deliveries}. Any logged-in user may create, list and finish deliveries; cancel and
- * refund are enforced as owner-only in {@link DeliveryService}. Package-private; reached only over HTTP.
+ * refund are enforced as owner-only in {@link DeliveryService}. Internal to the delivery module; reached only over HTTP.
  */
 @RestController
 @RequestMapping("/api/deliveries")

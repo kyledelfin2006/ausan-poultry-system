@@ -1,5 +1,10 @@
-package kyle.poultry.delivery;
+package kyle.poultry.delivery.internal.service;
 
+import kyle.poultry.delivery.internal.model.DeliveryLine;
+import kyle.poultry.delivery.internal.model.DeliveryStatus;
+import kyle.poultry.delivery.internal.model.DeliveryView;
+import kyle.poultry.delivery.internal.persistence.Delivery;
+import kyle.poultry.delivery.internal.persistence.DeliveryRepository;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
@@ -38,11 +43,11 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Orchestrates a delivery across stock and finance. Every public method is one transaction, so a delivery,
  * its stock movements and its sale/cost/payment entries are created, cancelled or refunded together or not at all.
- * Package-private; used by {@link DeliveryController} and this module's tests.
+ * Internal to the delivery module; used by {@code DeliveryController} and this module's tests.
  */
 @Service
 @Transactional
-class DeliveryService {
+public class DeliveryService {
     /** Marks stock and finance entries as belonging to a delivery, so they can be found and reversed later. */
     private static final String SOURCE_TYPE = "DELIVERY";
 
@@ -79,7 +84,7 @@ class DeliveryService {
      * @param quantity  how many packages; must be positive
      * @param unitPrice price override for this delivery only, or null to use the package price
      */
-    record LineRequest(long packageId, long quantity, BigDecimal unitPrice) {}
+    public record LineRequest(long packageId, long quantity, BigDecimal unitPrice) {}
 
     /**
      * Everything needed to create a delivery.
@@ -92,7 +97,7 @@ class DeliveryService {
      * @param paymentMethod how the customer paid
      * @param lines         the packages sold; at least one
      */
-    record CreateRequest(String customerName, String driverName, long fromBranchId, String destination,
+    public record CreateRequest(String customerName, String driverName, long fromBranchId, String destination,
                          Instant startedAt, PaymentMethod paymentMethod, List<LineRequest> lines) {}
 
     /**
@@ -101,7 +106,7 @@ class DeliveryService {
      * @param delivery the delivery (new, or the earlier one for a repeated idempotency key)
      * @param created  false when an earlier request with the same idempotency key already created {@code delivery}
      */
-    record CreateResult(DeliveryView delivery, boolean created) {}
+    public record CreateResult(DeliveryView delivery, boolean created) {}
 
     /**
      * Creates a delivery without an idempotency key.
@@ -111,7 +116,7 @@ class DeliveryService {
      * @return the new delivery
      * @throws RuleViolation when the request breaks a business rule (see {@link #create(CreateRequest, Actor, String)})
      */
-    DeliveryView create(CreateRequest r, Actor actor) {
+    public DeliveryView create(CreateRequest r, Actor actor) {
         return create(r, actor, null).delivery();
     }
 
@@ -130,7 +135,7 @@ class DeliveryService {
      *                       (missing names, no lines, duplicate package, non-positive quantity or price, future start)
      * @throws NotFoundException when a package or branch does not exist
      */
-    CreateResult create(CreateRequest r, Actor actor, String idempotencyKey) {
+    public CreateResult create(CreateRequest r, Actor actor, String idempotencyKey) {
         if (idempotencyKey != null) {
             lockKey(actor.userId() + ":" + idempotencyKey);
             var existing = jdbc.query("select delivery_id from delivery_idempotency where idempotency_key = ? and user_id = ?",
@@ -295,7 +300,7 @@ class DeliveryService {
      * @throws RuleViolation       when the time is missing, in the future, before the start, or (for an assistant)
      *                             more than 7 days in the past
      */
-    DeliveryView markDone(long id, Instant completedAt, Actor actor) {
+    public DeliveryView markDone(long id, Instant completedAt, Actor actor) {
         // Row lock so a concurrent "cancel" on the same delivery is decided strictly before or after this.
         var d = lock(id);
         d.markDone(completedAt, clock.instant());
@@ -318,7 +323,7 @@ class DeliveryService {
      * @throws kyle.poultry.shared.error.ConflictException when the delivery is no longer ACTIVE
      * @throws RuleViolation         when no reason is given
      */
-    DeliveryView cancel(long id, String reason, Actor actor) {
+    public DeliveryView cancel(long id, String reason, Actor actor) {
         actor.require(Capability.CANCEL_DELIVERY);
         var d = lock(id);
         // Change the delivery BEFORE any stock call: stock writes flush pending changes and then detach every entity in
@@ -344,7 +349,7 @@ class DeliveryService {
      * @throws kyle.poultry.shared.error.ConflictException when the delivery is not DONE
      * @throws RuleViolation         when no reason is given
      */
-    DeliveryView returnDelivery(long id, String reason, Actor actor) {
+    public DeliveryView returnDelivery(long id, String reason, Actor actor) {
         actor.require(Capability.RETURN_DELIVERY);
         var d = lock(id);
         // Change the delivery BEFORE any stock call: stock writes detach every entity in the transaction (DBG-3).
@@ -369,7 +374,7 @@ class DeliveryService {
      * @throws NotFoundException     when the delivery does not exist
      * @throws RuleViolation         when the delivery is not CANCELLED or RETURNED or the amount exceeds what is still retained
      */
-    DeliveryView refund(long id, BigDecimal amount, PaymentMethod method, String description, Actor actor) {
+    public DeliveryView refund(long id, BigDecimal amount, PaymentMethod method, String description, Actor actor) {
         actor.require(Capability.RECORD_REFUND);
         var d = lock(id);
         if (!d.isReversed())
@@ -388,7 +393,7 @@ class DeliveryService {
      * @throws NotFoundException when it does not exist
      */
     @Transactional(readOnly = true)
-    DeliveryView get(long id) {
+    public DeliveryView get(long id) {
         return view(deliveries.findById(id).orElseThrow(() -> new NotFoundException("Delivery", id)));
     }
 
@@ -401,7 +406,7 @@ class DeliveryService {
      * @param returned  deliveries that arrived and then came back
      * @param total     the four added together
      */
-    record StatusCounts(long active, long done, long cancelled, long returned, long total) {}
+    public record StatusCounts(long active, long done, long cancelled, long returned, long total) {}
 
     /**
      * Lists deliveries, newest first (by start time, then id). The caller's sort parameter is ignored so the order is
@@ -413,7 +418,7 @@ class DeliveryService {
      * @throws RuleViolation when the filter's start date is after its end date
      */
     @Transactional(readOnly = true)
-    Page<DeliveryView> list(DeliveryFilter filter, Pageable page) {
+    public Page<DeliveryView> list(DeliveryFilter filter, Pageable page) {
         var spec = filter.validated().toSpecification(clock.getZone());
         var newestFirst = PageRequest.of(page.getPageNumber(), page.getPageSize(),
                 Sort.by(Sort.Order.desc("startedAt"), Sort.Order.desc("id")));
@@ -434,7 +439,7 @@ class DeliveryService {
      * @throws RuleViolation when the filter's start date is after its end date
      */
     @Transactional(readOnly = true)
-    StatusCounts counts(DeliveryFilter filter) {
+    public StatusCounts counts(DeliveryFilter filter) {
         var base = filter.validated().withoutStatus();
         long active = deliveries.count(base.withStatus(DeliveryStatus.ACTIVE).toSpecification(clock.getZone()));
         long done = deliveries.count(base.withStatus(DeliveryStatus.DONE).toSpecification(clock.getZone()));

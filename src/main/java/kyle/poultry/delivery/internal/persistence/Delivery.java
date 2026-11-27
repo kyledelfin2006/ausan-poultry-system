@@ -1,5 +1,7 @@
-package kyle.poultry.delivery;
+package kyle.poultry.delivery.internal.persistence;
 
+import kyle.poultry.delivery.internal.model.DeliveryLine;
+import kyle.poultry.delivery.internal.model.DeliveryStatus;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -10,12 +12,12 @@ import kyle.poultry.shared.error.ConflictException;
 import kyle.poultry.shared.error.RuleViolation;
 
 /**
- * A paid delivery. Owns its status transitions; stock and money effects are orchestrated by {@link DeliveryService}.
- * JPA entity for table {@code delivery}; package-private so only this module changes it.
+ * A paid delivery. Owns its status transitions; stock and money effects are orchestrated by {@code DeliveryService}.
+ * JPA entity for table {@code delivery}; internal to the delivery module so only this module changes it.
  */
 @Entity
 @Table(name = "delivery")
-class Delivery {
+public class Delivery {
     /** Database-generated primary key. */
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY) private Long id;
     /** Unique human-readable code such as {@code DLV-2026-0001}. */
@@ -79,7 +81,7 @@ class Delivery {
      * @param now          creation time
      * @return the new, not yet saved delivery
      */
-    static Delivery open(String code, String customerName, String driverName, long fromBranchId, String destination,
+    public static Delivery open(String code, String customerName, String driverName, long fromBranchId, String destination,
                          Instant startedAt, PaymentMethod method, List<DeliveryLine> lines, long createdBy, Instant now) {
         var d = new Delivery();
         d.code = code;
@@ -106,7 +108,7 @@ class Delivery {
      * @throws ConflictException when the delivery is not ACTIVE
      * @throws RuleViolation     when the time is missing, in the future, or before the start
      */
-    void markDone(Instant completedAt, Instant now) {
+    public void markDone(Instant completedAt, Instant now) {
         requireActive("marked as done");
         if (completedAt == null) throw new RuleViolation("Completion time is required");
         if (completedAt.isAfter(now)) throw new RuleViolation("Completion time cannot be in the future");
@@ -123,7 +125,7 @@ class Delivery {
      * @throws ConflictException when the delivery is not ACTIVE
      * @throws RuleViolation     when the reason is blank
      */
-    void cancel(String reason, Instant now) {
+    public void cancel(String reason, Instant now) {
         requireActive("cancelled");
         if (reason == null || reason.isBlank()) throw new RuleViolation("A cancellation reason is required");
         this.status = DeliveryStatus.CANCELLED;
@@ -139,7 +141,7 @@ class Delivery {
      * @throws ConflictException when the delivery is not DONE
      * @throws RuleViolation     when the reason is blank
      */
-    void markReturned(String reason, Instant now) {
+    public void markReturned(String reason, Instant now) {
         if (status != DeliveryStatus.DONE)
             throw new ConflictException("Delivery " + code + " is " + status + "; only a DONE delivery can be returned");
         if (reason == null || reason.isBlank()) throw new RuleViolation("A return reason is required");
@@ -149,7 +151,7 @@ class Delivery {
     }
 
     /** {@return true when the sale was undone: the delivery is CANCELLED or RETURNED} */
-    boolean isReversed() { return status == DeliveryStatus.CANCELLED || status == DeliveryStatus.RETURNED; }
+    public boolean isReversed() { return status == DeliveryStatus.CANCELLED || status == DeliveryStatus.RETURNED; }
 
     /**
      * Guards a transition: DONE and CANCELLED are final.
@@ -163,35 +165,35 @@ class Delivery {
     }
 
     /** {@return the database id} */
-    Long id() { return id; }
+    public Long id() { return id; }
     /** {@return the delivery code} */
-    String code() { return code; }
+    public String code() { return code; }
     /** {@return the lifecycle state} */
-    DeliveryStatus status() { return status; }
+    public DeliveryStatus status() { return status; }
     /** {@return the customer name} */
-    String customerName() { return customerName; }
+    public String customerName() { return customerName; }
     /** {@return the driver name} */
-    String driverName() { return driverName; }
+    public String driverName() { return driverName; }
     /** {@return the id of the branch the stock came from} */
-    long fromBranchId() { return fromBranchId; }
+    public long fromBranchId() { return fromBranchId; }
     /** {@return the destination} */
-    String destination() { return destination; }
+    public String destination() { return destination; }
     /** {@return the start time} */
-    Instant startedAt() { return startedAt; }
+    public Instant startedAt() { return startedAt; }
     /** {@return the arrival time, or null} */
-    Instant completedAt() { return completedAt; }
+    public Instant completedAt() { return completedAt; }
     /** {@return the total price} */
-    BigDecimal total() { return total; }
+    public BigDecimal total() { return total; }
     /** {@return the payment method} */
-    PaymentMethod paymentMethod() { return paymentMethod; }
+    public PaymentMethod paymentMethod() { return paymentMethod; }
     /** {@return the cancellation reason, or null} */
-    String cancelReason() { return cancelReason; }
+    public String cancelReason() { return cancelReason; }
     /** {@return the return reason, or null} */
-    String returnReason() { return returnReason; }
+    public String returnReason() { return returnReason; }
     /** {@return the package lines} */
-    List<DeliveryLine> lines() { return lines; }
+    public List<DeliveryLine> lines() { return lines; }
     /** {@return the id of the creating user} */
-    long createdBy() { return createdBy; }
+    public long createdBy() { return createdBy; }
     /** {@return the creation time} */
-    Instant createdAt() { return createdAt; }
+    public Instant createdAt() { return createdAt; }
 }

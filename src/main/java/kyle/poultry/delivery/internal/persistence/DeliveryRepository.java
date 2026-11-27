@@ -1,4 +1,4 @@
-package kyle.poultry.delivery;
+package kyle.poultry.delivery.internal.persistence;
 
 import jakarta.persistence.LockModeType;
 import java.util.Optional;
@@ -10,10 +10,10 @@ import org.springframework.data.repository.query.Param;
 
 /**
  * Spring Data access to {@link Delivery}. Listing and counting go through {@link JpaSpecificationExecutor} so that any
- * combination of the optional filters (see {@link DeliveryFilter}) is one query. Package-private: only this module's
+ * combination of the optional filters (see {@code DeliveryFilter}) is one query. Internal to the delivery module: only this module's
  * services use it.
  */
-interface DeliveryRepository extends JpaRepository<Delivery, Long>, JpaSpecificationExecutor<Delivery> {
+public interface DeliveryRepository extends JpaRepository<Delivery, Long>, JpaSpecificationExecutor<Delivery> {
 
     /**
      * Loads a delivery and takes a row lock ({@code select ... for update}) held until the transaction ends, so a

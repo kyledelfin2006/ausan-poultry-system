@@ -1,4 +1,4 @@
-package kyle.poultry.delivery;
+package kyle.poultry.delivery.internal.model;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -6,7 +6,7 @@ import java.util.List;
 import kyle.poultry.finance.api.model.PaymentMethod;
 
 /**
- * Read model of a delivery for the API. Package-private; serialized to JSON by {@link DeliveryController}.
+ * Read model of a delivery for the API. Internal to the delivery module; serialized to JSON by {@code DeliveryController}.
  *
  * @param id              database id
  * @param code            human-readable code such as {@code DLV-2026-0001}
@@ -26,7 +26,7 @@ import kyle.poultry.finance.api.model.PaymentMethod;
  * @param createdBy       id of the user who created it
  * @param createdAt       when it was created
  */
-record DeliveryView(long id, String code, DeliveryStatus status, String customerName, String driverName,
+public record DeliveryView(long id, String code, DeliveryStatus status, String customerName, String driverName,
                     long fromBranchId, String destination, Instant startedAt, Instant completedAt,
                     BigDecimal total, PaymentMethod paymentMethod, String cancelReason, String returnReason,
                     BigDecimal retainedPayment,

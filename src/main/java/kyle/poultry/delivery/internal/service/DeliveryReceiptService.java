@@ -1,5 +1,9 @@
-package kyle.poultry.delivery;
+package kyle.poultry.delivery.internal.service;
 
+import kyle.poultry.delivery.internal.model.DeliveryLine;
+import kyle.poultry.delivery.internal.model.DeliveryReceipt;
+import kyle.poultry.delivery.internal.persistence.Delivery;
+import kyle.poultry.delivery.internal.persistence.DeliveryRepository;
 import kyle.poultry.catalog.api.model.PackageItemView;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -14,8 +18,8 @@ import java.util.stream.Collectors;
 import kyle.poultry.catalog.api.CatalogApi;
 import kyle.poultry.catalog.api.model.PackageView;
 import kyle.poultry.catalog.api.model.ProductView;
-import kyle.poultry.delivery.DeliveryReceipt.ReceiptLine;
-import kyle.poultry.delivery.DeliveryReceipt.ReceiptProduct;
+import kyle.poultry.delivery.internal.model.DeliveryReceipt.ReceiptLine;
+import kyle.poultry.delivery.internal.model.DeliveryReceipt.ReceiptProduct;
 import kyle.poultry.finance.api.FinanceApi;
 import kyle.poultry.shared.error.NotFoundException;
 import kyle.poultry.shared.reference.SourceRef;
@@ -33,11 +37,11 @@ import org.springframework.transaction.annotation.Transactional;
  * <p>Stock is taken out per product, not per package line, so a line's cost is allocated: each product's cost is split
  * over the lines that used it in proportion to the units they used (package contents are fixed after creation, so the
  * units are quantity x items). The split is in whole centavos by the largest-remainder method, so no line gets a negative
- * cost and the lines always add up to the delivery's cost exactly. Read-only; package-private.
+ * cost and the lines always add up to the delivery's cost exactly. Read-only; internal to the delivery module.
  */
 @Service
 @Transactional(readOnly = true)
-class DeliveryReceiptService {
+public class DeliveryReceiptService {
     private static final String SOURCE_TYPE = "DELIVERY";
 
     private final DeliveryRepository deliveries;
@@ -64,7 +68,7 @@ class DeliveryReceiptService {
      * @return the receipt
      * @throws NotFoundException when the delivery does not exist
      */
-    DeliveryReceipt receipt(long id) {
+    public DeliveryReceipt receipt(long id) {
         var d = deliveries.findById(id).orElseThrow(() -> new NotFoundException("Delivery", id));
         var source = new SourceRef(SOURCE_TYPE, d.id());
         Map<Long, ProductView> products = catalog.products().stream()

@@ -1,5 +1,7 @@
-package kyle.poultry.delivery;
+package kyle.poultry.delivery.internal.persistence;
 
+import kyle.poultry.delivery.internal.model.DeliveryLine;
+import kyle.poultry.delivery.internal.model.DeliveryStatus;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 

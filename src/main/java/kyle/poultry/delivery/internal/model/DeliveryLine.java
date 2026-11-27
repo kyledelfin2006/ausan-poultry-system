@@ -1,11 +1,11 @@
-package kyle.poultry.delivery;
+package kyle.poultry.delivery.internal.model;
 
 import jakarta.persistence.Embeddable;
 import java.math.BigDecimal;
 
 /**
  * What was sold, frozen at sale time: later edits to the package never alter a past delivery. Embedded in table
- * {@code delivery_line} as part of {@link Delivery}; package-private and also used in the API view.
+ * {@code delivery_line} as part of {@code Delivery}; internal to the delivery module and also used in the API view.
  *
  * @param packageId   the sales package
  * @param packageName the package's name when sold, kept so later renames do not change history
@@ -14,4 +14,4 @@ import java.math.BigDecimal;
  * @param lineTotal   {@code unitPrice * quantity}
  */
 @Embeddable
-record DeliveryLine(long packageId, String packageName, long quantity, BigDecimal unitPrice, BigDecimal lineTotal) {}
+public record DeliveryLine(long packageId, String packageName, long quantity, BigDecimal unitPrice, BigDecimal lineTotal) {}

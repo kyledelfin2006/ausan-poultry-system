@@ -1,5 +1,7 @@
-package kyle.poultry.delivery;
+package kyle.poultry.delivery.internal.web;
 
+import kyle.poultry.delivery.internal.model.DeliveryStatus;
+import kyle.poultry.delivery.internal.service.DeliveryService;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -9,8 +11,8 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 import kyle.poultry.TestcontainersConfiguration;
-import kyle.poultry.delivery.DeliveryService.CreateRequest;
-import kyle.poultry.delivery.DeliveryService.LineRequest;
+import kyle.poultry.delivery.internal.service.DeliveryService.CreateRequest;
+import kyle.poultry.delivery.internal.service.DeliveryService.LineRequest;
 import kyle.poultry.finance.api.model.PaymentMethod;
 import kyle.poultry.identity.api.model.Actor;
 import kyle.poultry.identity.api.model.Role;

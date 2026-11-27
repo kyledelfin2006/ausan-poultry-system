@@ -1,5 +1,7 @@
-package kyle.poultry.delivery;
+package kyle.poultry.delivery.internal.service;
 
+import kyle.poultry.delivery.internal.model.DeliveryStatus;
+import kyle.poultry.delivery.internal.persistence.Delivery;
 import jakarta.persistence.criteria.Predicate;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -10,7 +12,7 @@ import org.springframework.data.jpa.domain.Specification;
 
 /**
  * The optional filters of the delivery list and its status counts. Every field is optional and the ones given are
- * combined with AND. Package-private; built by {@link DeliveryController} and applied by {@link DeliveryService}.
+ * combined with AND. Internal to the delivery module; built by {@code DeliveryController} and applied by {@code DeliveryService}.
  *
  * <p>Dates are business dates in the farm's zone and refer to the day the trip <em>started</em> ({@code startedAt}),
  * which is also the date booked in stock and finance. Both ends are inclusive.
@@ -21,7 +23,7 @@ import org.springframework.data.jpa.domain.Specification;
  * @param from     first business date included
  * @param to       last business date included
  */
-record DeliveryFilter(DeliveryStatus status, Long branchId, String customer, LocalDate from, LocalDate to) {
+public record DeliveryFilter(DeliveryStatus status, Long branchId, String customer, LocalDate from, LocalDate to) {
 
     /** The filter that keeps everything. */
     static final DeliveryFilter NONE = new DeliveryFilter(null, null, null, null, null);
@@ -32,7 +34,7 @@ record DeliveryFilter(DeliveryStatus status, Long branchId, String customer, Loc
      * @return this filter, for fluent use
      * @throws RuleViolation when both dates are given and {@code from} is after {@code to}
      */
-    DeliveryFilter validated() {
+    public DeliveryFilter validated() {
         if (from != null && to != null && from.isAfter(to)) throw new RuleViolation("The start date must not be after the end date");
         return this;
     }
@@ -42,7 +44,7 @@ record DeliveryFilter(DeliveryStatus status, Long branchId, String customer, Loc
      *
      * @return a copy with {@code status} cleared
      */
-    DeliveryFilter withoutStatus() { return new DeliveryFilter(null, branchId, customer, from, to); }
+    public DeliveryFilter withoutStatus() { return new DeliveryFilter(null, branchId, customer, from, to); }
 
     /**
      * The same filter restricted to one status.
@@ -50,7 +52,7 @@ record DeliveryFilter(DeliveryStatus status, Long branchId, String customer, Loc
      * @param s the status to keep
      * @return a copy with {@code status} set
      */
-    DeliveryFilter withStatus(DeliveryStatus s) { return new DeliveryFilter(s, branchId, customer, from, to); }
+    public DeliveryFilter withStatus(DeliveryStatus s) { return new DeliveryFilter(s, branchId, customer, from, to); }
 
     /**
      * Turns the filter into a database condition.
@@ -58,7 +60,7 @@ record DeliveryFilter(DeliveryStatus status, Long branchId, String customer, Loc
      * @param zone the farm's zone, which decides where a business day starts and ends
      * @return a specification matching the deliveries that pass every given filter
      */
-    Specification<Delivery> toSpecification(ZoneId zone) {
+    public Specification<Delivery> toSpecification(ZoneId zone) {
         // Day boundaries are computed once: [start of from, start of the day after to) in the farm's zone.
         Instant fromInstant = from == null ? null : from.atStartOfDay(zone).toInstant();
         Instant toExclusive = to == null ? null : to.plusDays(1).atStartOfDay(zone).toInstant();

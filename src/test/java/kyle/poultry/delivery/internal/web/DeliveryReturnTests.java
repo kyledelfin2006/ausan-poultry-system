@@ -1,4 +1,4 @@
-package kyle.poultry.delivery;
+package kyle.poultry.delivery.internal.web;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

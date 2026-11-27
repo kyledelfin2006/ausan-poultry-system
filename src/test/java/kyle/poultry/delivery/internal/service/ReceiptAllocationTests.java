@@ -1,5 +1,6 @@
-package kyle.poultry.delivery;
+package kyle.poultry.delivery.internal.service;
 
+import kyle.poultry.delivery.internal.model.DeliveryLine;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.math.BigDecimal;
