@@ -225,10 +225,14 @@ class AdvisoryLockPoolEvidenceTests {
                 percentile(probes, 50), percentile(probes, 99), probes.getLast(), maxActive.get(), maxAwaiting.get(),
                 maxUngranted.get(), maxWaitingSessions.get(), blockedInCreate, waitingForPool);
 
-        // Sanity only (this is a measurement): the key produced exactly one delivery, and every create was answered.
+        // Sanity only (this is a measurement). The key never produces more than one delivery; it produces none when the
+        // simulated holder never creates one and every waiter was told to retry (409). Each create got an answer that the
+        // lock-wait bound allows: a delivery or a retryable 409, never a 500, a 503 or a client timeout. Unrelated
+        // requests were all served (slowly at worst).
         assertThat(jdbc.queryForObject("select count(*) from delivery_idempotency where idempotency_key = ?", Integer.class, key))
-                .isEqualTo(1);
-        assertThat(statuses.keySet()).as("create statuses").isSubsetOf(200L, 201L, 500L, 503L, -1L);
+                .isLessThanOrEqualTo(1);
+        assertThat(statuses.keySet()).as("create statuses").isSubsetOf(200L, 201L, 409L);
+        assertThat(probeFailures.get()).as("unrelated requests that failed").isZero();
     }
 
     private static int count(Connection c, String sql) throws Exception {
