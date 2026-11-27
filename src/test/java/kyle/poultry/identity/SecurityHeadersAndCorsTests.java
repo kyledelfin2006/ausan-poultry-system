@@ -4,6 +4,7 @@ import static kyle.poultry.support.HttpApiClient.PASSWORD;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.net.http.HttpResponse;
+import java.util.List;
 import java.util.UUID;
 import kyle.poultry.TestcontainersConfiguration;
 import kyle.poultry.support.HttpApiClient;
@@ -132,5 +133,81 @@ class SecurityHeadersAndCorsTests {
         assertThat(metrics.statusCode()).isEqualTo(200);
         assertThat(metrics.body()).contains("ausan.auth.logins");
         assertThat(api.call("GET", "/actuator/env", owner, null).statusCode()).isEqualTo(404);   // not exposed at all
+    }
+
+    /**
+     * A browser can only read an error body, status and {@code Retry-After} when the error response itself carries the
+     * CORS headers. The CORS filter runs before the security chain, so 401 and 403 must have them too, as must the
+     * application's own 422 and 429 answers.
+     */
+    @Test
+    void errorResponsesFromAnAllowedOriginCarryCorsHeadersSoTheUiCanReadThem() throws Exception {
+        var api = api();
+        String owner = api.ownerToken();
+        String assistant = api.login(api.createUser(owner, "ASSISTANT"), PASSWORD);
+
+        var unauthorized = api.call("GET", "/api/products", null, null, "Origin", ALLOWED);
+        var forbidden = api.call("GET", "/api/audit", assistant, null, "Origin", ALLOWED);
+        var invalid = api.call("POST", "/api/products", owner, "{}", "Origin", ALLOWED);
+        assertThat(unauthorized.statusCode()).isEqualTo(401);
+        assertThat(forbidden.statusCode()).isEqualTo(403);
+        assertThat(invalid.statusCode()).isEqualTo(400);
+        for (var r : List.of(unauthorized, forbidden, invalid)) {
+            assertThat(header(r, "Access-Control-Allow-Origin")).as("status %s", r.statusCode()).isEqualTo(ALLOWED);
+            assertThat(header(r, "Access-Control-Expose-Headers")).contains("Retry-After", "X-Request-Id");
+        }
+
+        // The login throttle's 429 is the one the UI must read Retry-After from; use a throwaway name so no real account is throttled.
+        String name = "cors-" + UUID.randomUUID().toString().substring(0, 8);
+        String bad = "{\"username\":\"" + name + "\",\"password\":\"wrong-password-value\"}";
+        for (int i = 0; i < 5; i++) assertThat(api.call("POST", "/api/auth/login", null, bad, "Origin", ALLOWED).statusCode()).isEqualTo(401);
+        var throttled = api.call("POST", "/api/auth/login", null, bad, "Origin", ALLOWED);
+        assertThat(throttled.statusCode()).isEqualTo(429);
+        assertThat(header(throttled, "Retry-After")).matches("[0-9]+");
+        assertThat(header(throttled, "Access-Control-Allow-Origin")).isEqualTo(ALLOWED);
+        assertThat(header(throttled, "Access-Control-Expose-Headers")).contains("Retry-After");
+    }
+
+    /** A preflight asking for a header or method the API does not use is refused, so the allow-list is real. */
+    @Test
+    void preflightForAnUnlistedHeaderOrMethodIsRefused() throws Exception {
+        var api = api();
+        var header = api.call("OPTIONS", "/api/deliveries", null, null,
+                "Origin", ALLOWED, "Access-Control-Request-Method", "POST", "Access-Control-Request-Headers", "x-not-allowed");
+        assertThat(header.statusCode()).isEqualTo(403);
+        assertThat(header(header, "Access-Control-Allow-Origin")).isNull();
+
+        var method = api.call("OPTIONS", "/api/deliveries", null, null,
+                "Origin", ALLOWED, "Access-Control-Request-Method", "TRACE");
+        assertThat(method.statusCode()).isEqualTo(403);
+        assertThat(header(method, "Access-Control-Allow-Origin")).isNull();
+    }
+
+    /**
+     * The API authenticates only by bearer header: an ambient cookie (the credential a browser attaches by itself, which
+     * is what makes CSRF possible) grants nothing, and no response ever sets one. That is why CSRF protection is off.
+     */
+    @Test
+    void cookiesNeverAuthenticateAndNoResponseSetsOne() throws Exception {
+        var api = api();
+        String token = api.ownerToken();
+
+        var withCookieOnly = api.call("GET", "/api/products", null, null,
+                "Cookie", "JSESSIONID=abc; token=" + token, "Origin", ALLOWED);
+        assertThat(withCookieOnly.statusCode()).isEqualTo(401);
+
+        // A state-changing call authenticated only by a cookie must not change anything.
+        String name = "csrf-" + UUID.randomUUID().toString().substring(0, 8);
+        String body = "{\"name\":\"" + name + "\",\"unit\":\"pc\"}";
+        // From a foreign origin the browser rule refuses it first (403); without an Origin the missing bearer does (401).
+        assertThat(api.call("POST", "/api/products", null, body, "Cookie", "token=" + token, "Origin", EVIL).statusCode()).isEqualTo(403);
+        assertThat(api.call("POST", "/api/products", null, body, "Cookie", "token=" + token).statusCode()).isEqualTo(401);
+        assertThat(api.call("GET", "/api/products", token, null).body()).doesNotContain(name);
+
+        var login = api.call("POST", "/api/auth/login", null, "{\"username\":\"" + TestcontainersConfiguration.OWNER_USERNAME
+                + "\",\"password\":\"" + TestcontainersConfiguration.OWNER_PASSWORD + "\"}");
+        var authed = api.call("GET", "/api/products", token, null);
+        assertThat(login.headers().allValues("Set-Cookie")).isEmpty();
+        assertThat(authed.headers().allValues("Set-Cookie")).isEmpty();
     }
 }

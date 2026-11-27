@@ -133,6 +133,23 @@ request ids end to end. Suggested alerts are in [observability.md](observability
 7. **Read access is not audited** (only changes are).
 8. Ledger rows are only as trustworthy as database access; there is no cryptographic chaining.
 
+## 6a. Browser contract for the UI
+
+What a web frontend may rely on, and what it must do. Each point is asserted in `SecurityHeadersAndCorsTests`.
+
+- **Credential:** the bearer token in the `Authorization` header is the only credential. Cookies authenticate nothing and no
+  response sets one, so there is no CSRF surface and `csrf` is disabled on purpose. If a cookie is ever introduced
+  (for example a refresh token), CSRF protection and `allowCredentials` must be revisited first.
+- **Token storage (UI):** keep the token in memory; `sessionStorage` if a reload must survive. Do not use `localStorage`
+  and do not put the token in a URL. A script injected into the page can read any of these, so the UI also needs its own
+  Content-Security-Policy and no unsafe third-party scripts; the API's own CSP only governs API responses.
+- **Origins:** only exact origins in `APP_CORS_ALLOWED_ORIGINS` may call the API from a browser. The `prod` profile
+  defaults to none, so **set it to the UI's real origin before the first deployment** (scheme, host and port, no
+  wildcard, no trailing slash). A UI served from the API's own origin needs none.
+- **Errors are readable cross-origin:** 401, 403, 400 and 429 answers carry the CORS headers, and `Retry-After` and
+  `X-Request-Id` are exposed, so the UI can show the retry delay and quote the request id when reporting a problem.
+- **Allow-list is real:** a preflight for an unlisted header or method is refused with 403.
+
 ## 7. Keeping this document true
 
 | If you change... | Update... |
@@ -140,5 +157,5 @@ request ids end to end. Suggested alerts are in [observability.md](observability
 | a role rule or add an endpoint | `SecurityMatrixTests.MATRIX` (the build fails otherwise), this page's section 4 if a threat row changes |
 | token contents or lifetime | sections 4 (S3-S5) and 5, `docs/api/auth-session.md` |
 | Bootstrap or reset password flow | `docs/api/auth-session.md`, `docs/api/users.md`, `docs/operations.md`; add an HTTP integration assertion |
-| headers or CORS | section 4 (I4, I5), `SecurityHeadersAndCorsTests` |
+| headers, CORS, token storage or cookies | section 4 (I4, I5), section 6a, `SecurityHeadersAndCorsTests` |
 | the audit scope | `docs/api/audit.md`, `AuditTrailTests` |
