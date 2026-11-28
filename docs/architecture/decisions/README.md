@@ -11,6 +11,7 @@ changing something they cover; if the change contradicts an ADR, write a new ADR
 | [0004](0004-weighted-average-in-sql.md) | Weighted average cost is computed in one atomic SQL statement | Accepted |
 | [0005](0005-idempotent-delivery-creation.md) | Delivery creation is idempotent per user through a client-supplied key | Accepted |
 | [0006](0006-real-postgresql-in-tests.md) | Tests that prove data rules run against a real PostgreSQL (Testcontainers) | Accepted |
+| [0007](0007-api-and-internal-packages.md) | Each module has an `api` package (its public face) and an `internal` package split by layer; ArchUnit enforces the boundary | Accepted |
 
 ## Template
 

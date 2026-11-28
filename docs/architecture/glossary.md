@@ -26,7 +26,7 @@ Business words are in plain language; code names are given in `code font` where 
 | **Idempotency key** | A value the client sends with a delivery request so a retry returns the original delivery instead of creating another. |
 | **Ledger** | An append-only list of facts. There are two: the stock ledger (`stock_movement`) and the financial ledger (`financial_entry`). |
 | **Manila time** | The business time zone, `Asia/Manila` (UTC+8). The injected `Clock` uses it; "today" is the Manila date. |
-| **Module** | A package under `kyle.poultry` with its own job and public face. See [overview.md](overview.md). |
+| **Module** | A package under `kyle.poultry` with its own job, a public face (`api`) and private parts (`internal`). See [overview.md](overview.md) and [ADR-0007](decisions/0007-api-and-internal-packages.md). |
 | **Movement** (`stock_movement`) | One row of the stock ledger: a signed quantity of one product at one branch, for a reason (its *type*). |
 | **Opening stock** | The quantity counted when the system starts or when a branch first stocks a product (owner only). |
 | **Owner** | The administrator role. Can do everything. |

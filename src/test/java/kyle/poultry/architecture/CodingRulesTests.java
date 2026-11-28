@@ -1,6 +1,5 @@
 package kyle.poultry.architecture;
 
-import static com.tngtech.archunit.core.domain.JavaClass.Predicates.resideInAPackage;
 import static com.tngtech.archunit.core.domain.JavaClass.Predicates.simpleNameEndingWith;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
@@ -76,22 +75,25 @@ class CodingRulesTests {
             .that().areDeclaredInClassesThat().haveSimpleNameEndingWith("Controller")
             .should().beAnnotatedWith(Transactional.class);
 
-    /**
-     * Entities are package-private (a module that is still flat) or inside {@code internal.persistence}; other modules see
-     * views. A module with {@code internal} sub-packages makes its classes public so the layers can reach each other, and
-     * {@link ModuleBoundaryTests} forbids every other module from touching {@code ..internal..}.
-     */
+    /** Entities live in {@code internal.persistence}; other modules see views, never entities. */
     @ArchTest
-    static final ArchRule entitiesAreInternal = classes()
+    static final ArchRule entitiesLiveInPersistence = classes()
             .that().areAnnotatedWith(Entity.class)
-            .should().notBePublic().orShould().resideInAPackage("..internal.persistence..")
+            .should().resideInAPackage("..internal.persistence..")
             .allowEmptyShould(true);
 
-    /** Repositories are internal to their module, whatever the module is. */
+    /** Repositories live in {@code internal.persistence} next to the entities they store, whatever the module is. */
     @ArchTest
-    static final ArchRule repositoriesAreInternal = classes()
+    static final ArchRule repositoriesLiveInPersistence = classes()
             .that().haveSimpleNameEndingWith("Repository")
-            .should().notBePublic().orShould().resideInAPackage("..internal.persistence..")
+            .should().resideInAPackage("..internal.persistence..")
+            .allowEmptyShould(true);
+
+    /** Controllers live in {@code internal.web}: HTTP is never part of a module's public face. */
+    @ArchTest
+    static final ArchRule controllersLiveInWeb = classes()
+            .that().areAnnotatedWith(RestController.class)
+            .should().resideInAPackage("..internal.web..")
             .allowEmptyShould(true);
 
     /** Inside {@code internal}, the layers only point downward: web, then service, then persistence. */
@@ -115,12 +117,19 @@ class CodingRulesTests {
             .should().beInterfaces()
             .allowEmptyShould(true);
 
-    /** The class behind an {@code Api} interface is package-private, so other modules cannot bypass the interface. */
+    /** The class behind an {@code Api} interface lives in {@code internal.service}, so other modules cannot bypass the interface. */
     @ArchTest
-    static final ArchRule apiImplementationsAreNotPublic = classes()
+    static final ArchRule apiImplementationsLiveInService = classes()
             .that().implement(simpleNameEndingWith("Api"))
             .and().areNotInterfaces()
-            .should().notBePublic().orShould().resideInAPackage("..internal.service..")
+            .should().resideInAPackage("..internal.service..")
+            .allowEmptyShould(true);
+
+    /** An {@code Api} interface lives in its module's {@code api} package, not anywhere else. */
+    @ArchTest
+    static final ArchRule apiInterfacesLiveInApiPackage = classes()
+            .that().haveSimpleNameEndingWith("Api").and().areInterfaces()
+            .should().resideInAPackage("..api..")
             .allowEmptyShould(true);
 
     /** Dependencies are injected through constructors (immutable, testable without Spring), never into fields. */

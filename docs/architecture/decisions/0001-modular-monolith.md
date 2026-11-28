@@ -1,6 +1,6 @@
 # ADR-0001: Modular monolith
 
-- Status: Accepted
+- Status: Accepted; point 2 is amended by [ADR-0007](0007-api-and-internal-packages.md) (the module layout changed, the boundaries did not)
 - Date: 2026-11-20 (records the decision taken at project start)
 
 ## Context

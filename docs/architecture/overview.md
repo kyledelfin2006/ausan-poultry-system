@@ -25,16 +25,18 @@ One backend process, one database, one deployable. The frontend talks to the bac
 ## 2. Modules
 
 The code is a **modular monolith** ([ADR-0001](decisions/0001-modular-monolith.md)): one application, divided into packages under
-`kyle.poultry`, each a module with a clear job and a public face.
+`kyle.poultry`, each a module with a clear job and a public face. Every module has an `api` package (what other modules may use) and
+an `internal` package (everything else, split by layer); see [Package layout](#package-layout) and
+[ADR-0007](decisions/0007-api-and-internal-packages.md).
 
 | Module | Responsibility | Public face (other modules may use) |
 |---|---|---|
-| `shared` | Error handling, the shared exceptions, the clock, the loose `SourceRef` pointer, CSV writing, the request-id filter (`shared.web`) | `RuleViolation`, `ConflictException`, `NotFoundException`, `SourceRef`, `Csv`, `RequestIdFilter` |
-| `audit` | Append-only trail of who changed users, products, packages and branches; the owner-only audit query | `AuditApi`, `AuditAction`, `AuditEntity`, `AuditChanges` |
-| `identity` | Users, roles, login, sign-out, password change, JWT, bootstrap owner, forced temporary-password change, immediate revocation, CORS | `Actor`, `Role` |
-| `catalog` | Products, branches, sales packages (every change is recorded in the audit trail) | `CatalogApi` |
-| `stock` | Append-only stock movements, balances, weighted average cost, the all-branch summary and reorder levels | `StockApi` |
-| `finance` | Append-only financial ledger, refunds, period aggregates | `FinanceApi` |
+| `shared` | Error handling (`shared.error`), the clock and business date (`shared.time`), the loose `SourceRef` pointer (`shared.reference`), CSV writing (`shared.csv`), the request-id filter (`shared.web`) | `RuleViolation`, `ConflictException`, `NotFoundException`, `SourceRef`, `Csv`, `RequestIdFilter` |
+| `audit` | Append-only trail of who changed users, products, packages and branches; the owner-only audit query | `audit.api`: `AuditApi`, `AuditAction`, `AuditEntity`, `AuditChanges` |
+| `identity` | Users, roles, login, sign-out, password change, JWT, bootstrap owner, forced temporary-password change, immediate revocation, CORS | `identity.api`: `Actor`, `Role`, `Capability`, `RequiresCapability` |
+| `catalog` | Products, branches, sales packages (every change is recorded in the audit trail) | `catalog.api`: `CatalogApi` and its views |
+| `stock` | Append-only stock movements, balances, weighted average cost, the all-branch summary and reorder levels | `stock.api`: `StockApi`, its views and commands, `MovementType`, `InsufficientStockException` |
+| `finance` | Append-only financial ledger, refunds, period aggregates | `finance.api`: `FinanceApi`, `EntryView`, `EntryType`, `PaymentMethod` |
 | `delivery` | Deliveries and their lifecycle; orchestrates stock and finance | (none: only HTTP) |
 | `report` | Read-only profit, cash and inventory-value reports | (none: only HTTP) |
 
@@ -71,8 +73,9 @@ Rules, and the tests that fail the build when they are broken:
 
 1. A module depends only on the modules listed above, and the module graph has no cycles
    ([ModuleBoundaryTests](../../src/test/java/kyle/poultry/architecture/ModuleBoundaryTests.java)).
-2. Code outside a module uses only its **public** types. Entities, repositories, controllers and service implementations are
-   package-private, so the compiler already refuses most violations; the test catches the rest (same test class).
+2. Code outside a module uses only its **`api` package**. Entities, repositories, controllers and service implementations live in
+   `internal`, which the build refuses to let any other module touch (same test class). The compiler no longer guards this,
+   because the layers inside `internal` are public to each other ([ADR-0007](decisions/0007-api-and-internal-packages.md)).
 3. A module never reads another module's tables. Cross-module data goes through the `*Api` interface, and the
    ledgers refer to the business record that caused a row with a loose `SourceRef(type, id)` instead of a foreign key.
 4. `audit` sits at the bottom with `shared`: it knows nothing about the modules that write to it. Callers pass only *what*
@@ -83,28 +86,54 @@ Rules, and the tests that fail the build when they are broken:
 
 ## 3. Inside a module
 
+### Package layout
+
+Every module except `shared` has exactly two top-level packages, and no class sits loose at the module root:
+
+```
+<module>/
+├── api/                what other modules may use
+│   ├── <Module>Api     service interface (only for modules other modules call)
+│   ├── model/          views, commands and enums that cross the boundary, one type per file
+│   ├── exception/      exceptions callers must handle (stock: InsufficientStockException)
+│   └── security/       annotations other modules apply (identity: @RequiresCapability)
+└── internal/           everything else
+    ├── web/            controllers
+    ├── service/        rules and the transaction boundary; the *Api implementation
+    ├── model/          values the layers pass around (views returned by services, requests, status enums)
+    ├── persistence/    entities and repositories
+    └── security, config, export, bootstrap     only where the module has that concern
+```
+
+`delivery` and `report` are called by no other module, so they have no `api` package. `shared` is the public kernel, grouped by
+concern (`error`, `time`, `csv`, `web`, `reference`, `openapi`).
+
+### Request flow
+
 ```mermaid
 flowchart LR
-    http([HTTP request]) --> controller["Controller<br/>validates input, maps to a call"]
-    controller --> service["Service / Ledger<br/>business rules, one transaction"]
-    service --> repo["Repository<br/>Spring Data, native SQL where atomicity matters"]
-    repo --> entity["Entity<br/>checks its own invariants"]
-    service -. "other module" .-> api["*Api interface"]
+    http([HTTP request]) --> controller["internal.web<br/>Controller: validates input, maps to a call"]
+    controller --> service["internal.service<br/>Service / Ledger: business rules, one transaction"]
+    service --> repo["internal.persistence<br/>Repository: Spring Data, native SQL where atomicity matters"]
+    repo --> entity["internal.persistence<br/>Entity: checks its own invariants"]
+    service -. "other module" .-> api["other module's api<br/>*Api interface"]
     service --> view["View record"]
     view --> controller
 ```
 
-- **Controller**: bean validation (`@Valid`), capability checks (`@RequiresCapability`), translation between JSON and a service call. No
-  repository access, no transaction, no entities in its signatures.
-- **Service / ledger**: the module's rules and its transaction boundary. A class that implements an `*Api` interface is the only
-  public entrance and is itself package-private.
-- **Entity**: owns the rules that belong to one record (a delivery's status transitions, a movement's sign rules) in static
-  factories and methods, so the rule holds wherever the entity is used.
-- **View**: an immutable record handed to callers; persistence classes never leave the module.
+- **Controller** (`internal.web`): bean validation (`@Valid`), capability checks (`@RequiresCapability`), translation between JSON and a service
+  call. No repository access, no transaction, no entities in its signatures.
+- **Service / ledger** (`internal.service`): the module's rules and its transaction boundary. The class that implements an `*Api`
+  interface lives here and is reached by other modules only through the interface.
+- **Entity** (`internal.persistence`): owns the rules that belong to one record (a delivery's status transitions, a movement's sign
+  rules) in static factories and methods, so the rule holds wherever the entity is used.
+- **View** (`api.model` for what other modules see, `internal.model` for what only this module's layers pass around): an immutable
+  record handed to callers; persistence classes never leave the module.
 
 Enforced by [CodingRulesTests](../../src/test/java/kyle/poultry/architecture/CodingRulesTests.java): controllers do not touch
-repositories or entities, are not transactional and are named `...Controller`; entities and repositories are not public; `*Api`
-types are interfaces and their implementations are not public; no field injection; no `System.out`; no `java.util.logging`.
+repositories or entities, are not transactional, are named `...Controller` and live in `internal.web`; entities and repositories live in
+`internal.persistence`; `*Api` types are interfaces in `api` and their implementations live in `internal.service`; the layers inside
+`internal` point one way; no field injection; no `System.out`; no `java.util.logging`.
 
 ## 4. Cross-cutting rules
 
@@ -113,7 +142,7 @@ types are interfaces and their implementations are not public; no field injectio
 | **Transactions** | A request is one transaction. Every `*Api` method joins the caller's transaction, so a delivery, its stock movements and its ledger rows commit together or not at all. Reads are `readOnly`. | `@Transactional` on services; [sequences.md](sequences.md) |
 | **Time** | "Now" and "today" always come from the injected `Clock`, whose zone is `Asia/Manila` (`app.zone`). No production code may call the no-argument `now()`. A business date is the Manila calendar date, never the server's. | `ClockConfig`; `CodingRulesTests.timeComesFromTheInjectedClock` |
 | **Money** | `BigDecimal`, PHP. Amounts are positive with at most two decimals and stored at scale 2; the entry *type*, never a sign, gives the direction. Unit costs have four decimals. Rounding is half-up. | `FinanceLedger.normalise`, `StockMovement.create`; [ledger-and-costing.md](ledger-and-costing.md) |
-| **Errors** | RFC 9457 `ProblemDetail`. Not found 404, rule violation 422, conflict 409 (including database constraint clashes), bean validation 400, wrong role 403, bad token 401. | `shared/ApiExceptionHandler`; [../api.md](../api.md) |
+| **Errors** | RFC 9457 `ProblemDetail`. Not found 404, rule violation 422, conflict 409 (including database constraint clashes), bean validation 400, wrong role 403, bad token 401. | `shared.error.handler.ApiExceptionHandler`; [../api.md](../api.md) |
 | **Security** | Stateless HS256 JWT; every endpoint except login and health needs a token; the user is re-read from the database on every request so a deactivation, role change, sign-out or password change applies at once (the token carries a version that must match); failed logins are throttled; CORS allows only the configured origins. | [ADR-0003](decisions/0003-stateless-jwt-with-database-recheck.md); `SecurityMatrixTests` |
 | **Audit trail** | Every change to a user, product, branch or package writes one `audit_log` row **in the same transaction** (so a change never commits without its entry, nor an entry without its change). The table refuses update, delete and truncate through database triggers. | [data-model.md](data-model.md); `audit` module |
 | **Request tracing** | Every request gets an `X-Request-Id` (a safe client value is kept, otherwise one is generated), put in the log context with the user id and echoed in the response, even on 401 and 403; the id is stored with each audit row. | `shared.web.RequestIdFilter`; [../security/observability.md](../security/observability.md) |
@@ -148,7 +177,7 @@ flowchart LR
 | **Auditability** | Append-only ledgers; every row carries who and when; corrections are visible reversals | Database check constraints; `StockLedgerTests`, `FinanceAndCostTests` |
 | **Consistency** | One transaction per request; atomic balance statement; row locks; unique constraints as the last line of defence | [consistency-and-concurrency.md](consistency-and-concurrency.md); `DeliveryConcurrencyTests` |
 | **Correct money** | Independent oracle for the average cost; hand-calculated scenarios; ledger always sums to the balance | `WeightedAverageCostTests`, `FinanceLedgerUnitTests` |
-| **Modularity** | Enforced boundaries, package-private internals | `ModuleBoundaryTests`, `CodingRulesTests` |
+| **Modularity** | Enforced boundaries, `api` / `internal` packages checked on every build | `ModuleBoundaryTests`, `CodingRulesTests` |
 | **Testability** | Injected clock, explicit `Actor`, no static state, real PostgreSQL in tests | [../quality/README.md](../quality/README.md) |
 | **Operability** | Health endpoint, graceful shutdown, backup/restore scripts and a documented restore drill | [../operations.md](../operations.md) |
 
