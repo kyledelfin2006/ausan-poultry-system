@@ -1,4 +1,4 @@
-package kyle.poultry.report;
+package kyle.poultry.report.internal.service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -21,7 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Builds the period financial reports and the inventory valuation. It is the only service of the report module and
- * is used by {@link ReportController}; it talks to other modules solely through {@link FinanceApi} and
+ * is used by {@code ReportController}; it talks to other modules solely through {@link FinanceApi} and
  * {@link StockApi} and never writes anything.
  *
  * <p>All figures are PHP with scale 2, for an inclusive period {@code [from, to]} of Manila business dates:
@@ -39,7 +39,7 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Service
 @Transactional(readOnly = true)   // every report is a pure read; read-only lets the database skip write bookkeeping
-class ReportService {
+public class ReportService {
     /** Longest reportable period in days; one full leap year. */
     static final int MAX_DAYS = 366;
 
@@ -60,7 +60,7 @@ class ReportService {
      * @param from first business date included
      * @param to   last business date included
      */
-    record Period(LocalDate from, LocalDate to) {}
+    public record Period(LocalDate from, LocalDate to) {}
 
     /**
      * Revenue figures for a period.
@@ -69,7 +69,7 @@ class ReportService {
      * @param cancelled sum of SALE_REVERSAL entries (sales undone by cancellations)
      * @param net       gross minus cancelled
      */
-    record Sales(BigDecimal gross, BigDecimal cancelled, BigDecimal net) {}
+    public record Sales(BigDecimal gross, BigDecimal cancelled, BigDecimal net) {}
 
     /**
      * Money received from and returned to customers.
@@ -80,7 +80,7 @@ class ReportService {
      * @param retainedOnCancelledDeliveries money held, as of the period end, for cancelled sources and not yet
      *                                      refunded; reported on its own and never part of sales
      */
-    record Collections(BigDecimal received, BigDecimal refunds, BigDecimal netCollected,
+    public record Collections(BigDecimal received, BigDecimal refunds, BigDecimal netCollected,
                        BigDecimal retainedOnCancelledDeliveries) {}
 
     /**
@@ -89,7 +89,7 @@ class ReportService {
      * @param total    payments received - refunds - stock purchases - other expenses
      * @param byMethod the same net figure per payment method; every method is present
      */
-    record CashMovement(BigDecimal total, Map<PaymentMethod, BigDecimal> byMethod) {}
+    public record CashMovement(BigDecimal total, Map<PaymentMethod, BigDecimal> byMethod) {}
 
     /**
      * The summary report. Assistants receive sales and collection figures; cost and cash-movement components are null.
@@ -102,7 +102,7 @@ class ReportService {
      * @param cashMovement   net cash flow with its per-method breakdown; null for assistants
      */
     @JsonInclude(JsonInclude.Include.NON_NULL)
-    record Summary(Period period, Sales sales, Collections collections, BigDecimal stockPurchases,
+    public record Summary(Period period, Sales sales, Collections collections, BigDecimal stockPurchases,
                    BigDecimal otherExpenses, CashMovement cashMovement) {}
 
     /**
@@ -112,7 +112,7 @@ class ReportService {
      * @param reversed  sum of COGS_REVERSAL entries (cost undone by cancellations)
      * @param net       delivered minus reversed
      */
-    record CostOfGoods(BigDecimal delivered, BigDecimal reversed, BigDecimal net) {}
+    public record CostOfGoods(BigDecimal delivered, BigDecimal reversed, BigDecimal net) {}
 
     /**
      * The profit report served to the owner only.
@@ -124,7 +124,7 @@ class ReportService {
      * @param otherExpenses sum of EXPENSE entries
      * @param profit        gross profit minus other expenses; stock purchases are never included
      */
-    record Profit(Period period, BigDecimal netSales, CostOfGoods costOfGoods, BigDecimal grossProfit,
+    public record Profit(Period period, BigDecimal netSales, CostOfGoods costOfGoods, BigDecimal grossProfit,
                   BigDecimal otherExpenses, BigDecimal profit) {}
 
     /**
@@ -137,7 +137,7 @@ class ReportService {
      * @param averageCost weighted average cost per unit (4 decimals)
      * @param value       quantity x average cost, rounded to centavos
      */
-    record InventoryLine(long productId, String productName, String unit, long quantity,
+    public record InventoryLine(long productId, String productName, String unit, long quantity,
                          BigDecimal averageCost, BigDecimal value) {}
 
     /**
@@ -147,7 +147,7 @@ class ReportService {
      * @param lines    its products with stock, ordered by product name
      * @param total    sum of the line values
      */
-    record BranchInventory(long branchId, List<InventoryLine> lines, BigDecimal total) {}
+    public record BranchInventory(long branchId, List<InventoryLine> lines, BigDecimal total) {}
 
     /**
      * Inventory valuation across all branches, as of now.
@@ -155,7 +155,7 @@ class ReportService {
      * @param branches   branches that hold stock, ordered by branch id
      * @param grandTotal sum of the branch totals
      */
-    record InventoryValue(List<BranchInventory> branches, BigDecimal grandTotal) {}
+    public record InventoryValue(List<BranchInventory> branches, BigDecimal grandTotal) {}
 
     /**
      * Builds the summary report: sales, collections, purchases, expenses and cash movement.
@@ -165,7 +165,7 @@ class ReportService {
      * @return the summary figures; entry types with no entries report 0.00
      * @throws RuleViolation if a date is missing, {@code from} is after {@code to}, or the period exceeds 366 days
      */
-    Summary summary(LocalDate from, LocalDate to) {
+    public Summary summary(LocalDate from, LocalDate to) {
         // Validate first so a bad request never reaches the database.
         requirePeriod(from, to);
         return summary(from, to, finance.totalsByType(from, to), finance.retainedOnCancelledSources(to));
@@ -205,7 +205,7 @@ class ReportService {
      * @param retained the retained amount as of {@code to}, from {@link #retainedOnCancelled}
      * @return the summary
      */
-    Summary summary(LocalDate from, LocalDate to, Map<EntryType, BigDecimal> t, BigDecimal retained) {
+    public Summary summary(LocalDate from, LocalDate to, Map<EntryType, BigDecimal> t, BigDecimal retained) {
         BigDecimal received = t.get(EntryType.PAYMENT_IN), refunds = t.get(EntryType.REFUND);
         BigDecimal purchases = t.get(EntryType.STOCK_PURCHASE), expenses = t.get(EntryType.EXPENSE);
         BigDecimal gross = t.get(EntryType.SALE), cancelled = t.get(EntryType.SALE_REVERSAL);
@@ -228,7 +228,7 @@ class ReportService {
      * @return net sales, net cost of goods, gross profit, expenses and profit
      * @throws RuleViolation if a date is missing, {@code from} is after {@code to}, or the period exceeds 366 days
      */
-    Profit profit(LocalDate from, LocalDate to) {
+    public Profit profit(LocalDate from, LocalDate to) {
         // Validate first so a bad request never reaches the database.
         requirePeriod(from, to);
         return profit(from, to, finance.totalsByType(from, to));
@@ -242,7 +242,7 @@ class ReportService {
      * @param t    the period's totals, from {@link #totals}
      * @return net sales, net cost of goods, gross profit, expenses and profit
      */
-    Profit profit(LocalDate from, LocalDate to, Map<EntryType, BigDecimal> t) {
+    public Profit profit(LocalDate from, LocalDate to, Map<EntryType, BigDecimal> t) {
         // Cancelled deliveries drop out of both revenue and cost through their reversal rows.
         BigDecimal netSales = t.get(EntryType.SALE).subtract(t.get(EntryType.SALE_REVERSAL));
         BigDecimal cogs = t.get(EntryType.COST_OF_GOODS).subtract(t.get(EntryType.COGS_REVERSAL));
@@ -260,7 +260,7 @@ class ReportService {
      *
      * @return the valuation grouped by branch
      */
-    InventoryValue inventoryValue() {
+    public InventoryValue inventoryValue() {
         // TreeMap keeps branches in id order so the output is stable between calls.
         Map<Long, List<InventoryLine>> byBranch = new TreeMap<>();
         for (BalanceView b : stock.balances(null)) {   // null = all branches

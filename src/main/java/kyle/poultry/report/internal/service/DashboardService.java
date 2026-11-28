@@ -1,4 +1,4 @@
-package kyle.poultry.report;
+package kyle.poultry.report.internal.service;
 
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -14,11 +14,11 @@ import org.springframework.transaction.annotation.Transactional;
  * Builds the home-screen dashboard: today's and the month's figures, the value of the stock and how many products are
  * low. Every figure is computed by {@link ReportService}, so the dashboard can never disagree with the reports it
  * summarises. "Today" and "this month" are in the farm's zone, taken from the injected {@link Clock}. Read-only;
- * package-private.
+ * internal to the report module.
  */
 @Service
 @Transactional(readOnly = true)
-class DashboardService {
+public class DashboardService {
     private final ReportService reports;
     private final StockApi stock;
     private final Clock clock;
@@ -47,7 +47,7 @@ class DashboardService {
      * @param profit         the period's profit; {@code null} for an assistant
      */
     @JsonInclude(JsonInclude.Include.NON_NULL)
-    record Figures(LocalDate from, LocalDate to, BigDecimal netSales, BigDecimal netCollected, BigDecimal stockPurchases,
+    public record Figures(LocalDate from, LocalDate to, BigDecimal netSales, BigDecimal netCollected, BigDecimal stockPurchases,
                    BigDecimal otherExpenses, BigDecimal cashMovement, BigDecimal profit) {}
 
     /**
@@ -61,7 +61,7 @@ class DashboardService {
      * @param retainedOnCancelledDeliveries money still held for cancelled deliveries as of today
      */
     @JsonInclude(JsonInclude.Include.NON_NULL)
-    record Dashboard(LocalDate asOf, Figures today, Figures monthToDate, BigDecimal inventoryValue, int lowStockProducts,
+    public record Dashboard(LocalDate asOf, Figures today, Figures monthToDate, BigDecimal inventoryValue, int lowStockProducts,
                      BigDecimal retainedOnCancelledDeliveries) {}
 
     /**
@@ -70,7 +70,7 @@ class DashboardService {
      * @param owner true for the owner; an assistant gets no cost, cash flow, inventory value, or profit figures
      * @return the dashboard
      */
-    Dashboard dashboard(boolean owner) {
+    public Dashboard dashboard(boolean owner) {
         LocalDate today = LocalDate.now(clock);
         // Month to date always includes today, even on the first of the month (one day).
         LocalDate monthStart = today.withDayOfMonth(1);

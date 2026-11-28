@@ -1,4 +1,4 @@
-package kyle.poultry.report;
+package kyle.poultry.report.internal.service;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -10,7 +10,7 @@ import java.util.Map;
 import java.util.TreeMap;
 import kyle.poultry.finance.api.model.EntryType;
 import kyle.poultry.finance.api.FinanceApi;
-import kyle.poultry.report.ReportService.Period;
+import kyle.poultry.report.internal.service.ReportService.Period;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,11 +21,11 @@ import org.springframework.transaction.annotation.Transactional;
  * SALE - SALE_REVERSAL and so on), so the {@code totals} of a series always equal the matching report for the same
  * period. Every day or month of the period has a point, with zeros where nothing happened, so a chart has no gaps.
  * A month at the edge of the period is cut to the period: its point starts at {@code from} or ends at {@code to}.
- * Read-only; package-private.
+ * Read-only; internal to the report module.
  */
 @Service
 @Transactional(readOnly = true)
-class SeriesService {
+public class SeriesService {
     private final FinanceApi finance;
 
     /**
@@ -36,7 +36,7 @@ class SeriesService {
     SeriesService(FinanceApi finance) { this.finance = finance; }
 
     /** How finely a period is cut into points. */
-    enum Granularity {
+    public enum Granularity {
         /** One point per business date: at most 366 points. */
         DAY,
         /** One point per calendar month: at most 13 points; edge months are cut to the period. */
@@ -55,7 +55,7 @@ class SeriesService {
      * @param cashMovement  PAYMENT_IN - REFUND - STOCK_PURCHASE - EXPENSE; null for assistants
      */
     @JsonInclude(JsonInclude.Include.NON_NULL)
-    record SeriesPoint(LocalDate from, LocalDate to, BigDecimal netSales, BigDecimal netCollected,
+    public record SeriesPoint(LocalDate from, LocalDate to, BigDecimal netSales, BigDecimal netCollected,
                        BigDecimal stockPurchases, BigDecimal otherExpenses, BigDecimal cashMovement) {}
 
     /**
@@ -66,7 +66,7 @@ class SeriesService {
      * @param points      one point per day or month, oldest first
      * @param totals      the whole period; equals the summary report's figures
      */
-    record Series(Period period, Granularity granularity, List<SeriesPoint> points, SeriesPoint totals) {}
+    public record Series(Period period, Granularity granularity, List<SeriesPoint> points, SeriesPoint totals) {}
 
     /**
      * A point of the profit series.
@@ -79,7 +79,7 @@ class SeriesService {
      * @param otherExpenses sum of EXPENSE
      * @param profit        gross profit minus other expenses; stock purchases are never included
      */
-    record ProfitPoint(LocalDate from, LocalDate to, BigDecimal netSales, BigDecimal costOfGoods, BigDecimal grossProfit,
+    public record ProfitPoint(LocalDate from, LocalDate to, BigDecimal netSales, BigDecimal costOfGoods, BigDecimal grossProfit,
                        BigDecimal otherExpenses, BigDecimal profit) {}
 
     /**
@@ -90,7 +90,7 @@ class SeriesService {
      * @param points      one point per day or month, oldest first
      * @param totals      the whole period; equals the profit report's figures
      */
-    record ProfitSeries(Period period, Granularity granularity, List<ProfitPoint> points, ProfitPoint totals) {}
+    public record ProfitSeries(Period period, Granularity granularity, List<ProfitPoint> points, ProfitPoint totals) {}
 
     /**
      * The entry-type totals of one stretch of the period.
@@ -111,7 +111,7 @@ class SeriesService {
      * @throws kyle.poultry.shared.error.RuleViolation if a date is missing, {@code from} is after {@code to}, the period
      *                                           exceeds 366 days, or the granularity is missing
      */
-    Series series(LocalDate from, LocalDate to, Granularity granularity) {
+    public Series series(LocalDate from, LocalDate to, Granularity granularity) {
         var buckets = buckets(from, to, granularity);
         var points = buckets.stream().map(b -> seriesPoint(b.from(), b.to(), b.totals())).toList();
         // The total is built from the same buckets, so it can never disagree with the points above it.
@@ -128,7 +128,7 @@ class SeriesService {
      * @throws kyle.poultry.shared.error.RuleViolation if a date is missing, {@code from} is after {@code to}, the period
      *                                           exceeds 366 days, or the granularity is missing
      */
-    ProfitSeries profitSeries(LocalDate from, LocalDate to, Granularity granularity) {
+    public ProfitSeries profitSeries(LocalDate from, LocalDate to, Granularity granularity) {
         var buckets = buckets(from, to, granularity);
         var points = buckets.stream().map(b -> profitPoint(b.from(), b.to(), b.totals())).toList();
         return new ProfitSeries(new Period(from, to), granularity, points, profitPoint(from, to, sum(buckets)));

@@ -1,5 +1,6 @@
-package kyle.poultry.report;
+package kyle.poultry.report.internal.web;
 
+import kyle.poultry.report.internal.service.ReportService;
 import kyle.poultry.stock.api.model.MovementView;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;

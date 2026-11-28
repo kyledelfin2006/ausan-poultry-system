@@ -1,4 +1,4 @@
-package kyle.poultry.report;
+package kyle.poultry.report.internal.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;

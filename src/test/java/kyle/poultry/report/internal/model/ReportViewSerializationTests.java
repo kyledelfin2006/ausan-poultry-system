@@ -1,16 +1,17 @@
-package kyle.poultry.report;
+package kyle.poultry.report.internal.model;
 
+import kyle.poultry.report.internal.service.SeriesService;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
-import kyle.poultry.report.ReportService.Collections;
-import kyle.poultry.report.ReportService.Period;
-import kyle.poultry.report.ReportService.Sales;
-import kyle.poultry.report.ReportService.Summary;
-import kyle.poultry.report.SeriesService.Series;
-import kyle.poultry.report.SeriesService.SeriesPoint;
+import kyle.poultry.report.internal.service.ReportService.Collections;
+import kyle.poultry.report.internal.service.ReportService.Period;
+import kyle.poultry.report.internal.service.ReportService.Sales;
+import kyle.poultry.report.internal.service.ReportService.Summary;
+import kyle.poultry.report.internal.service.SeriesService.Series;
+import kyle.poultry.report.internal.service.SeriesService.SeriesPoint;
 import tools.jackson.databind.json.JsonMapper;
 import org.junit.jupiter.api.Test;
 

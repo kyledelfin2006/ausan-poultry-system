@@ -1,4 +1,4 @@
-package kyle.poultry.report;
+package kyle.poultry.report.internal.service;
 
 import kyle.poultry.stock.api.model.MovementView;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -17,7 +17,7 @@ import kyle.poultry.finance.api.FinanceApi;
 import kyle.poultry.finance.api.model.PaymentMethod;
 import kyle.poultry.identity.api.model.Actor;
 import kyle.poultry.identity.api.model.Role;
-import kyle.poultry.report.SeriesService.Granularity;
+import kyle.poultry.report.internal.service.SeriesService.Granularity;
 import kyle.poultry.shared.error.RuleViolation;
 import kyle.poultry.shared.reference.SourceRef;
 import kyle.poultry.stock.api.model.MovementType;

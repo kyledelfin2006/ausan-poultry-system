@@ -1,20 +1,20 @@
-package kyle.poultry.report;
+package kyle.poultry.report.internal.export;
 
 import java.util.Map;
 import kyle.poultry.finance.api.model.PaymentMethod;
-import kyle.poultry.report.ReportService.InventoryValue;
-import kyle.poultry.report.ReportService.Profit;
-import kyle.poultry.report.ReportService.Summary;
-import kyle.poultry.report.SeriesService.ProfitSeries;
-import kyle.poultry.report.SeriesService.Series;
+import kyle.poultry.report.internal.service.ReportService.InventoryValue;
+import kyle.poultry.report.internal.service.ReportService.Profit;
+import kyle.poultry.report.internal.service.ReportService.Summary;
+import kyle.poultry.report.internal.service.SeriesService.ProfitSeries;
+import kyle.poultry.report.internal.service.SeriesService.Series;
 import kyle.poultry.shared.csv.Csv;
 
 /**
  * Renders the report results as CSV text, with exactly the figures of the JSON reports: flat reports become
- * {@code metric,value} rows, tabular ones get one row per line. Stateless; package-private, used by
- * {@link ReportController}. Quoting and spreadsheet-formula protection come from {@link Csv}.
+ * {@code metric,value} rows, tabular ones get one row per line. Stateless; internal to the report module, used by
+ * {@code ReportController}. Quoting and spreadsheet-formula protection come from {@link Csv}.
  */
-final class ReportCsv {
+public final class ReportCsv {
     private ReportCsv() {}
 
     /**
@@ -23,7 +23,7 @@ final class ReportCsv {
      * @param s the report
      * @return CSV text with a {@code metric,value} header
      */
-    static String summary(Summary s) {
+    public static String summary(Summary s) {
         var csv = Csv.builder().row("metric", "value")
                 .row("from", s.period().from()).row("to", s.period().to())
                 .row("sales.gross", s.sales().gross()).row("sales.cancelled", s.sales().cancelled())
@@ -48,7 +48,7 @@ final class ReportCsv {
      * @param p the report
      * @return CSV text with a {@code metric,value} header
      */
-    static String profit(Profit p) {
+    public static String profit(Profit p) {
         return Csv.builder().row("metric", "value")
                 .row("from", p.period().from()).row("to", p.period().to())
                 .row("netSales", p.netSales())
@@ -64,7 +64,7 @@ final class ReportCsv {
      * @param v the valuation
      * @return CSV text
      */
-    static String inventoryValue(InventoryValue v) {
+    public static String inventoryValue(InventoryValue v) {
         var csv = Csv.builder().row("branchId", "productId", "productName", "unit", "quantity", "averageCost", "value");
         v.branches().forEach(b -> b.lines().forEach(l -> csv.row(b.branchId(), l.productId(), l.productName(), l.unit(),
                 l.quantity(), l.averageCost(), l.value())));
@@ -79,7 +79,7 @@ final class ReportCsv {
      * @param s the series
      * @return CSV text
      */
-    static String series(Series s) {
+    public static String series(Series s) {
         boolean includeCosts = s.totals().stockPurchases() != null;
         var csv = Csv.builder();
         if (includeCosts)
@@ -102,7 +102,7 @@ final class ReportCsv {
      * @param s the series
      * @return CSV text
      */
-    static String profitSeries(ProfitSeries s) {
+    public static String profitSeries(ProfitSeries s) {
         var csv = Csv.builder().row("row", "from", "to", "netSales", "costOfGoods", "grossProfit", "otherExpenses", "profit");
         s.points().forEach(p -> csv.row("POINT", p.from(), p.to(), p.netSales(), p.costOfGoods(), p.grossProfit(),
                 p.otherExpenses(), p.profit()));
