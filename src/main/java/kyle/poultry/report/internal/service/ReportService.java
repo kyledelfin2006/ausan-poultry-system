@@ -1,5 +1,15 @@
 package kyle.poultry.report.internal.service;
 
+import kyle.poultry.report.internal.model.BranchInventory;
+import kyle.poultry.report.internal.model.CashMovement;
+import kyle.poultry.report.internal.model.Collections;
+import kyle.poultry.report.internal.model.CostOfGoods;
+import kyle.poultry.report.internal.model.InventoryLine;
+import kyle.poultry.report.internal.model.InventoryValue;
+import kyle.poultry.report.internal.model.Period;
+import kyle.poultry.report.internal.model.Profit;
+import kyle.poultry.report.internal.model.Sales;
+import kyle.poultry.report.internal.model.Summary;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
@@ -11,11 +21,9 @@ import java.util.Map;
 import java.util.TreeMap;
 import kyle.poultry.finance.api.model.EntryType;
 import kyle.poultry.finance.api.FinanceApi;
-import kyle.poultry.finance.api.model.PaymentMethod;
 import kyle.poultry.shared.error.RuleViolation;
 import kyle.poultry.stock.api.StockApi;
 import kyle.poultry.stock.api.model.BalanceView;
-import com.fasterxml.jackson.annotation.JsonInclude;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -53,110 +61,6 @@ public class ReportService {
      * @param stock   the stock module's public API, source of balances and average costs
      */
     ReportService(FinanceApi finance, StockApi stock) { this.finance = finance; this.stock = stock; }
-
-    /**
-     * The inclusive date range a report covers.
-     *
-     * @param from first business date included
-     * @param to   last business date included
-     */
-    public record Period(LocalDate from, LocalDate to) {}
-
-    /**
-     * Revenue figures for a period.
-     *
-     * @param gross     sum of SALE entries
-     * @param cancelled sum of SALE_REVERSAL entries (sales undone by cancellations)
-     * @param net       gross minus cancelled
-     */
-    public record Sales(BigDecimal gross, BigDecimal cancelled, BigDecimal net) {}
-
-    /**
-     * Money received from and returned to customers.
-     *
-     * @param received                      sum of PAYMENT_IN entries in the period
-     * @param refunds                       sum of REFUND entries in the period
-     * @param netCollected                  received minus refunds
-     * @param retainedOnCancelledDeliveries money held, as of the period end, for cancelled sources and not yet
-     *                                      refunded; reported on its own and never part of sales
-     */
-    public record Collections(BigDecimal received, BigDecimal refunds, BigDecimal netCollected,
-                       BigDecimal retainedOnCancelledDeliveries) {}
-
-    /**
-     * Net cash flow of a period.
-     *
-     * @param total    payments received - refunds - stock purchases - other expenses
-     * @param byMethod the same net figure per payment method; every method is present
-     */
-    public record CashMovement(BigDecimal total, Map<PaymentMethod, BigDecimal> byMethod) {}
-
-    /**
-     * The summary report. Assistants receive sales and collection figures; cost and cash-movement components are null.
-     *
-     * @param period         the period covered
-     * @param sales          gross, cancelled and net sales
-     * @param collections    payments, refunds and retained payments
-     * @param stockPurchases cash paid to suppliers (sum of STOCK_PURCHASE); not a profit figure; null for assistants
-     * @param otherExpenses  sum of EXPENSE entries; null for assistants
-     * @param cashMovement   net cash flow with its per-method breakdown; null for assistants
-     */
-    @JsonInclude(JsonInclude.Include.NON_NULL)
-    public record Summary(Period period, Sales sales, Collections collections, BigDecimal stockPurchases,
-                   BigDecimal otherExpenses, CashMovement cashMovement) {}
-
-    /**
-     * Cost of the stock that was delivered in a period.
-     *
-     * @param delivered sum of COST_OF_GOODS entries
-     * @param reversed  sum of COGS_REVERSAL entries (cost undone by cancellations)
-     * @param net       delivered minus reversed
-     */
-    public record CostOfGoods(BigDecimal delivered, BigDecimal reversed, BigDecimal net) {}
-
-    /**
-     * The profit report served to the owner only.
-     *
-     * @param period        the period covered
-     * @param netSales      SALE - SALE_REVERSAL
-     * @param costOfGoods   cost of the stock delivered
-     * @param grossProfit   net sales minus net cost of goods
-     * @param otherExpenses sum of EXPENSE entries
-     * @param profit        gross profit minus other expenses; stock purchases are never included
-     */
-    public record Profit(Period period, BigDecimal netSales, CostOfGoods costOfGoods, BigDecimal grossProfit,
-                  BigDecimal otherExpenses, BigDecimal profit) {}
-
-    /**
-     * One product's stock value inside a branch.
-     *
-     * @param productId   the product
-     * @param productName display name of the product
-     * @param unit        unit of measure (e.g. head, pc, bag)
-     * @param quantity    units on hand
-     * @param averageCost weighted average cost per unit (4 decimals)
-     * @param value       quantity x average cost, rounded to centavos
-     */
-    public record InventoryLine(long productId, String productName, String unit, long quantity,
-                         BigDecimal averageCost, BigDecimal value) {}
-
-    /**
-     * Stock value of one branch.
-     *
-     * @param branchId the branch (names belong to the catalog module, which this module does not use)
-     * @param lines    its products with stock, ordered by product name
-     * @param total    sum of the line values
-     */
-    public record BranchInventory(long branchId, List<InventoryLine> lines, BigDecimal total) {}
-
-    /**
-     * Inventory valuation across all branches, as of now.
-     *
-     * @param branches   branches that hold stock, ordered by branch id
-     * @param grandTotal sum of the branch totals
-     */
-    public record InventoryValue(List<BranchInventory> branches, BigDecimal grandTotal) {}
-
     /**
      * Builds the summary report: sales, collections, purchases, expenses and cash movement.
      *

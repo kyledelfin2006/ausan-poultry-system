@@ -1,12 +1,14 @@
 package kyle.poultry.report.internal.service;
 
+import kyle.poultry.report.internal.model.Dashboard;
+import kyle.poultry.report.internal.model.Figures;
+import kyle.poultry.report.internal.model.Summary;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.util.Map;
 import kyle.poultry.finance.api.model.EntryType;
 import kyle.poultry.stock.api.StockApi;
-import com.fasterxml.jackson.annotation.JsonInclude;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,37 +35,6 @@ public class DashboardService {
     DashboardService(ReportService reports, StockApi stock, Clock clock) {
         this.reports = reports; this.stock = stock; this.clock = clock;
     }
-
-    /**
-     * The figures of one period shown on the dashboard.
-     *
-     * @param from           first business date
-     * @param to             last business date
-     * @param netSales       SALE - SALE_REVERSAL
-     * @param netCollected   PAYMENT_IN - REFUND
-     * @param stockPurchases cash paid to suppliers; {@code null} for an assistant
-     * @param otherExpenses  EXPENSE; {@code null} for an assistant
-     * @param cashMovement   net cash flow; {@code null} for an assistant
-     * @param profit         the period's profit; {@code null} for an assistant
-     */
-    @JsonInclude(JsonInclude.Include.NON_NULL)
-    public record Figures(LocalDate from, LocalDate to, BigDecimal netSales, BigDecimal netCollected, BigDecimal stockPurchases,
-                   BigDecimal otherExpenses, BigDecimal cashMovement, BigDecimal profit) {}
-
-    /**
-     * The dashboard.
-     *
-     * @param asOf                          today's business date
-     * @param today                         figures for today
-     * @param monthToDate                   figures from the first of this month to today
-     * @param inventoryValue                value of all stock on hand now (quantity x average cost); {@code null} for an assistant
-     * @param lowStockProducts              how many products are low (see {@link StockApi#summary(boolean)})
-     * @param retainedOnCancelledDeliveries money still held for cancelled deliveries as of today
-     */
-    @JsonInclude(JsonInclude.Include.NON_NULL)
-    public record Dashboard(LocalDate asOf, Figures today, Figures monthToDate, BigDecimal inventoryValue, int lowStockProducts,
-                     BigDecimal retainedOnCancelledDeliveries) {}
-
     /**
      * Builds the dashboard for the current moment.
      *
@@ -93,7 +64,7 @@ public class DashboardService {
      * @param owner whether to include owner-only financial figures
      * @return the figures
      */
-    private Figures figures(ReportService.Summary s, Map<EntryType, BigDecimal> totals, boolean owner) {
+    private Figures figures(Summary s, Map<EntryType, BigDecimal> totals, boolean owner) {
         var p = s.period();
         BigDecimal profit = owner ? reports.profit(p.from(), p.to(), totals).profit() : null;
         return new Figures(p.from(), p.to(), s.sales().net(), s.collections().netCollected(),

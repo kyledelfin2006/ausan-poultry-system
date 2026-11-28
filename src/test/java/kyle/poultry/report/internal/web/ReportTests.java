@@ -1,5 +1,10 @@
 package kyle.poultry.report.internal.web;
 
+import kyle.poultry.report.internal.model.Profit;
+import kyle.poultry.report.internal.model.Sales;
+import kyle.poultry.report.internal.model.BranchInventory;
+import kyle.poultry.report.internal.model.Collections;
+import kyle.poultry.report.internal.model.CostOfGoods;
 import kyle.poultry.report.internal.service.ReportService;
 import kyle.poultry.stock.api.model.MovementView;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -265,8 +270,8 @@ class ReportTests {
         var s = reports.summary(d("2012-01-01"), d("2012-01-31"));
         var zero = money("0.00");
 
-        assertThat(s.sales()).isEqualTo(new ReportService.Sales(zero, zero, zero));
-        assertThat(s.collections()).isEqualTo(new ReportService.Collections(zero, zero, zero, zero));
+        assertThat(s.sales()).isEqualTo(new Sales(zero, zero, zero));
+        assertThat(s.collections()).isEqualTo(new Collections(zero, zero, zero, zero));
         assertThat(s.stockPurchases()).isEqualTo(zero);
         assertThat(s.otherExpenses()).isEqualTo(zero);
         assertThat(s.cashMovement().total()).isEqualTo(zero);
@@ -274,7 +279,7 @@ class ReportTests {
                 .allSatisfy((m, v) -> assertThat(v).isEqualTo(zero));
         var p = reports.profit(d("2012-01-01"), d("2012-01-31"));
         assertThat(p.netSales()).isEqualTo(zero);
-        assertThat(p.costOfGoods()).isEqualTo(new ReportService.CostOfGoods(zero, zero, zero));
+        assertThat(p.costOfGoods()).isEqualTo(new CostOfGoods(zero, zero, zero));
         assertThat(p.profit()).isEqualTo(zero);
     }
 
@@ -310,7 +315,7 @@ class ReportTests {
                 .isEqualTo(money("500.00"));
         assertThat(branch.total()).isEqualTo(money("3500.00"));
         assertThat(inv.grandTotal()).isEqualTo(
-                inv.branches().stream().map(ReportService.BranchInventory::total)
+                inv.branches().stream().map(BranchInventory::total)
                         .reduce(BigDecimal.ZERO, BigDecimal::add));
         assertThat(inv.grandTotal()).isGreaterThanOrEqualTo(money("3500.00"));
     }

@@ -6,12 +6,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
-import kyle.poultry.report.internal.service.ReportService.Collections;
-import kyle.poultry.report.internal.service.ReportService.Period;
-import kyle.poultry.report.internal.service.ReportService.Sales;
-import kyle.poultry.report.internal.service.ReportService.Summary;
-import kyle.poultry.report.internal.service.SeriesService.Series;
-import kyle.poultry.report.internal.service.SeriesService.SeriesPoint;
+import kyle.poultry.report.internal.model.Collections;
+import kyle.poultry.report.internal.model.Period;
+import kyle.poultry.report.internal.model.Sales;
+import kyle.poultry.report.internal.model.Summary;
+import kyle.poultry.report.internal.model.Series;
+import kyle.poultry.report.internal.model.SeriesPoint;
 import tools.jackson.databind.json.JsonMapper;
 import org.junit.jupiter.api.Test;
 
@@ -25,7 +25,7 @@ class ReportViewSerializationTests {
         var summary = new Summary(period, new Sales(BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO),
                 new Collections(BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO), null, null, null);
         var point = new SeriesPoint(period.from(), period.to(), BigDecimal.ZERO, BigDecimal.ZERO, null, null, null);
-        var series = new Series(period, SeriesService.Granularity.DAY, List.of(point), point);
+        var series = new Series(period, Granularity.DAY, List.of(point), point);
 
         String summaryJson = json.writeValueAsString(summary);
         String seriesJson = json.writeValueAsString(series);

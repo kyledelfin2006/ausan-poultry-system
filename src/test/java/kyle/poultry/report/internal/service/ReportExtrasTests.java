@@ -1,5 +1,7 @@
 package kyle.poultry.report.internal.service;
 
+import kyle.poultry.report.internal.model.ProfitPoint;
+import kyle.poultry.report.internal.model.SeriesPoint;
 import kyle.poultry.stock.api.model.MovementView;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -17,7 +19,7 @@ import kyle.poultry.finance.api.FinanceApi;
 import kyle.poultry.finance.api.model.PaymentMethod;
 import kyle.poultry.identity.api.model.Actor;
 import kyle.poultry.identity.api.model.Role;
-import kyle.poultry.report.internal.service.SeriesService.Granularity;
+import kyle.poultry.report.internal.model.Granularity;
 import kyle.poultry.shared.error.RuleViolation;
 import kyle.poultry.shared.reference.SourceRef;
 import kyle.poultry.stock.api.model.MovementType;
@@ -159,7 +161,7 @@ class ReportExtrasTests {
             assertThat(s.totals().otherExpenses()).isEqualTo(summary.otherExpenses());
             assertThat(s.totals().cashMovement()).isEqualTo(summary.cashMovement().total());
             // The points add up to the total too.
-            assertThat(s.points().stream().map(SeriesService.SeriesPoint::cashMovement).reduce(BigDecimal.ZERO, BigDecimal::add))
+            assertThat(s.points().stream().map(SeriesPoint::cashMovement).reduce(BigDecimal.ZERO, BigDecimal::add))
                     .isEqualByComparingTo(s.totals().cashMovement());
             var p = series.profitSeries(from, to, g);
             assertThat(p.totals().netSales()).isEqualTo(profit.netSales());
@@ -176,7 +178,7 @@ class ReportExtrasTests {
 
         var p = series.profitSeries(d("2023-01-01"), d("2023-03-31"), Granularity.MONTH);
 
-        assertThat(p.points()).extracting(SeriesService.ProfitPoint::profit)
+        assertThat(p.points()).extracting(ProfitPoint::profit)
                 .containsExactly(money("-100.00"), money("4710.00"), money("0.00"));   // Feb: 5,000 - 240 - 50; the 1,000 purchase is ignored
         assertThat(p.points().get(1).costOfGoods()).isEqualTo(money("240.00"));
         assertThat(p.points().get(2).costOfGoods()).isEqualTo(money("0.00"));          // 100 delivered, 100 reversed
@@ -190,8 +192,8 @@ class ReportExtrasTests {
         var s = series.series(d("2023-02-09"), d("2023-02-11"), Granularity.DAY);
 
         assertThat(s.points()).hasSize(3);
-        assertThat(s.points()).extracting(SeriesService.SeriesPoint::from).containsExactly(d("2023-02-09"), d("2023-02-10"), d("2023-02-11"));
-        assertThat(s.points()).extracting(SeriesService.SeriesPoint::netSales)
+        assertThat(s.points()).extracting(SeriesPoint::from).containsExactly(d("2023-02-09"), d("2023-02-10"), d("2023-02-11"));
+        assertThat(s.points()).extracting(SeriesPoint::netSales)
                 .containsExactly(money("0.00"), money("5000.00"), money("0.00"));
     }
 
@@ -201,8 +203,8 @@ class ReportExtrasTests {
         buildScenario();
 
         var months = series.series(d("2022-12-31"), d("2023-01-01"), Granularity.MONTH);
-        assertThat(months.points()).extracting(SeriesService.SeriesPoint::from).containsExactly(d("2022-12-31"), d("2023-01-01"));
-        assertThat(months.points()).extracting(SeriesService.SeriesPoint::to).containsExactly(d("2022-12-31"), d("2023-01-01"));
+        assertThat(months.points()).extracting(SeriesPoint::from).containsExactly(d("2022-12-31"), d("2023-01-01"));
+        assertThat(months.points()).extracting(SeriesPoint::to).containsExactly(d("2022-12-31"), d("2023-01-01"));
         // A single day is a single point in either granularity.
         assertThat(series.series(d("2023-01-31"), d("2023-01-31"), Granularity.MONTH).points()).hasSize(1);
         assertThat(series.series(d("2023-01-31"), d("2023-01-31"), Granularity.DAY).points().getFirst().otherExpenses()).isEqualTo(money("100.00"));

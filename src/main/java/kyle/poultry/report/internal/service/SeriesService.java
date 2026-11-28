@@ -1,5 +1,10 @@
 package kyle.poultry.report.internal.service;
 
+import kyle.poultry.report.internal.model.Granularity;
+import kyle.poultry.report.internal.model.ProfitPoint;
+import kyle.poultry.report.internal.model.ProfitSeries;
+import kyle.poultry.report.internal.model.Series;
+import kyle.poultry.report.internal.model.SeriesPoint;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.YearMonth;
@@ -10,8 +15,7 @@ import java.util.Map;
 import java.util.TreeMap;
 import kyle.poultry.finance.api.model.EntryType;
 import kyle.poultry.finance.api.FinanceApi;
-import kyle.poultry.report.internal.service.ReportService.Period;
-import com.fasterxml.jackson.annotation.JsonInclude;
+import kyle.poultry.report.internal.model.Period;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,64 +38,6 @@ public class SeriesService {
      * @param finance the finance module's API, the source of the per-day totals
      */
     SeriesService(FinanceApi finance) { this.finance = finance; }
-
-    /** How finely a period is cut into points. */
-    public enum Granularity {
-        /** One point per business date: at most 366 points. */
-        DAY,
-        /** One point per calendar month: at most 13 points; edge months are cut to the period. */
-        MONTH
-    }
-
-    /**
-     * A point of the summary series.
-     *
-     * @param from          first date the point covers
-     * @param to            last date the point covers
-     * @param netSales      SALE - SALE_REVERSAL
-     * @param netCollected  PAYMENT_IN - REFUND
-     * @param stockPurchases sum of STOCK_PURCHASE (cash out, not a profit figure); null for assistants
-     * @param otherExpenses sum of EXPENSE; null for assistants
-     * @param cashMovement  PAYMENT_IN - REFUND - STOCK_PURCHASE - EXPENSE; null for assistants
-     */
-    @JsonInclude(JsonInclude.Include.NON_NULL)
-    public record SeriesPoint(LocalDate from, LocalDate to, BigDecimal netSales, BigDecimal netCollected,
-                       BigDecimal stockPurchases, BigDecimal otherExpenses, BigDecimal cashMovement) {}
-
-    /**
-     * The summary series served to both roles.
-     *
-     * @param period      the period covered
-     * @param granularity day or month
-     * @param points      one point per day or month, oldest first
-     * @param totals      the whole period; equals the summary report's figures
-     */
-    public record Series(Period period, Granularity granularity, List<SeriesPoint> points, SeriesPoint totals) {}
-
-    /**
-     * A point of the profit series.
-     *
-     * @param from          first date the point covers
-     * @param to            last date the point covers
-     * @param netSales      SALE - SALE_REVERSAL
-     * @param costOfGoods   COST_OF_GOODS - COGS_REVERSAL
-     * @param grossProfit   net sales minus cost of goods
-     * @param otherExpenses sum of EXPENSE
-     * @param profit        gross profit minus other expenses; stock purchases are never included
-     */
-    public record ProfitPoint(LocalDate from, LocalDate to, BigDecimal netSales, BigDecimal costOfGoods, BigDecimal grossProfit,
-                       BigDecimal otherExpenses, BigDecimal profit) {}
-
-    /**
-     * The profit series served to the owner only.
-     *
-     * @param period      the period covered
-     * @param granularity day or month
-     * @param points      one point per day or month, oldest first
-     * @param totals      the whole period; equals the profit report's figures
-     */
-    public record ProfitSeries(Period period, Granularity granularity, List<ProfitPoint> points, ProfitPoint totals) {}
-
     /**
      * The entry-type totals of one stretch of the period.
      *

@@ -2,11 +2,11 @@ package kyle.poultry.report.internal.export;
 
 import java.util.Map;
 import kyle.poultry.finance.api.model.PaymentMethod;
-import kyle.poultry.report.internal.service.ReportService.InventoryValue;
-import kyle.poultry.report.internal.service.ReportService.Profit;
-import kyle.poultry.report.internal.service.ReportService.Summary;
-import kyle.poultry.report.internal.service.SeriesService.ProfitSeries;
-import kyle.poultry.report.internal.service.SeriesService.Series;
+import kyle.poultry.report.internal.model.InventoryValue;
+import kyle.poultry.report.internal.model.Profit;
+import kyle.poultry.report.internal.model.Summary;
+import kyle.poultry.report.internal.model.ProfitSeries;
+import kyle.poultry.report.internal.model.Series;
 import kyle.poultry.shared.csv.Csv;
 
 /**
