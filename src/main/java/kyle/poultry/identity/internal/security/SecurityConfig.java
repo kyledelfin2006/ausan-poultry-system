@@ -71,7 +71,7 @@ class SecurityConfig {
                         .contentSecurityPolicy(csp -> csp.policyDirectives("default-src 'none'; frame-ancestors 'none'"))
                         .referrerPolicy(r -> r.policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.NO_REFERRER))
                         // Only sent on HTTPS requests (browsers ignore it on HTTP); with a TLS-terminating proxy the
-                        // proxy must forward the scheme, see docs/security/README.md.
+                        // proxy must forward the scheme, see docs/security.md.
                         .httpStrictTransportSecurity(hsts -> hsts.includeSubDomains(true).maxAgeInSeconds(31_536_000))
                         .addHeaderWriter(new StaticHeadersWriter("Permissions-Policy", "camera=(), microphone=(), geolocation=()")))
                 .authorizeHttpRequests(a -> a

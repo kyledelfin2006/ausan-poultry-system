@@ -40,7 +40,7 @@ services:
       SERVER_FORWARD_HEADERS_STRATEGY: none
       JAVA_OPTS: ${JAVA_OPTS:--XX:MaxRAMPercentage=75}
     ports:
-      # Plain HTTP: set APP_BIND=127.0.0.1 when a TLS proxy on this host is the only way in (see docs/security/README.md).
+      # Plain HTTP: set APP_BIND=127.0.0.1 when a TLS proxy on this host is the only way in (see docs/security.md).
       - "${APP_BIND:-0.0.0.0}:${APP_PORT:-8080}:8080"
     stop_grace_period: 40s
 

@@ -25,7 +25,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * <p>
  * The application runs on a random port against a real PostgreSQL. Every test uses names made unique with a random tag, so
  * the tests are independent of each other and of the seed data. Two tests are {@link Disabled}: each reproduces a defect
- * listed in {@code docs/quality/findings.md} and will start passing when the defect is fixed.
+ * listed in {@code docs/testing.md} and will start passing when the defect is fixed.
  */
 @Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -281,7 +281,7 @@ class CatalogApiTests {
      * DEFECT (see findings): a PATCH may set a name or unit made only of spaces, because the update field is checked for
      * length but not for being blank. The create request rejects the same value with 400. When fixed, this test passes.
      */
-    @Disabled("Defect Q-001: PATCH accepts a whitespace-only product name; see docs/quality/findings.md")
+    @Disabled("Known defect: PATCH accepts a whitespace-only product name; see docs/testing.md")
     @Test
     void aPatchCannotBlankOutAProductName() throws Exception {
         long id = newProduct(unique());
@@ -295,7 +295,7 @@ class CatalogApiTests {
      * DEFECT (see findings): names are not trimmed, so "Feed " (with a trailing space) is stored as a separate product next
      * to "Feed". The unique constraint compares the exact text. When fixed, the second create is refused with 409.
      */
-    @Disabled("Defect Q-002: names differing only by surrounding spaces are stored as different products; see docs/quality/findings.md")
+    @Disabled("Known defect: names differing only by surrounding spaces are stored as different products; see docs/testing.md")
     @Test
     void namesThatDifferOnlyByTrailingSpacesAreTheSameProduct() throws Exception {
         String name = unique();
