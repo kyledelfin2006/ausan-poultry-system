@@ -10,7 +10,7 @@ import java.util.List;
  * @param unit          the product's unit of measure
  * @param totalQuantity units on hand over all branches
  * @param reorderLevel  the configured reorder level, or {@code null} when none is set
- * @param low           true when the product is low (see {@link StockApi#summary})
+ * @param low           true when the product is low (see {@link kyle.poultry.stock.api.StockApi#summary})
  * @param branches      the branches that have held the product, ordered by branch id
  */
 public record ProductStockView(long productId, String productName, String unit, long totalQuantity, Long reorderLevel,

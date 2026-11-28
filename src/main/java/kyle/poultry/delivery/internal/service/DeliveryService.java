@@ -289,7 +289,7 @@ public class DeliveryService {
      * @param reason why it is cancelled
      * @param actor  must be an owner
      * @return the cancelled delivery
-     * @throws AccessDeniedException when the actor is not an owner
+     * @throws org.springframework.security.access.AccessDeniedException when the actor is not an owner
      * @throws NotFoundException     when the delivery does not exist
      * @throws kyle.poultry.shared.error.ConflictException when the delivery is no longer ACTIVE
      * @throws RuleViolation         when no reason is given
@@ -315,7 +315,7 @@ public class DeliveryService {
      * @param reason why it came back
      * @param actor  must be allowed to return deliveries
      * @return the returned delivery with the money still held
-     * @throws AccessDeniedException when the actor may not return deliveries
+     * @throws org.springframework.security.access.AccessDeniedException when the actor may not return deliveries
      * @throws NotFoundException     when the delivery does not exist
      * @throws kyle.poultry.shared.error.ConflictException when the delivery is not DONE
      * @throws RuleViolation         when no reason is given
@@ -341,7 +341,7 @@ public class DeliveryService {
      * @param description note for the ledger; defaults to "Refund for CODE" when blank
      * @param actor       must be an owner
      * @return the delivery with its remaining retained payment
-     * @throws AccessDeniedException when the actor is not an owner
+     * @throws org.springframework.security.access.AccessDeniedException when the actor is not an owner
      * @throws NotFoundException     when the delivery does not exist
      * @throws RuleViolation         when the delivery is not CANCELLED or RETURNED or the amount exceeds what is still retained
      */

@@ -56,7 +56,7 @@ class StockOverviewService {
      *
      * @param lowOnly true to keep only products that are low
      * @return products ordered by name
-     * @see StockApi#summary(boolean)
+     * @see kyle.poultry.stock.api.StockApi#summary(boolean)
      */
     List<ProductStockView> summary(boolean lowOnly) {
         // One catalog call and two table reads; everything else is assembled in memory (a handful of products).

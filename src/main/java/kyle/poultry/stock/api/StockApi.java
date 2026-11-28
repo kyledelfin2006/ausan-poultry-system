@@ -55,7 +55,7 @@ public interface StockApi {
      *         or the product or branch is inactive
      * @throws org.springframework.security.access.AccessDeniedException if a non-owner records opening
      *         stock or an adjustment
-     * @throws InsufficientStockException if a negative quantity exceeds what the branch holds
+     * @throws kyle.poultry.stock.api.exception.InsufficientStockException if a negative quantity exceeds what the branch holds
      * @throws kyle.poultry.shared.error.NotFoundException if the product or branch does not exist
      */
     MovementView record(StockCommand cmd, Actor actor);
@@ -74,7 +74,7 @@ public interface StockApi {
      * @param on       the business date of the movement
      * @param actor    the signed-in user, stored as the creator
      * @return one movement per line, in ascending product id order
-     * @throws InsufficientStockException if any line exceeds the branch balance
+     * @throws kyle.poultry.stock.api.exception.InsufficientStockException if any line exceeds the branch balance
      * @throws kyle.poultry.shared.error.RuleViolation if a quantity is not positive or a product or branch is inactive
      * @throws kyle.poultry.shared.error.NotFoundException if a product or branch does not exist
      */

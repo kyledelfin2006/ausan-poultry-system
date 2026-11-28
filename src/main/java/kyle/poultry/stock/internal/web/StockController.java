@@ -75,7 +75,7 @@ class StockController {
      * @param jwt the caller's token, used to identify the acting user
      * @return the saved movement, with HTTP 201
      * @throws kyle.poultry.shared.error.RuleViolation if the ledger rejects the movement (HTTP 422)
-     * @throws InsufficientStockException if the movement would make the balance negative (HTTP 409)
+     * @throws kyle.poultry.stock.api.exception.InsufficientStockException if the movement would make the balance negative (HTTP 409)
      */
     @PostMapping("/movements")
     @ResponseStatus(HttpStatus.CREATED)
