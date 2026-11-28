@@ -9,5 +9,5 @@
 - [ ] Every new class and method has Javadoc, and comments explain *why* (see "Code documentation standard" in the README).
 - [ ] Applied Flyway migrations are untouched; schema changes are a new migration.
 - [ ] API changes are reflected in `docs/api/` (and the OpenAPI snapshot, if the contract changed).
-- [ ] A decision that future readers will question is recorded in `docs/architecture/decisions/`.
+- [ ] A decision that future readers will question is recorded in `docs/architecture/decisions.md`.
 - [ ] Modules still talk only through their `*Api` interfaces.

@@ -12,7 +12,7 @@ import io.swagger.v3.oas.models.media.StringSchema;
  * The export controllers return the file as raw bytes, which the generator reports as a base64 string in a JSON body.
  * In fact the answer is {@code text/csv; charset=UTF-8} with an attachment {@code Content-Disposition}, so every path
  * ending in {@code .csv} gets that media type and header instead. The column layouts are in
- * {@code docs/api/exports-csv.md}.
+ * {@code docs/api/rules.md}.
  */
 final class CsvContract {
 

@@ -918,7 +918,7 @@
         "properties" : {
           "code" : {
             "description" : "Stable machine-readable error code; branch on this, not on `detail`.",
-            "enum" : [ "VALIDATION_FAILED", "BAD_REQUEST", "UNAUTHENTICATED", "FORBIDDEN", "NOT_FOUND", "METHOD_NOT_ALLOWED", "NOT_ACCEPTABLE", "CONFLICT", "DATA_CONFLICT", "UNSUPPORTED_MEDIA_TYPE", "RULE_VIOLATION", "TOO_MANY_REQUESTS", "INTERNAL_ERROR" ],
+            "enum" : [ "VALIDATION_FAILED", "BAD_REQUEST", "UNAUTHENTICATED", "FORBIDDEN", "NOT_FOUND", "METHOD_NOT_ALLOWED", "NOT_ACCEPTABLE", "CONFLICT", "DATA_CONFLICT", "REQUEST_IN_PROGRESS", "UNSUPPORTED_MEDIA_TYPE", "RULE_VIOLATION", "TOO_MANY_REQUESTS", "INTERNAL_ERROR" ],
             "type" : "string"
           },
           "detail" : {
@@ -2096,7 +2096,7 @@
                 }
               }
             },
-            "description" : "Clashes with current state or existing data (`CONFLICT` or `DATA_CONFLICT`)."
+            "description" : "Clashes with current state (`CONFLICT`, e.g. insufficient stock), or an identical request with the same `Idempotency-Key` is still running (`REQUEST_IN_PROGRESS`, with a `Retry-After` header: wait, then resend the identical request with the same key)."
           },
           "422" : {
             "content" : {

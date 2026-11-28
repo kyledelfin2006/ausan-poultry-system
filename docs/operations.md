@@ -27,7 +27,7 @@ docker compose -f compose.prod.yaml --env-file .env ps       # wait for app to b
 curl.exe http://localhost:8080/actuator/health
 ```
 
-Flyway creates the schema and seeds the products, two placeholder branches and the three packages on first start. The bootstrap owner must change the configured password before using other API routes; `GET /api/auth/me`, `POST /api/auth/password` and `POST /api/auth/logout` remain available for that flow.
+Flyway creates the schema and seeds the products, two placeholder branches and the three packages on first start.
 
 ### Remove the bootstrap variables
 
@@ -137,5 +137,5 @@ Workable for a small shop, with caveats:
 | `unhealthy` | The healthcheck calls `/actuator/health` inside the container; look for startup errors in the logs (start period is 60 s). |
 | 401 for everyone after a restart | The JWT secret changed. Log in again. |
 | 401 right after a user changed their password, or after logout | Expected: both end that user's sessions on every device. Log in again. |
-| Browser console says "blocked by CORS policy" | The frontend's exact origin is not in `APP_CORS_ALLOWED_ORIGINS` (scheme, host and port must match; no trailing slash). Fix `.env`, recreate the app container. See [security/README.md](security/README.md). |
-| Need to trace one failed action | Take the `X-Request-Id` from the response (or the frontend) and search the logs for it; logs are JSON in production. See [security/observability.md](security/observability.md). |
+| Browser console says "blocked by CORS policy" | The frontend's exact origin is not in `APP_CORS_ALLOWED_ORIGINS` (scheme, host and port must match; no trailing slash). Fix `.env`, recreate the app container. See [security.md](security.md#4-controls). |
+| Need to trace one failed action | Take the `X-Request-Id` from the response (or the frontend) and search the logs for it; logs are JSON in production. See [security.md](security.md#5-observability). |

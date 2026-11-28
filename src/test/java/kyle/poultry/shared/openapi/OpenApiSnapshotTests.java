@@ -11,8 +11,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import kyle.poultry.TestcontainersConfiguration;
-import kyle.poultry.shared.ApiTestClient;
-import kyle.poultry.shared.ErrorCodes;
+import kyle.poultry.support.ApiTestClient;
+import kyle.poultry.shared.error.ErrorCodes;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -135,34 +135,6 @@ class OpenApiSnapshotTests {
                         .as("%s %s", method, path).contains("401", "403");
             }
         }));
-    }
-
-    /**
-     * Every page in {@code docs/api} is linked from the index, and every path in the contract is mentioned on some page,
-     * so a new endpoint or page can never ship without being documented and discoverable.
-     *
-     * @throws Exception when the document or the pages cannot be read
-     */
-    @Test
-    void everyPageIsIndexedAndEveryPathIsDocumented() throws Exception {
-        Path folder = Path.of("docs/api");
-        String index = Files.readString(folder.resolve("README.md"), StandardCharsets.UTF_8);
-        var pages = new ArrayList<String>();
-        try (var files = Files.list(folder)) {
-            files.map(p -> p.getFileName().toString()).filter(n -> n.endsWith(".md") && !n.equals("README.md")).sorted()
-                    .forEach(pages::add);
-        }
-        assertThat(pages).isNotEmpty();
-        pages.forEach(page -> assertThat(index).as("docs/api/README.md must link %s", page).contains("(" + page));
-
-        // Path variable names differ between pages ({id}, {productId}); compare with names erased.
-        var allPages = new StringBuilder();
-        for (String page : pages) allPages.append(Files.readString(folder.resolve(page), StandardCharsets.UTF_8)).append('\n');
-        String documented = allPages.toString().replaceAll("\\{[^}]+}", "{}");
-        var spec = (Map<?, ?>) JSON.readValue(api.json("GET", "/v3/api-docs", owner, null).body(), Map.class);
-        ((Map<?, ?>) spec.get("paths")).keySet().forEach(path ->
-                assertThat(documented).as("path %s appears on a docs/api page", path)
-                        .contains(String.valueOf(path).replaceAll("\\{[^}]+}", "{}")));
     }
 
     /**

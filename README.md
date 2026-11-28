@@ -41,42 +41,28 @@ Before the system, stock, deliveries and money lived in paper logs, notepads and
 - [Project Overview](#project-overview)
 - [Features](#features)
 - [Architecture](#architecture)
-- [Notable code changes](#notable-code-changes)
 - [Engineering problems solved](#engineering-problems-solved)
 - [Demo Accounts](#demo-accounts)
 - [Quick Start](#quick-start)
-  - [Prerequisites](#prerequisites)
-  - [Installation](#installation)
 - [Configuration & Secrets Management](#configuration--secrets-management)
   - [Environment Variables](#environment-variables)
   - [CI/CD Secrets](#cicd-secrets)
   - [Security Policy](#security-policy)
 - [API Usage & Documentation](#api-usage--documentation)
-  - [Authentication](#authentication)
-  - [Request/Response Examples](#requestresponse-examples)
-  - [API Reference](#api-reference)
 - [Docker Infrastructure](#docker-infrastructure)
   - [Container topology](#container-topology)
   - [File inventory](#file-inventory)
   - [The application image (Dockerfile)](#the-application-image-dockerfile)
-  - [Local stack (docker-compose.yml)](#local-stack-docker-composeyml)
-  - [Production override (infra/docker-compose.prod.yml)](#production-override-infradocker-composeprodyml)
-  - [Caddy reverse proxy](#caddy-reverse-proxy)
+  - [Local stack (compose.yaml)](#local-stack-composeyaml)
+  - [Production stack (compose.prod.yaml)](#production-stack-composeprodyaml)
   - [Operations scripts](#operations-scripts)
   - [Networking, ports, volumes, and health](#networking-ports-volumes-and-health)
   - [Image pinning and updates](#image-pinning-and-updates)
   - [Docker safety rules](#docker-safety-rules)
 - [CI/CD Pipeline Architecture](#cicd-pipeline-architecture)
-  - [Pipeline Flow](#pipeline-flow)
-  - [Workflow Breakdown](#workflow-breakdown)
-  - [Triggers & Quality Gates](#triggers--quality-gates)
 - [Deployment](#deployment)
-  - [Environments](#environments)
-  - [Deployment Process](#deployment-process)
-  - [Manual Deployment & Rollback](#manual-deployment--rollback)
 - [Testing](#testing)
 - [Documentation](#documentation)
-  - [Repo map](#repo-map)
 - [Contributing](#contributing)
 - [Project Status](#project-status)
 - [License](#license)
@@ -94,29 +80,11 @@ Before the system, stock, deliveries and money lived in paper logs, notepads and
 - **Identity and security:** two roles (OWNER, ASSISTANT), user administration, password rules, login throttling, logout with immediate session revocation, CORS and security headers.
 - **Audit and observability:** audit trail of master-data changes, request ids, structured logs and Prometheus metrics.
 
-Who can do what:
-
-| Action | OWNER | ASSISTANT |
-|---|---|---|
-| Record purchases, donations, usage, expenses | yes | yes |
-| Create deliveries, mark them done | yes | yes |
-| Opening stock and adjustments | yes | no |
-| Cancel deliveries, record refunds | yes | no |
-| Edit products, branches, packages; create users | yes | no |
-| Profit reports, delivery receipts (cost and profit), reorder levels, audit trail | yes | no |
-
-Key business rules:
-
-- **Append-only ledgers.** Stock movements and financial entries are never updated or deleted. A correction is a reversal or an opposite entry.
-- **Payment.** A delivery is paid in full when created: it records the sale, the cost of goods and the payment.
-- **Cancellation.** Owner only, only while ACTIVE. Stock returns at its original cost; sale and cost are reversed, but the payment stays on record as money held until refunded.
-- **Refunds.** Owner only, only for cancelled deliveries, never more than the payment still held; partial refunds are allowed.
-- **Done deliveries cannot be cancelled.** DONE and CANCELLED are final.
-- No transfers between branches.
+Roles, the user flow and the business rules (append-only ledgers, cancel and refund policy) are in [docs/product.md](docs/product.md).
 
 ## Architecture
 
-A **modular monolith** in `kyle.poultry` with PostgreSQL as the only dependency ([ADR-0001](docs/architecture/decisions/0001-modular-monolith.md)).
+A **modular monolith** in `kyle.poultry` with PostgreSQL as the only dependency ([design decision 1](docs/architecture/decisions.md#1-modular-monolith)).
 
 | Module | Responsibility |
 |---|---|
@@ -131,26 +99,11 @@ A **modular monolith** in `kyle.poultry` with PostgreSQL as the only dependency 
 
 **Rule: modules talk to each other only through their public `*Api` interfaces** (`CatalogApi`, `StockApi`, `FinanceApi`). Implementations, entities and repositories are package-private. ArchUnit tests fail the build if this is broken.
 
-Full detail: [architecture overview](docs/architecture/overview.md), [data model](docs/architecture/data-model.md), [ledger and costing](docs/architecture/ledger-and-costing.md), [sequences](docs/architecture/sequences.md), [glossary](docs/architecture/glossary.md).
-
-## Notable code changes
-
-Design decisions are recorded as ADRs in [docs/architecture/decisions/](docs/architecture/decisions/README.md):
-
-| ADR | Decision |
-|---|---|
-| [0001](docs/architecture/decisions/0001-modular-monolith.md) | Modular monolith instead of microservices |
-| [0002](docs/architecture/decisions/0002-append-only-ledgers.md) | Append-only stock and finance ledgers |
-| [0003](docs/architecture/decisions/0003-stateless-jwt-with-database-recheck.md) | Stateless JWT, re-checked against the database on every request |
-| [0004](docs/architecture/decisions/0004-weighted-average-in-sql.md) | Weighted average cost computed in one SQL statement |
-| [0005](docs/architecture/decisions/0005-idempotent-delivery-creation.md) | Idempotent delivery creation |
-| [0006](docs/architecture/decisions/0006-real-postgresql-in-tests.md) | Real PostgreSQL in tests, pure units for logic |
-
-The project history (feature slices, quality gates, API contract finalisation) is in the [pull requests](https://github.com/kyledelfin2006/ausan-poultry-system/pulls?q=is%3Apr).
+Full detail: [architecture overview](docs/architecture/overview.md), [data model](docs/architecture/data-model.md), [ledgers and concurrency](docs/architecture/ledger-and-concurrency.md), [key flows](docs/architecture/sequences.md), and the seven [design decisions](docs/architecture/decisions.md) (modular monolith, append-only ledgers, stateless JWT with database re-check, weighted average in SQL, idempotent deliveries, real PostgreSQL in tests, `api`/`internal` packages).
 
 ## Engineering problems solved
 
-- **Overlapping requests.** Two staff, a retrying phone, or a cancel racing a "done" must not corrupt stock or money. The code uses no Java locks: every guarantee is a row lock, advisory lock, atomic statement or constraint, each proven by a concurrency test against real PostgreSQL ([consistency and concurrency](docs/architecture/consistency-and-concurrency.md)).
+- **Overlapping requests.** Two staff, a retrying phone, or a cancel racing a "done" must not corrupt stock or money. The code uses no Java locks: every guarantee is a row lock, advisory lock, atomic statement or constraint, each proven by a concurrency test against real PostgreSQL ([ledgers and concurrency](docs/architecture/ledger-and-concurrency.md)).
 - **Safe retries.** A dropped connection leaves the client unsure whether a delivery was created. `Idempotency-Key` makes the retry return the original delivery; two simultaneous requests with one key create exactly one delivery.
 - **Correct cost of goods.** The weighted average is updated atomically in SQL, so concurrent purchases cannot read a stale average.
 - **All-or-nothing sales.** Stock for every package line, the sale, cost and payment are written in one transaction; insufficient stock saves nothing.
@@ -214,66 +167,38 @@ The CI workflow needs **no secrets**: it reads the repository (`permissions: con
 
 ### Security Policy
 
-There is no separate `SECURITY.md`. The security reference (assets, threat model, controls and the test behind each) is in [docs/security/](docs/security/README.md). To report a vulnerability, contact the repository owner privately rather than opening a public issue.
+There is no separate `SECURITY.md`. The security reference (assets, threat model, controls and the test behind each) is in [docs/security.md](docs/security.md). To report a vulnerability, contact the repository owner privately rather than opening a public issue.
 
 ## API Usage & Documentation
 
-### Authentication
-
-Exchange a username and password for a JWT (valid 8 hours, no refresh) and send it as `Authorization: Bearer <token>`. After 5 failed attempts in 15 minutes a username is throttled (`429`). See [auth](docs/api/auth.md) and [auth-session](docs/api/auth-session.md).
+Exchange a username and password for a JWT (8 hours, no refresh) and send it as `Authorization: Bearer <token>`. After 5 failed attempts in 15 minutes a username is throttled (`429`).
 
 ```http
 POST /api/auth/login
-Content-Type: application/json
-
 { "username": "owner", "password": "your-password" }
 ```
 
-```json
-{ "token": "eyJhbGciOiJIUzI1NiJ9...", "expiresAt": "2026-11-20T10:15:00Z", "role": "OWNER", "displayName": "Owner" }
-```
-
-### Request/Response Examples
-
-Create a delivery (safe to retry with the same `Idempotency-Key`):
+Create a delivery (safe to retry with the same `Idempotency-Key`; `201` returns the delivery, `409` means insufficient stock and nothing is saved):
 
 ```http
 POST /api/deliveries
 Authorization: Bearer <token>
 Idempotency-Key: 6f1c1d3e-5b0a-4a52-9d2b-0c3a6a1c9a10
-Content-Type: application/json
 
 { "customerName": "Juan dela Cruz", "driverName": "Pedro Reyes", "fromBranchId": 1,
   "destination": "Brgy. San Isidro, Tarlac", "paymentMethod": "GCASH",
   "lines": [ { "packageId": 1, "quantity": 1 } ] }
 ```
 
-`201`:
-
-```json
-{ "id": 7, "code": "DLV-2026-0007", "status": "ACTIVE", "customerName": "Juan dela Cruz", "driverName": "Pedro Reyes",
-  "fromBranchId": 1, "destination": "Brgy. San Isidro, Tarlac", "total": 70000.00, "paymentMethod": "GCASH",
-  "lines": [ { "packageId": 1, "packageName": "Package Small", "quantity": 1, "unitPrice": 70000.00, "lineTotal": 70000.00 } ] }
-```
-
-Errors are RFC 9457 problem objects with a stable `code`, for example `409` when stock is insufficient (nothing is saved). All codes: [errors.md](docs/api/errors.md).
-
-### API Reference
-
-| Resource | Page |
+| Document | Holds |
 |---|---|
-| Conventions, paging | [docs/api/README.md](docs/api/README.md) |
-| Building a client (start here) | [integration-guide.md](docs/api/integration-guide.md) |
-| Errors | [errors.md](docs/api/errors.md) |
-| Auth, users, audit | [auth.md](docs/api/auth.md), [auth-session.md](docs/api/auth-session.md), [users.md](docs/api/users.md), [audit.md](docs/api/audit.md) |
-| Catalog | [catalog.md](docs/api/catalog.md) |
-| Stock | [stock.md](docs/api/stock.md), [stock-overview.md](docs/api/stock-overview.md) |
-| Finance | [finance.md](docs/api/finance.md) |
-| Deliveries | [deliveries.md](docs/api/deliveries.md), [deliveries-queries.md](docs/api/deliveries-queries.md) |
-| Reports | [reports.md](docs/api/reports.md), [reports-dashboard-series.md](docs/api/reports-dashboard-series.md), [exports-csv.md](docs/api/exports-csv.md) |
-| Machine-readable spec | [openapi.json](docs/api/openapi.json); the running app serves it at `/v3/api-docs` (bearer token required) |
+| [integration-guide.md](docs/api/integration-guide.md) | Building a client; **start here** |
+| [README.md](docs/api/README.md) | Conventions, paging, roles, session and CORS |
+| [rules.md](docs/api/rules.md) | Business rules behind the endpoints |
+| [errors.md](docs/api/errors.md) | Stable error codes |
+| [openapi.json](docs/api/openapi.json) | Generated contract; the running app serves it at `/v3/api-docs` (token required) |
 
-**Keeping the contract in sync.** `OpenApiSnapshotTests` fails when the code and `docs/api/openapi.json` differ. After an intended API change run `./mvnw test "-Dtest=OpenApiSnapshotTests" "-Dopenapi.update=true"`, commit the regenerated file and update the matching page under `docs/api/`.
+`OpenApiSnapshotTests` fails when the code and `openapi.json` differ. After an intended API change run `./mvnw test "-Dtest=OpenApiSnapshotTests" "-Dopenapi.update=true"` and commit the regenerated file.
 
 ## Docker Infrastructure
 
@@ -292,7 +217,7 @@ flowchart LR
     db -->|persists data| volume
 ```
 
-Production runs two containers, `app` and `postgres`, on one private Compose network. There is no reverse proxy in this repository yet.
+Production runs two containers, `app` and `postgres`, on one private Compose network. There is no reverse proxy in this repository; the app publishes plain HTTP, so terminate TLS in front of it ([security](docs/security.md#4-controls)).
 
 ### File inventory
 
@@ -311,22 +236,18 @@ Production runs two containers, `app` and `postgres`, on one private Compose net
 - **Runtime stage** (`eclipse-temurin:25-jre-alpine`): runs as a non-root `app` user, copies layers from least to most frequently changed, sets `SPRING_PROFILES_ACTIVE=prod`.
 - `HEALTHCHECK` calls `/actuator/health`; `exec java` makes the JVM PID 1 so it receives SIGTERM and shuts down gracefully.
 
-### Local stack (docker-compose.yml)
+### Local stack (compose.yaml)
 
 `compose.yaml` runs only `postgres:17` (database, user and password `poultry`, port `5432`, volume `pgdata`). Spring Boot's docker-compose support starts it with the app. Do not reuse these credentials anywhere real.
 
-### Production override (infra/docker-compose.prod.yml)
+### Production stack (compose.prod.yaml)
 
-This repository has no `infra/` folder and no override file: production is the single, self-contained [compose.prod.yaml](compose.prod.yaml). It requires every secret from `.env`, restarts containers `unless-stopped`, starts the app only after PostgreSQL is healthy, and allows 40 s for graceful shutdown.
+Production is the single, self-contained [compose.prod.yaml](compose.prod.yaml). It requires every secret from `.env`, restarts containers `unless-stopped`, starts the app only after PostgreSQL is healthy, and allows 40 s for graceful shutdown.
 
 ```powershell
 Copy-Item .env.example .env      # then edit every placeholder
 docker compose -f compose.prod.yaml --env-file .env up -d --build
 ```
-
-### Caddy reverse proxy
-
-Not used. The production Compose file fixes forwarded-header handling to `none`; the login throttle uses the direct network peer, and client-supplied `X-Forwarded-*` headers are ignored. If a TLS proxy is added later, configure and verify a trusted proxy address chain before changing this setting, and prevent direct public access to the app port. See [docs/security/README.md](docs/security/README.md).
 
 ### Operations scripts
 
@@ -384,40 +305,16 @@ Continuous **integration** only. There is no automated delivery or deployment st
 | `integration-test` | Waits for `unit-test`, runs only `@Tag("integration")` PostgreSQL tests, merges both jobs' JaCoCo data, enforces the existing coverage floors, publishes the coverage table and report |
 | `security-scan` | Runs independently; Trivy scans Maven compile/runtime dependencies, including transitives, and fails on HIGH or CRITICAL known vulnerabilities |
 
-### Triggers & Quality Gates
-
-Triggers: every pull request and every push to `main`. A newer push to the same pull request cancels the older run; runs on `main` are never cancelled.
-
-| Gate | Fails the build when |
-|---|---|
-| Tests | any test fails |
-| Coverage floor (JaCoCo) | line coverage < 85 % or branch coverage < 75 % |
-| Architecture rules (ArchUnit) | a module boundary or coding rule is broken |
-| Javadoc lint | a malformed tag, broken `{@link}` or bad HTML |
-| Build environment (enforcer) | Java below 25, Maven below 3.9, duplicate dependency versions |
-| Migrations | Flyway and Hibernate `validate` disagree |
-| Dependency scan | Trivy finds a HIGH or CRITICAL known vulnerability in production Maven dependencies |
-
-Details: [docs/quality/](docs/quality/README.md).
+Triggers: every pull request and every push to `main`; a newer push to the same pull request cancels the older run, and runs on `main` are never cancelled. The gates (tests, JaCoCo floors of 85 % line and 75 % branch, ArchUnit rules, Javadoc lint, enforcer, migrations, OpenAPI snapshot, Trivy scan) are listed in [docs/testing.md](docs/testing.md#1-gates).
 
 ## Deployment
 
-### Environments
-
 | Environment | How it runs |
 |---|---|
-| Development | `./mvnw spring-boot:run` with `compose.yaml` PostgreSQL |
+| Development | `./mvnw spring-boot:run` with the `compose.yaml` PostgreSQL |
 | Production | `compose.prod.yaml` on a host you control, settings from `.env` |
 
-No hosted staging environment is defined in this repository.
-
-### Deployment Process
-
-Deployment is manual: clone the repository on the host, create `.env` from `.env.example`, and run `docker compose -f compose.prod.yaml --env-file .env up -d --build`. Flyway applies pending migrations when the new app starts. Full steps: [docs/operations.md](docs/operations.md).
-
-### Manual Deployment & Rollback
-
-Upgrade by pulling the new revision and re-running the `up -d --build` command. Take a backup first (`./scripts/backup.ps1` or `./scripts/backup.sh`). Rolling back code is a checkout of the previous revision and a rebuild; because applied Flyway migrations are never edited and schema changes are forward-only, rolling back across a migration means restoring the pre-upgrade backup. Procedure, restore drill and troubleshooting: [docs/operations.md](docs/operations.md).
+Deployment is manual: clone, create `.env` from `.env.example`, run `docker compose -f compose.prod.yaml --env-file .env up -d --build`. Flyway applies pending migrations on start. To upgrade, back up (`./scripts/backup.ps1` or `.sh`), pull and rerun the same command. Migrations are forward-only, so rolling back across one means restoring the backup. Full steps, backups, restore drill and troubleshooting: [docs/operations.md](docs/operations.md).
 
 ## Testing
 
@@ -429,32 +326,30 @@ Upgrade by pulling the new revision and re-running the `up -d --build` command. 
 ./mvnw test -Dgroups=integration                 # CI's PostgreSQL selection (Docker required)
 ```
 
-The suite includes pure unit tests for logic, integration tests against a real PostgreSQL 17 (Testcontainers), concurrency tests, security-matrix tests, ArchUnit architecture rules and the OpenAPI snapshot. The coverage report is written to `target/site/jacoco/index.html`. Guide: [docs/quality/testing-guide.md](docs/quality/testing-guide.md).
+The suite has pure unit tests, integration tests against real PostgreSQL 17 (Testcontainers), concurrency tests, a security matrix, ArchUnit rules and the OpenAPI snapshot. Coverage report: `target/site/jacoco/index.html`. Guide and conventions: [docs/testing.md](docs/testing.md).
 
 ## Documentation
 
-### Repo map
+Repo map:
 
 ```
-assets/                 logo
-docs/api/               API contract for the frontend, OpenAPI spec
-docs/architecture/      overview, data model, ledger and costing, ADRs, glossary
-docs/security/          threat model, controls, observability
-docs/quality/           quality gates, testing guide, findings
-docs/operations.md      deploy, backup, restore
-docs/reports.md         report definitions
-docs/business-and-system-proposal.md   business problem and scope
-docs/design-foundation-and-stock.md    design notes
-scripts/                backup and restore
-src/main/java/kyle/poultry/   application modules
-src/test/java/kyle/poultry/   tests
+assets/                          logo
+docs/product.md                  what it does, roles, user flow, glossary
+docs/architecture/               overview, data model, ledgers and concurrency, key flows, decisions
+docs/api/                        integration guide, conventions, rules, errors, openapi.json
+docs/security.md                 threat model, controls, observability
+docs/operations.md               deploy, backup, restore, troubleshooting
+docs/testing.md                  quality gates, test conventions
+scripts/                         backup and restore
+src/main/java/kyle/poultry/      application modules
+src/test/java/kyle/poultry/      tests
 ```
 
 ## Contributing
 
 1. Branch from `main` and open a pull request; CI must pass.
 2. Run `./mvnw verify` locally (Docker running) before pushing.
-3. Follow the [pull request template](.github/pull_request_template.md): tests for new behaviour, API changes reflected in `docs/api/` and the OpenAPI snapshot, decisions recorded as ADRs, modules talking only through `*Api` interfaces.
+3. Follow the [pull request template](.github/pull_request_template.md): tests for new behaviour, API changes reflected in `docs/api/` and the OpenAPI snapshot, decisions recorded in `docs/architecture/decisions.md`, modules talking only through `*Api` interfaces.
 4. Never edit an applied Flyway migration (V1-V5 and any applied later): changing one breaks every existing database. Add a new migration.
 
 Code documentation standard:
